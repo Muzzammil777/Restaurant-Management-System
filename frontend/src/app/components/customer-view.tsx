@@ -8,6 +8,7 @@ import { Badge } from '@/app/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { ShoppingCart, Plus, Minus, Trash2, Clock, CreditCard, IndianRupee } from 'lucide-react';
 import { projectId, publicAnonKey } from '@/utils/supabase/info';
+import { USE_MOCK_DATA, mockMenuItems } from '@/utils/mock-data';
 import { toast } from 'sonner';
 
 interface MenuItem {
@@ -38,7 +39,16 @@ export function CustomerView() {
   });
 
   useEffect(() => {
-    fetchMenu();
+    if (USE_MOCK_DATA) {
+      const itemsWithPrepTime = mockMenuItems.map((item) => ({
+        ...item,
+        prepTime: item.prepTime || Math.floor(Math.random() * 20) + 10,
+      }));
+      setMenuItems(itemsWithPrepTime.filter((item) => item.available));
+      setLoading(false);
+    } else {
+      fetchMenu();
+    }
   }, []);
 
   const fetchMenu = async () => {

@@ -69,21 +69,43 @@ npm run dev
 ```
 The application will be available at `http://localhost:5173`.
 
-### Windows Quick Start (start.bat)
+### Windows Quick Start (`start.bat`)
 
-A convenience batch script is provided to start the frontend on Windows. It will install dependencies if `node_modules` is missing and then run the dev server.
+A convenience Windows batch script `start.bat` is provided to simplify starting the frontend during development. The script:
 
-From the `frontend` folder, run:
+- Verifies `node` and `npm` are available in `PATH`.
+- Installs dependencies (uses `npm ci` when `package-lock.json` exists) if `node_modules` is missing.
+- Runs the configured npm script (defaults to `dev`).
+
+Usage (from the `frontend` folder):
+
+Command Prompt or PowerShell:
 
 ```powershell
 start.bat
 ```
 
-Or run the same command directly:
+Optional: pass an npm script name as the first argument. Example — start the `build` script:
+
+```powershell
+start.bat build
+```
+
+Direct npm alternatives (without the batch helper):
 
 ```bash
 npm run dev
+# or
+npm run build
 ```
+
+Troubleshooting
+
+- If you see "Node.js is not installed or not in PATH", install Node.js from https://nodejs.org/ and re-open your terminal.
+- If dependency installation fails, try running `npm ci` or `npm install` manually and inspect the error output.
+- Ensure you run the script from the `frontend` folder (where `package.json` lives).
+
+The `start.bat` file is intentionally conservative: it exits with a non-zero code on failures so CI or other tooling can detect problems.
 
 ### Mock Data Mode
 
