@@ -100,6 +100,7 @@ export function OffersLoyalty() {
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
   const [editingPlan, setEditingPlan] = useState<MembershipPlan | null>(null);
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
+  const [createPlanDialogOpen, setCreatePlanDialogOpen] = useState(false);
   
   // Form states for Create/Edit Coupon
   const [formData, setFormData] = useState({
@@ -230,17 +231,6 @@ export function OffersLoyalty() {
     minRedeemablePoints: 100,
     expiryMonths: 12,
     autoExpiryEnabled: true,
-  });
-
-  // Offer Impact Simulator State
-  const [simulatorData, setSimulatorData] = useState({
-    customerType: 'regular',
-    membershipPlan: 'none',
-    orderAmount: 1000,
-    selectedCoupon: 'none',
-    redeemPoints: false,
-    availablePoints: 500,
-    orderTiming: 'regular', // 'regular' or 'non-peak'
   });
 
   // Check if coupon is expired based on date
@@ -387,6 +377,44 @@ export function OffersLoyalty() {
   };
 
   // Membership Plan Functions
+  const handleCreatePlan = () => {
+    const tierIcons: Record<string, React.ReactNode> = {
+      silver: <Star className="h-6 w-6" />,
+      gold: <Trophy className="h-6 w-6" />,
+      platinum: <Crown className="h-6 w-6" />,
+    };
+
+    const tierColors: Record<string, { color: string; bgColor: string; borderColor: string }> = {
+      silver: { color: 'text-gray-600', bgColor: 'bg-gray-50', borderColor: 'border-gray-300' },
+      gold: { color: 'text-yellow-600', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-300' },
+      platinum: { color: 'text-purple-600', bgColor: 'bg-purple-50', borderColor: 'border-purple-300' },
+    };
+
+    const newPlan: MembershipPlan = {
+      id: Date.now().toString(),
+      name: planFormData.name,
+      tier: planFormData.tier,
+      icon: tierIcons[planFormData.tier],
+      color: tierColors[planFormData.tier].color,
+      bgColor: tierColors[planFormData.tier].bgColor,
+      borderColor: tierColors[planFormData.tier].borderColor,
+      monthlyPrice: Number(planFormData.monthlyPrice),
+      billingCycle: '/month',
+      status: 'active',
+      benefits: {
+        loyaltyBonus: Number(planFormData.loyaltyBonus),
+        exclusiveCoupons: planFormData.exclusiveCoupons,
+        freeDelivery: planFormData.freeDelivery,
+        prioritySupport: planFormData.prioritySupport,
+      },
+    };
+
+    setMembershipPlans([...membershipPlans, newPlan]);
+    toast.success(`${planFormData.name} created successfully!`);
+    setCreatePlanDialogOpen(false);
+    resetPlanForm();
+  };
+
   const handleEditPlan = (plan: MembershipPlan) => {
     setEditingPlan(plan);
     setPlanFormData({
@@ -441,96 +469,6 @@ export function OffersLoyalty() {
     toast.success('Loyalty points configuration saved successfully!');
   };
 
-  // Offer Impact Simulator Functions
-  const calculateSimulation = () => {
-    let originalAmount = simulatorData.orderAmount;
-    let finalAmount = originalAmount;
-    let discount = 0;
-    let pointsEarned = 0;
-    let customerSavings = 0;
-
-    // Apply coupon if selected
-    if (simulatorData.selectedCoupon !== 'none') {
-      const coupon = coupons.find(c => c.id === simulatorData.selectedCoupon);
-      if (coupon && coupon.status === 'active' && originalAmount >= coupon.min_order) {
-        if (coupon.type === 'percentage') {
-          discount = (originalAmount * coupon.value) / 100;
-          if (coupon.max_discount) {
-            discount = Math.min(discount, coupon.max_discount);
-          }
-        } else {
-          discount = coupon.value;
-        }
-        finalAmount -= discount;
-        customerSavings += discount;
-      }
-    }
-
-    // Apply membership benefits
-    if (simulatorData.membershipPlan !== 'none') {
-      const plan = membershipPlans.find(p => p.id === simulatorData.membershipPlan);
-      if (plan) {
-        // Free delivery benefit (assume delivery cost is ₹50)
-        if (plan.benefits.freeDelivery) {
-          customerSavings += 50;
-        }
-      }
-    }
-
-    // Calculate points earned
-    const basePoints = Math.floor((originalAmount / 100) * loyaltyConfig.pointsPerHundred);
-    pointsEarned = Math.min(basePoints, loyaltyConfig.maxPointsPerOrder);
-
-    // Apply loyalty bonus from membership
-    if (simulatorData.membershipPlan !== 'none') {
-      const plan = membershipPlans.find(p => p.id === simulatorData.membershipPlan);
-      if (plan) {
-        const bonusPoints = Math.floor((pointsEarned * plan.benefits.loyaltyBonus) / 100);
-        pointsEarned += bonusPoints;
-      }
-    }
-
-    // Non-peak bonus (extra 20% points)
-    if (simulatorData.orderTiming === 'non-peak') {
-      const bonusPoints = Math.floor(pointsEarned * 0.2);
-      pointsEarned += bonusPoints;
-    }
-
-    // Apply points redemption
-    if (simulatorData.redeemPoints && simulatorData.availablePoints >= loyaltyConfig.minRedeemablePoints) {
-      const maxRedeemableAmount = Math.floor(simulatorData.availablePoints / loyaltyConfig.pointsPerRupee);
-      const pointsDiscount = Math.min(maxRedeemableAmount, finalAmount);
-      finalAmount -= pointsDiscount;
-      customerSavings += pointsDiscount;
-    }
-
-    const profitMargin = ((finalAmount - originalAmount * 0.3) / finalAmount) * 100; // Assuming 30% cost
-    const isSafe = profitMargin >= 20; // Safe if margin is at least 20%
-
-    return {
-      originalAmount,
-      finalAmount: Math.max(0, finalAmount),
-      customerSavings,
-      pointsEarned,
-      profitMargin: Math.max(0, profitMargin),
-      isSafe,
-    };
-  };
-
-  const simulationResults = calculateSimulation();
-
-  const handleResetSimulation = () => {
-    setSimulatorData({
-      customerType: 'regular',
-      membershipPlan: 'none',
-      orderAmount: 1000,
-      selectedCoupon: 'none',
-      redeemPoints: false,
-      availablePoints: 500,
-      orderTiming: 'regular',
-    });
-  };
-
   // Filter coupons by search query
   const filteredCoupons = coupons.filter(coupon => {
     const query = searchQuery.toLowerCase();
@@ -558,7 +496,6 @@ export function OffersLoyalty() {
             { id: 'coupons', label: 'Coupons', icon: Tag, description: 'Manage promo codes' },
             { id: 'membership', label: 'Membership Plans', icon: Crown, description: 'Subscription tiers' },
             { id: 'loyalty', label: 'Loyalty Config', icon: Star, description: 'Points & rewards' },
-            { id: 'simulator', label: 'Impact Simulator', icon: Zap, description: 'Profit projections' },
           ].map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -906,6 +843,10 @@ export function OffersLoyalty() {
               <h2 className="text-2xl font-bold">Membership Plans</h2>
               <p className="text-muted-foreground mt-1">Manage subscription plans for customers</p>
             </div>
+            <Button onClick={() => setCreatePlanDialogOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Create Membership
+            </Button>
           </div>
 
           {/* Plan Cards */}
@@ -1024,6 +965,126 @@ export function OffersLoyalty() {
               </Card>
             ))}
           </div>
+
+          {/* Create Plan Dialog */}
+          <Dialog open={createPlanDialogOpen} onOpenChange={(open) => {
+            setCreatePlanDialogOpen(open);
+            if (!open) resetPlanForm();
+          }}>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Create Membership Plan</DialogTitle>
+                <DialogDescription>
+                  Add a new subscription plan for customers
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Plan Name *</Label>
+                  <Input 
+                    placeholder="e.g., Gold Plan" 
+                    value={planFormData.name}
+                    onChange={(e) => setPlanFormData({...planFormData, name: e.target.value})}
+                  />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Tier *</Label>
+                    <Select 
+                      value={planFormData.tier}
+                      onValueChange={(value: 'silver' | 'gold' | 'platinum') => 
+                        setPlanFormData({...planFormData, tier: value})
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="silver">Silver</SelectItem>
+                        <SelectItem value="gold">Gold</SelectItem>
+                        <SelectItem value="platinum">Platinum</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Monthly Price (₹) *</Label>
+                    <Input 
+                      type="number" 
+                      placeholder="299" 
+                      value={planFormData.monthlyPrice}
+                      onChange={(e) => setPlanFormData({...planFormData, monthlyPrice: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Loyalty Bonus (%) *</Label>
+                  <Input 
+                    type="number" 
+                    placeholder="10" 
+                    value={planFormData.loyaltyBonus}
+                    onChange={(e) => setPlanFormData({...planFormData, loyaltyBonus: e.target.value})}
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="space-y-3">
+                  <Label>Benefits</Label>
+                  
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Gift className="h-4 w-4 text-blue-500" />
+                      <span className="text-sm">Exclusive Coupons</span>
+                    </div>
+                    <Switch 
+                      checked={planFormData.exclusiveCoupons}
+                      onCheckedChange={(checked) => 
+                        setPlanFormData({...planFormData, exclusiveCoupons: checked})
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <ShoppingBag className="h-4 w-4 text-purple-500" />
+                      <span className="text-sm">Free Delivery</span>
+                    </div>
+                    <Switch 
+                      checked={planFormData.freeDelivery}
+                      onCheckedChange={(checked) => 
+                        setPlanFormData({...planFormData, freeDelivery: checked})
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-green-500" />
+                      <span className="text-sm">Priority Support</span>
+                    </div>
+                    <Switch 
+                      checked={planFormData.prioritySupport}
+                      onCheckedChange={(checked) => 
+                        setPlanFormData({...planFormData, prioritySupport: checked})
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setCreatePlanDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleCreatePlan}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Plan
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* Edit Plan Dialog */}
           <Dialog open={planDialogOpen} onOpenChange={(open) => {
@@ -1294,323 +1355,6 @@ export function OffersLoyalty() {
               <Save className="h-5 w-5" />
               Save Configuration
             </Button>
-          </div>
-        </TabsContent>
-
-        {/* ==================== TAB 4: OFFER IMPACT SIMULATOR ==================== */}
-        <TabsContent value="simulator" className="space-y-4">
-          <div>
-            <h2 className="text-2xl font-bold">Offer Impact Simulator</h2>
-            <p className="text-muted-foreground mt-1">Preview combined effects of coupons, loyalty points, and memberships</p>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* Left Column: Inputs */}
-            <div className="space-y-4">
-              {/* Customer & Plan Selection */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Users className="h-5 w-5" />
-                    Customer & Plan
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Customer Type</Label>
-                    <Select
-                      value={simulatorData.customerType}
-                      onValueChange={(value) => setSimulatorData({...simulatorData, customerType: value})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="regular">Regular Customer</SelectItem>
-                        <SelectItem value="new">New Customer</SelectItem>
-                        <SelectItem value="vip">VIP Customer</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Membership Plan</Label>
-                    <Select
-                      value={simulatorData.membershipPlan}
-                      onValueChange={(value) => setSimulatorData({...simulatorData, membershipPlan: value})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No Membership</SelectItem>
-                        {membershipPlans.map(plan => (
-                          <SelectItem key={plan.id} value={plan.id}>{plan.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Order Amount Controls */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <ShoppingBag className="h-5 w-5" />
-                    Order Amount
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label>Order Value</Label>
-                      <span className="text-lg font-bold flex items-center">
-                        <IndianRupee className="h-4 w-4" />
-                        {simulatorData.orderAmount}
-                      </span>
-                    </div>
-                    <Slider
-                      value={[simulatorData.orderAmount]}
-                      onValueChange={(value) => setSimulatorData({...simulatorData, orderAmount: value[0]})}
-                      min={100}
-                      max={5000}
-                      step={50}
-                      className="w-full"
-                    />
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        value={simulatorData.orderAmount}
-                        onChange={(e) => setSimulatorData({...simulatorData, orderAmount: Number(e.target.value)})}
-                        min={100}
-                        max={10000}
-                      />
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>₹100</span>
-                      <span>₹5,000</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Coupon & Loyalty Controls */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Gift className="h-5 w-5" />
-                    Coupon & Loyalty
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Apply Coupon Code</Label>
-                    <Select
-                      value={simulatorData.selectedCoupon}
-                      onValueChange={(value) => setSimulatorData({...simulatorData, selectedCoupon: value})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No Coupon</SelectItem>
-                        {coupons.filter(c => c.status === 'active').map(coupon => (
-                          <SelectItem key={coupon.id} value={coupon.id}>
-                            {coupon.code} - {coupon.type === 'percentage' ? `${coupon.value}%` : `₹${coupon.value}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <p className="font-medium">Redeem Loyalty Points</p>
-                      <p className="text-xs text-muted-foreground">Available: {simulatorData.availablePoints} pts</p>
-                    </div>
-                    <Switch
-                      checked={simulatorData.redeemPoints}
-                      onCheckedChange={(checked) => setSimulatorData({...simulatorData, redeemPoints: checked})}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Order Timing Options */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Clock className="h-5 w-5" />
-                    Order Timing
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div
-                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      simulatorData.orderTiming === 'regular'
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => setSimulatorData({...simulatorData, orderTiming: 'regular'})}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Peak Hours</p>
-                        <p className="text-xs text-muted-foreground">Regular points</p>
-                      </div>
-                      <Target className="h-5 w-5 text-orange-500" />
-                    </div>
-                  </div>
-
-                  <div
-                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      simulatorData.orderTiming === 'non-peak'
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => setSimulatorData({...simulatorData, orderTiming: 'non-peak'})}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Non-Peak Hours</p>
-                        <p className="text-xs text-muted-foreground">+20% bonus points</p>
-                      </div>
-                      <Sparkles className="h-5 w-5 text-green-500" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Reset Button */}
-              <Button variant="outline" className="w-full gap-2" onClick={handleResetSimulation}>
-                <RotateCcw className="h-4 w-4" />
-                Reset Simulation
-              </Button>
-            </div>
-
-            {/* Right Column: Results */}
-            <div className="space-y-4">
-              {/* Simulation Results */}
-              <Card className="border-2 border-blue-300">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
-                    Simulation Results
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Offer Safety Indicator */}
-                  <div className={`p-4 rounded-lg ${simulationResults.isSafe ? 'bg-green-50 border-2 border-green-300' : 'bg-red-50 border-2 border-red-300'}`}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-semibold text-lg">
-                          {simulationResults.isSafe ? '✓ Safe Offer' : '⚠ Low Margin'}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {simulationResults.isSafe 
-                            ? 'Profit margin is healthy' 
-                            : 'Consider adjusting offer terms'}
-                        </p>
-                      </div>
-                      {simulationResults.isSafe ? (
-                        <CheckCircle className="h-8 w-8 text-green-600" />
-                      ) : (
-                        <AlertCircle className="h-8 w-8 text-red-600" />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Profit Margin Indicator */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <Label>Profit Margin</Label>
-                      <span className={`font-bold ${simulationResults.profitMargin >= 20 ? 'text-green-600' : 'text-red-600'}`}>
-                        {simulationResults.profitMargin.toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div
-                        className={`h-3 rounded-full transition-all ${
-                          simulationResults.profitMargin >= 20 ? 'bg-green-600' : 'bg-red-600'
-                        }`}
-                        style={{ width: `${Math.min(100, simulationResults.profitMargin)}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  {/* Financial Breakdown */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <span className="text-muted-foreground">Original Order Amount</span>
-                      <span className="font-bold flex items-center">
-                        <IndianRupee className="h-4 w-4" />
-                        {simulationResults.originalAmount.toFixed(2)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <span className="font-semibold">Final Payable Amount</span>
-                      <span className="font-bold text-xl text-blue-600 flex items-center">
-                        <IndianRupee className="h-5 w-5" />
-                        {simulationResults.finalAmount.toFixed(2)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
-                      <span className="text-green-700 font-medium">Customer Savings</span>
-                      <span className="font-bold text-green-600 flex items-center">
-                        <IndianRupee className="h-4 w-4" />
-                        {simulationResults.customerSavings.toFixed(2)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
-                      <span className="text-orange-700 font-medium">Loyalty Points Earned</span>
-                      <span className="font-bold text-orange-600 flex items-center gap-1">
-                        <Sparkles className="h-4 w-4" />
-                        {simulationResults.pointsEarned} pts
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Insights */}
-              <Card className="bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Info className="h-5 w-5 text-purple-600" />
-                    Insights
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-sm">
-                    <p>
-                      {simulationResults.customerSavings > 0 ? (
-                        <>
-                          Customer saves <span className="font-bold text-green-600">₹{simulationResults.customerSavings.toFixed(2)}</span> on this order,
-                          which is <span className="font-bold">{((simulationResults.customerSavings / simulationResults.originalAmount) * 100).toFixed(1)}%</span> of the original amount.
-                        </>
-                      ) : (
-                        <>No discounts applied to this order.</>
-                      )}
-                    </p>
-                    <p>
-                      The customer will earn <span className="font-bold text-orange-600">{simulationResults.pointsEarned} loyalty points</span>,
-                      which can be redeemed for <span className="font-bold">₹{(simulationResults.pointsEarned / loyaltyConfig.pointsPerRupee).toFixed(2)}</span> discount on future orders.
-                    </p>
-                    {simulationResults.profitMargin < 20 && (
-                      <p className="text-red-600 font-medium">
-                        ⚠ Warning: Profit margin is below recommended 20%. Consider limiting this offer combination.
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
           </div>
         </TabsContent>
       </Tabs>
