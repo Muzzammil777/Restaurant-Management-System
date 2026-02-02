@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Database, RefreshCw } from 'lucide-react';
-import { projectId, publicAnonKey } from '@/utils/supabase/info';
+import { menuApi, tablesApi, staffApi, inventoryApi, ordersApi } from '@/utils/api';
 import { toast } from 'sonner';
 
 export function DataSeeder() {
@@ -73,17 +73,7 @@ export function DataSeeder() {
 
       // Create menu items
       for (const item of sampleMenuItems) {
-        await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/menu`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${publicAnonKey}`,
-            },
-            body: JSON.stringify(item),
-          }
-        );
+        await menuApi.create(item);
       }
 
       // Sample Tables
@@ -98,17 +88,7 @@ export function DataSeeder() {
 
       // Create tables
       for (const table of sampleTables) {
-        await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/tables`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${publicAnonKey}`,
-            },
-            body: JSON.stringify(table),
-          }
-        );
+        await tablesApi.create(table);
       }
 
       // Sample Staff
@@ -145,17 +125,7 @@ export function DataSeeder() {
 
       // Create staff members
       for (const member of sampleStaff) {
-        await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/staff`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${publicAnonKey}`,
-            },
-            body: JSON.stringify(member),
-          }
-        );
+        await staffApi.create(member);
       }
 
       // Sample Inventory
@@ -192,17 +162,7 @@ export function DataSeeder() {
 
       // Create inventory items
       for (const item of sampleInventory) {
-        await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/inventory`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${publicAnonKey}`,
-            },
-            body: JSON.stringify(item),
-          }
-        );
+        await inventoryApi.create(item);
       }
 
       // Sample Order
@@ -218,17 +178,7 @@ export function DataSeeder() {
         status: 'placed',
       };
 
-      await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/orders`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${publicAnonKey}`,
-          },
-          body: JSON.stringify(sampleOrder),
-        }
-      );
+      await ordersApi.create(sampleOrder);
 
       toast.success('Sample data loaded successfully!');
     } catch (error) {

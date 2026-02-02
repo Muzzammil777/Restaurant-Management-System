@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from '@/app/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { ShoppingCart, Plus, Minus, Trash2, Clock, CreditCard, IndianRupee } from 'lucide-react';
-import { projectId, publicAnonKey } from '@/utils/supabase/info';
+import { menuApi, ordersApi } from '@/utils/api';
 import { USE_MOCK_DATA, mockMenuItems } from '@/utils/mock-data';
 import { toast } from 'sonner';
 
@@ -53,30 +53,14 @@ export function CustomerView() {
 
   const fetchMenu = async () => {
     try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/menu`,
-        {
-          headers: {
-            'Authorization': `Bearer ${publicAnonKey}`,
-          },
-        }
-      );
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      if (result.success) {
-        // Add default prep times if not present
-        const itemsWithPrepTime = result.data.map((item: MenuItem) => ({
-          ...item,
-          prepTime: item.prepTime || Math.floor(Math.random() * 20) + 10, // 10-30 mins
-        }));
-        setMenuItems(itemsWithPrepTime.filter((item: MenuItem) => item.available));
-      } else {
-        throw new Error(result.error || 'Failed to fetch menu');
-      }
+      const result = await menuApi.list();
+      const data = result.data || result || [];
+      // Add default prep times if not present
+      const itemsWithPrepTime = data.map((item: MenuItem) => ({
+        ...item,
+        prepTime: item.prepTime || Math.floor(Math.random() * 20) + 10, // 10-30 mins
+      }));
+      setMenuItems(itemsWithPrepTime.filter((item: MenuItem) => item.available !== false));
     } catch (error) {
       console.error('Error fetching menu:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to fetch menu. Please check your connection.');
@@ -132,41 +116,28 @@ export function CustomerView() {
     }
 
     try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/orders`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${publicAnonKey}`,
-          },
-          body: JSON.stringify({
-            customerName: orderDetails.customerName || 'Guest',
-            tableNumber: orderDetails.tableNumber ? parseInt(orderDetails.tableNumber) : undefined,
-            type: orderDetails.type,
-            items: cart.map(item => ({
-              name: item.name,
-              quantity: item.quantity,
-              price: item.price,
-            })),
-            total: getTotalPrice(),
-            status: 'placed',
-          }),
-        }
-      );
+      await ordersApi.create({
+        customerName: orderDetails.customerName || 'Guest',
+        tableNumber: orderDetails.tableNumber ? parseInt(orderDetails.tableNumber) : undefined,
+        type: orderDetails.type,
+        items: cart.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        total: getTotalPrice(),
+        status: 'placed',
+      });
 
-      const result = await response.json();
-      if (result.success) {
-        toast.success('Order placed successfully!');
-        setCart([]);
-        setCheckoutOpen(false);
-        setPaymentOpen(false);
-        setOrderDetails({
-          customerName: '',
-          tableNumber: '',
-          type: 'dine-in',
-        });
-      }
+      toast.success('Order placed successfully!');
+      setCart([]);
+      setCheckoutOpen(false);
+      setPaymentOpen(false);
+      setOrderDetails({
+        customerName: '',
+        tableNumber: '',
+        type: 'dine-in',
+      });
     } catch (error) {
       console.error('Error placing order:', error);
       toast.error('Failed to place order');

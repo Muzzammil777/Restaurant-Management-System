@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from '@/app/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/app/components/ui/radio-group';
 import { CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
-import { projectId, publicAnonKey } from '@/utils/supabase/info';
+import { ordersApi } from '@/utils/api';
 import { toast } from 'sonner';
 
 interface PaymentDialogProps {
@@ -22,28 +22,17 @@ export function PaymentDialog({ open, onOpenChange, orderId, amount, onSuccess }
   const handlePayment = async () => {
     setProcessing(true);
     try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/payments`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${publicAnonKey}`,
-          },
-          body: JSON.stringify({
-            orderId,
-            amount,
-            method: paymentMethod,
-          }),
-        }
-      );
-
-      const result = await response.json();
-      if (result.success) {
-        toast.success('Payment processed successfully!');
-        onOpenChange(false);
-        if (onSuccess) onSuccess();
-      }
+      // Update order with payment info
+      await ordersApi.update(orderId, {
+        paymentMethod: paymentMethod,
+        paymentStatus: 'paid',
+        paidAmount: amount,
+        status: 'completed'
+      });
+      
+      toast.success('Payment processed successfully!');
+      onOpenChange(false);
+      if (onSuccess) onSuccess();
     } catch (error) {
       console.error('Error processing payment:', error);
       toast.error('Payment failed. Please try again.');

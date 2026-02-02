@@ -7,20 +7,19 @@ import { Badge } from '@/app/components/ui/badge';
 import { Switch } from '@/app/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/app/components/ui/dialog';
-import { Lock, User, Mail, Shield, Check, X, Edit, Plus, Trash2, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Lock, User, Mail, Shield, Check, X, Edit, Plus, Trash2, Eye, EyeOff, AlertCircle, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
+import { staffApi, securityApi } from '@/utils/api';
 
 interface UserAccount {
-  id: string;
+  _id: string;
   name: string;
   email: string;
   role: string;
-  status: 'active' | 'inactive';
-  lastLogin: string;
+  isActive: boolean;
+  lastLogin?: string;
   createdAt: string;
 }
-
-const STORAGE_KEY = 'rms_user_accounts';
 
 export function AccountAuthentication() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -28,82 +27,42 @@ export function AccountAuthentication() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState('');
   const [userAccounts, setUserAccounts] = useState<UserAccount[]>([]);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [changingPassword, setChangingPassword] = useState(false);
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
-    role: 'Waiter',
+    role: 'waiter',
     password: '',
   });
 
-  // Load user accounts from localStorage
+  // Load user accounts from backend
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      setUserAccounts(JSON.parse(stored));
-    } else {
-      // Initialize with default users
-      const defaultUsers: UserAccount[] = [
-        {
-          id: '1',
-          name: 'Admin User',
-          email: 'admin@movicloud.com',
-          role: 'Admin',
-          status: 'active',
-          lastLogin: '2026-01-29 09:30:00',
-          createdAt: '2026-01-01 00:00:00',
-        },
-        {
-          id: '2',
-          name: 'John Manager',
-          email: 'john.manager@movicloud.com',
-          role: 'Manager',
-          status: 'active',
-          lastLogin: '2026-01-29 08:15:00',
-          createdAt: '2026-01-05 00:00:00',
-        },
-        {
-          id: '3',
-          name: 'Sarah Chef',
-          email: 'sarah.chef@movicloud.com',
-          role: 'Chef',
-          status: 'active',
-          lastLogin: '2026-01-28 22:45:00',
-          createdAt: '2026-01-10 00:00:00',
-        },
-        {
-          id: '4',
-          name: 'Mike Cashier',
-          email: 'mike.cashier@movicloud.com',
-          role: 'Cashier',
-          status: 'active',
-          lastLogin: '2026-01-29 07:00:00',
-          createdAt: '2026-01-12 00:00:00',
-        },
-        {
-          id: '5',
-          name: 'Lisa Waiter',
-          email: 'lisa.waiter@movicloud.com',
-          role: 'Waiter',
-          status: 'inactive',
-          lastLogin: '2026-01-20 18:30:00',
-          createdAt: '2026-01-15 00:00:00',
-        },
-      ];
-      setUserAccounts(defaultUsers);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultUsers));
-    }
+    fetchUsers();
   }, []);
 
-  // Save to localStorage whenever userAccounts changes
-  useEffect(() => {
-    if (userAccounts.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(userAccounts));
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const data = await staffApi.getAll();
+      setUserAccounts(data || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Failed to load user accounts');
+    } finally {
+      setLoading(false);
     }
-  }, [userAccounts]);
+  };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
+    if (!selectedUserId) {
+      toast.error('Please select a user first');
+      return;
+    }
+
     if (!currentPassword || !newPassword || !confirmPassword) {
       toast.error('Please fill in all password fields');
       return;
@@ -119,25 +78,42 @@ export function AccountAuthentication() {
       return;
     }
 
-    // Simulate password change (in real app, this would call an API)
-    toast.success('Password changed successfully!');
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    setChangingPassword(true);
+    try {
+      await securityApi.changePassword({
+        userId: selectedUserId,
+        currentPassword,
+        newPassword,
+      });
+      toast.success('Password changed successfully!');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      toast.error(error.message || 'Failed to change password');
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
-  const toggleUserStatus = (userId: string) => {
-    setUserAccounts(prev => prev.map(user => {
-      if (user.id === userId) {
-        const newStatus = user.status === 'active' ? 'inactive' : 'active';
-        toast.success(`User ${user.name} is now ${newStatus}`);
-        return { ...user, status: newStatus };
+  const toggleUserStatus = async (user: UserAccount) => {
+    try {
+      if (user.isActive) {
+        await staffApi.deactivate(user._id);
+        toast.success(`User ${user.name} deactivated`);
+      } else {
+        await staffApi.activate(user._id);
+        toast.success(`User ${user.name} activated`);
       }
-      return user;
-    }));
+      await fetchUsers();
+    } catch (error) {
+      console.error('Error toggling user status:', error);
+      toast.error('Failed to update user status');
+    }
   };
 
-  const handleAddUser = () => {
+  const handleAddUser = async () => {
     if (!newUser.name || !newUser.email || !newUser.password) {
       toast.error('Please fill in all required fields');
       return;
@@ -148,40 +124,53 @@ export function AccountAuthentication() {
       return;
     }
 
-    const user: UserAccount = {
-      id: Date.now().toString(),
-      name: newUser.name,
-      email: newUser.email,
-      role: newUser.role,
-      status: 'active',
-      lastLogin: 'Never',
-      createdAt: new Date().toLocaleString('en-IN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      }),
-    };
-
-    setUserAccounts(prev => [...prev, user]);
-    toast.success(`User ${newUser.name} added successfully!`);
-    setNewUser({ name: '', email: '', role: 'Waiter', password: '' });
-    setIsAddUserOpen(false);
+    try {
+      await staffApi.create({
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        password: newUser.password,
+        phone: '',
+        department: 'General',
+      });
+      toast.success(`User ${newUser.name} added successfully!`);
+      setNewUser({ name: '', email: '', role: 'waiter', password: '' });
+      setIsAddUserOpen(false);
+      await fetchUsers();
+    } catch (error: any) {
+      console.error('Error adding user:', error);
+      toast.error(error.message || 'Failed to add user');
+    }
   };
 
-  const deleteUser = (userId: string) => {
-    const user = userAccounts.find(u => u.id === userId);
-    if (user?.role === 'Admin') {
+  const deleteUser = async (user: UserAccount) => {
+    if (user.role === 'admin') {
       toast.error('Cannot delete admin user');
       return;
     }
+
+    if (!confirm(`Are you sure you want to delete user "${user.name}"?`)) return;
     
-    setUserAccounts(prev => prev.filter(u => u.id !== userId));
-    toast.success('User deleted successfully');
+    try {
+      await staffApi.delete(user._id);
+      toast.success('User deleted successfully');
+      await fetchUsers();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast.error('Failed to delete user');
+    }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[40vh]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading user accounts...</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="space-y-6">
       {/* Change Password Section */}
@@ -196,6 +185,22 @@ export function AccountAuthentication() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="select-user">Select User</Label>
+            <select
+              id="select-user"
+              value={selectedUserId}
+              onChange={(e) => setSelectedUserId(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">-- Select a user --</option>
+              {userAccounts.map((user) => (
+                <option key={user._id} value={user._id}>
+                  {user.name} ({user.email})
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="current-password">Current Password</Label>
@@ -261,9 +266,18 @@ export function AccountAuthentication() {
           </div>
 
           <div className="flex justify-end">
-            <Button onClick={handleChangePassword}>
-              <Lock className="h-4 w-4 mr-2" />
-              Update Password
+            <Button onClick={handleChangePassword} disabled={changingPassword}>
+              {changingPassword ? (
+                <>
+                  <RefreshCcw className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Lock className="h-4 w-4 mr-2" />
+                  Update Password
+                </>
+              )}
             </Button>
           </div>
         </CardContent>
@@ -280,72 +294,78 @@ export function AccountAuthentication() {
                 <CardDescription>Activate, deactivate, and manage user accounts</CardDescription>
               </div>
             </div>
-            <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add User
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add New User</DialogTitle>
-                  <DialogDescription>Create a new user account with role assignment</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="user-name">Full Name</Label>
-                    <Input
-                      id="user-name"
-                      value={newUser.name}
-                      onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                      placeholder="Enter full name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="user-email">Email Address</Label>
-                    <Input
-                      id="user-email"
-                      type="email"
-                      value={newUser.email}
-                      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                      placeholder="user@example.com"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="user-role">Role</Label>
-                    <select
-                      id="user-role"
-                      value={newUser.role}
-                      onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <option value="Admin">Admin</option>
-                      <option value="Manager">Manager</option>
-                      <option value="Chef">Chef</option>
-                      <option value="Cashier">Cashier</option>
-                      <option value="Waiter">Waiter</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="user-password">Password</Label>
-                    <Input
-                      id="user-password"
-                      type="password"
-                      value={newUser.password}
-                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                      placeholder="Minimum 8 characters"
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddUserOpen(false)}>
-                    Cancel
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={fetchUsers}>
+                <RefreshCcw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+              <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add User
                   </Button>
-                  <Button onClick={handleAddUser}>Add User</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add New User</DialogTitle>
+                    <DialogDescription>Create a new user account with role assignment</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="user-name">Full Name</Label>
+                      <Input
+                        id="user-name"
+                        value={newUser.name}
+                        onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                        placeholder="Enter full name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="user-email">Email Address</Label>
+                      <Input
+                        id="user-email"
+                        type="email"
+                        value={newUser.email}
+                        onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                        placeholder="user@example.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="user-role">Role</Label>
+                      <select
+                        id="user-role"
+                        value={newUser.role}
+                        onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <option value="admin">Admin</option>
+                        <option value="manager">Manager</option>
+                        <option value="chef">Chef</option>
+                        <option value="cashier">Cashier</option>
+                        <option value="waiter">Waiter</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="user-password">Password</Label>
+                      <Input
+                        id="user-password"
+                        type="password"
+                        value={newUser.password}
+                        onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                        placeholder="Minimum 8 characters"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsAddUserOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleAddUser}>Add User</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -362,15 +382,15 @@ export function AccountAuthentication() {
             </TableHeader>
             <TableBody>
               {userAccounts.map((user) => (
-                <TableRow key={user.id}>
+                <TableRow key={user._id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{user.role}</Badge>
+                    <Badge variant="outline" className="capitalize">{user.role}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge className={user.status === 'active' ? 'bg-green-500' : 'bg-gray-500'}>
-                      {user.status === 'active' ? (
+                    <Badge className={user.isActive ? 'bg-green-500' : 'bg-gray-500'}>
+                      {user.isActive ? (
                         <><Check className="h-3 w-3 mr-1" /> Active</>
                       ) : (
                         <><X className="h-3 w-3 mr-1" /> Inactive</>
@@ -378,23 +398,23 @@ export function AccountAuthentication() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {user.lastLogin}
+                    {user.lastLogin || 'Never'}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => toggleUserStatus(user.id)}
-                        disabled={user.role === 'Admin'}
+                        onClick={() => toggleUserStatus(user)}
+                        disabled={user.role === 'admin'}
                       >
-                        {user.status === 'active' ? 'Deactivate' : 'Activate'}
+                        {user.isActive ? 'Deactivate' : 'Activate'}
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => deleteUser(user.id)}
-                        disabled={user.role === 'Admin'}
+                        onClick={() => deleteUser(user)}
+                        disabled={user.role === 'admin'}
                         className="text-red-600 hover:text-red-700"
                       >
                         <Trash2 className="h-4 w-4" />

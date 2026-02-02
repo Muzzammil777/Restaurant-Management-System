@@ -15,7 +15,7 @@ import {
   ChevronUp, Tag as TagIcon, Flame, Package2 
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { projectId, publicAnonKey } from '@/utils/supabase/info';
+import { menuApi, ordersApi } from '@/utils/api';
 
 interface MenuItem {
   id: string;
@@ -188,44 +188,25 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
       let comboFetched = false;
 
       try {
-        const menuResponse = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/menu`,
-          {
-            headers: {
-              'Authorization': `Bearer ${publicAnonKey}`,
-            },
-          }
-        );
-
-        if (menuResponse.ok) {
-          const menuResult = await menuResponse.json();
-          if (menuResult.success && menuResult.data) {
-            const availableItems = menuResult.data.filter((item: MenuItem) => item.available);
-            setMenuItems(availableItems);
-            menuFetched = true;
-          }
+        const menuResult = await menuApi.list();
+        const data = menuResult.data || menuResult || [];
+        if (data.length > 0) {
+          const availableItems = data.filter((item: MenuItem) => item.available !== false);
+          setMenuItems(availableItems);
+          menuFetched = true;
         }
       } catch (menuError) {
         console.log('Menu API not available, using mock data');
       }
 
       try {
-        const comboResponse = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/combos`,
-          {
-            headers: {
-              'Authorization': `Bearer ${publicAnonKey}`,
-            },
-          }
-        );
-
-        if (comboResponse.ok) {
-          const comboResult = await comboResponse.json();
-          if (comboResult.success && comboResult.data) {
-            const availableCombos = comboResult.data.filter((combo: ComboMeal) => combo.available);
-            setComboMeals(availableCombos);
-            comboFetched = true;
-          }
+        // Combos API - fallback to mock if not available
+        const comboResult = await fetch('http://localhost:8000/api/combos');
+        if (comboResult.ok) {
+          const comboData = await comboResult.json();
+          const availableCombos = (comboData.data || comboData || []).filter((combo: ComboMeal) => combo.available !== false);
+          setComboMeals(availableCombos);
+          comboFetched = true;
         }
       } catch (comboError) {
         console.log('Combo API not available, using mock data');
@@ -370,25 +351,11 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
         notes: notes || undefined,
       };
 
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/orders`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${publicAnonKey}`,
-          },
-          body: JSON.stringify(orderData),
-        }
-      );
-
-      const result = await response.json();
-      if (result.success) {
-        toast.success('Order created successfully!');
-        onOrderCreated();
-        resetForm();
-        onOpenChange(false);
-      }
+      await ordersApi.create(orderData);
+      toast.success('Order created successfully!');
+      onOrderCreated();
+      resetForm();
+      onOpenChange(false);
     } catch (error) {
       console.error('Error creating order:', error);
       toast.error('Failed to create order');

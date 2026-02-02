@@ -10,8 +10,8 @@ import { Label } from '@/app/components/ui/label';
 import { Textarea } from '@/app/components/ui/textarea';
 import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { Clock, Package, CheckCircle, XCircle, Plus, CreditCard, Eye, IndianRupee, UtensilsCrossed, Zap, Minus, Search, Repeat, Flame, AlertCircle, TrendingUp, Activity, ChefHat, Coffee, Timer, Undo2, Gauge, MoveRight, MoveLeft, Ban, Sparkles, Pizza, ShoppingBag } from 'lucide-react';
-import { projectId, publicAnonKey } from '@/utils/supabase/info';
 import { toast } from 'sonner';
+import { ordersApi, menuApi } from '@/utils/api';
 import { PaymentDialog } from '@/app/components/payment-dialog';
 import { QuickOrderPOS } from '@/app/components/quick-order-pos';
 
@@ -106,25 +106,8 @@ export function OrderManagement() {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/orders`,
-        {
-          headers: {
-            'Authorization': `Bearer ${publicAnonKey}`,
-          },
-        }
-      );
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      if (result.success) {
-        setOrders(result.data);
-      } else {
-        throw new Error(result.error || 'Failed to fetch orders');
-      }
+      const result = await ordersApi.list();
+      setOrders(result.data || []);
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to fetch orders. Please check your connection.');
@@ -136,21 +119,9 @@ export function OrderManagement() {
 
   const fetchMenuItems = async () => {
     try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/menu`,
-        {
-          headers: {
-            'Authorization': `Bearer ${publicAnonKey}`,
-          },
-        }
-      );
-      
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          setMenuItems(result.data.filter((item: MenuItem) => item.available));
-        }
-      }
+      const result = await menuApi.list();
+      const items = result.data || result || [];
+      setMenuItems(items.filter((item: MenuItem) => item.available !== false));
     } catch (error) {
       console.error('Error fetching menu items:', error);
     }
@@ -172,27 +143,11 @@ export function OrderManagement() {
         setUndoCountdown(10); // 10 second countdown
       }
 
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/orders/${orderId.replace('order:', '')}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${publicAnonKey}`,
-          },
-          body: JSON.stringify({ 
-            status: newStatus,
-            statusUpdatedAt: new Date().toISOString()
-          }),
-        }
-      );
-
-      const result = await response.json();
-      if (result.success) {
-        const statusText = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
-        toast.success(`Order marked as ${statusText}!`);
-        fetchOrders();
-      }
+      const cleanId = orderId.replace('order:', '');
+      await ordersApi.updateStatus(cleanId, newStatus);
+      const statusText = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+      toast.success(`Order marked as ${statusText}!`);
+      fetchOrders();
     } catch (error) {
       console.error('Error updating order:', error);
       toast.error('Failed to update order');
@@ -255,7 +210,8 @@ export function OrderManagement() {
     return type === 'dine-in' ? 'Dine-In' : type === 'takeaway' ? 'Takeaway' : 'Delivery';
   };
 
-  const generateOrderDisplayId = (orderId: string) => {
+  const generateOrderDisplayId = (orderId: string | undefined) => {
+    if (!orderId) return '#UNKNOWN';
     const parts = orderId.split('-');
     const hash = parts[parts.length - 1] || orderId;
     return '#' + hash.slice(0, 6).toUpperCase();

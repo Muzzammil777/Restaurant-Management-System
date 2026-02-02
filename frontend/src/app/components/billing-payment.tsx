@@ -42,6 +42,7 @@ import { Separator } from '@/app/components/ui/separator';
 import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/app/components/ui/dropdown-menu';
+import { useCurrency } from '@/utils/system-config-context';
 
 // --- Types ---
 
@@ -154,6 +155,7 @@ const MOCK_REFUNDS: Refund[] = [];
 // --- Component ---
 
 export function BillingPayment() {
+  const { formatCurrency, symbol: currencySymbol } = useCurrency();
   const [activeTab, setActiveTab] = useState('generate');
   
   // State

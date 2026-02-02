@@ -18,6 +18,7 @@ import { WelcomeBanner } from '@/app/components/welcome-banner';
 import { Button } from '@/app/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Toaster } from '@/app/components/ui/sonner';
+import { SystemConfigProvider, useSystemConfig } from '@/utils/system-config-context';
 import { 
   LayoutDashboard, 
   UtensilsCrossed, 
@@ -54,7 +55,8 @@ import { Badge } from "@/app/components/ui/badge";
 
 import { AdminChatBox } from '@/app/components/AdminChatBox';
 
-export default function App() {
+function AppContent() {
+  const { config, refreshConfig } = useSystemConfig();
   const [activeTab, setActiveTab] = useState('customer');
   const [notificationCount, setNotificationCount] = useState(3); // Mock notification count
   const [triggerStockManagement, setTriggerStockManagement] = useState(false);
@@ -94,8 +96,8 @@ export default function App() {
                 <UtensilsCrossed className="h-6 w-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold tracking-tight" style={{ color: '#000000' }}>Restaurant Management System</h1>
-                <p className="text-xs text-muted-foreground">Movicloud Labs</p>
+                <h1 className="text-xl font-semibold tracking-tight" style={{ color: '#000000' }}>{config.restaurantName}</h1>
+                <p className="text-xs text-muted-foreground">Powered by Movicloud Labs</p>
               </div>
             </div>
             
@@ -322,11 +324,19 @@ export default function App() {
       {/* Footer */}
       <footer className="border-t mt-12 py-8 bg-white">
         <div className="container mx-auto px-6 text-center">
-          <p className="text-sm text-muted-foreground">Restaurant Management System • Movicloud Labs</p>
-          <p className="text-xs text-muted-foreground mt-2">Powered by Figma Make</p>
+          <p className="text-sm text-muted-foreground">{config.restaurantName} • Movicloud Labs</p>
+          <p className="text-xs text-muted-foreground mt-2"></p>
         </div>
       </footer>
       <AdminChatBox />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <SystemConfigProvider>
+      <AppContent />
+    </SystemConfigProvider>
   );
 }

@@ -94,6 +94,22 @@ src/
 └── main.tsx                # Entry Point
 ```
 
+## 🐛 Recent Bug Fixes
+
+### Fixed Issues (February 2, 2026)
+
+1. **order-management.tsx (Line 214)** - TypeError: Cannot read properties of undefined (reading 'split')
+   - **Issue**: `generateOrderDisplayId()` function was attempting to call `.split()` on undefined `order.id`
+   - **Fix**: Added null/undefined check and optional parameter handling. Function now returns `#UNKNOWN` if ID is unavailable
+   - **Changed**: Added proper type annotation `orderId: string | undefined` and guard clause
+
+2. **kitchen-display.tsx (Line 137)** - TypeError: Cannot read properties of undefined (reading 'split')
+   - **Issue**: Order ID display was directly calling `.split()` without checking if `order.id` exists
+   - **Fix**: Added optional chaining (`?.`) and fallback value (`|| 'UNKNOWN'`) for safer ID extraction
+   - **Changed**: `order.id.split('-')[1]?.slice(0, 6).toUpperCase()` → `order.id?.split('-')[1]?.slice(0, 6).toUpperCase() || 'UNKNOWN'`
+
+---
+
 ## 🤝 Contribution Guidelines
 
 1. **Branching**: Create a separate branch for your module features (e.g., `feature/menu-module`, `fix/billing-bug`).

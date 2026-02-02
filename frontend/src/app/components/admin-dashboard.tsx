@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { IndianRupee, ShoppingCart, TrendingUp, Users, AlertCircle, Activity, Package, ChefHat } from 'lucide-react';
-import { projectId, publicAnonKey } from '@/utils/supabase/info';
 import { DataSeeder } from '@/app/components/data-seeder';
 import { Alert, AlertDescription, AlertTitle } from '@/app/components/ui/alert';
 import { Button } from '@/app/components/ui/button';
+
+// Use local API
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 interface Analytics {
   totalOrders: number;
@@ -31,14 +33,7 @@ export function AdminDashboard() {
   const fetchAnalytics = async () => {
     try {
       setError(null);
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/analytics`,
-        {
-          headers: {
-            'Authorization': `Bearer ${publicAnonKey}`,
-          },
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/analytics`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

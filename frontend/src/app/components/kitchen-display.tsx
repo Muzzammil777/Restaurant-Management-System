@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
 import { Clock, ChefHat, AlertCircle, Package } from 'lucide-react';
-import { projectId, publicAnonKey } from '@/utils/supabase/info';
+import { ordersApi } from '@/utils/api';
 import { toast } from 'sonner';
 
 interface Order {
@@ -31,27 +31,11 @@ export function KitchenDisplay() {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/orders`,
-        {
-          headers: {
-            'Authorization': `Bearer ${publicAnonKey}`,
-          },
-        }
+      const result = await ordersApi.list();
+      const data = result.data || [];
+      setOrders(data.filter((order: Order) => 
+        ['placed', 'preparing', 'ready'].includes(order.status))
       );
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      if (result.success) {
-        setOrders(result.data.filter((order: Order) => 
-          ['placed', 'preparing', 'ready'].includes(order.status))
-        );
-      } else {
-        throw new Error(result.error || 'Failed to fetch orders');
-      }
     } catch (error) {
       console.error('Error fetching orders:', error);
       setOrders([]); // Set empty array on error
@@ -62,35 +46,22 @@ export function KitchenDisplay() {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/orders/${orderId.replace('order:', '')}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${publicAnonKey}`,
-          },
-          body: JSON.stringify({ status: newStatus }),
+      const cleanId = orderId.replace('order:', '');
+      await ordersApi.updateStatus(cleanId, newStatus);
+      toast.success('Order updated!');
+      
+      // Trigger inventory deduction when order is accepted
+      if (newStatus === 'preparing') {
+        const order = orders.find(o => o.id === orderId);
+        if (order) {
+          window.dispatchEvent(new CustomEvent('kitchen:order-accepted', { 
+            detail: { items: order.items } 
+          }));
+          toast.info("Inventory updated automatically");
         }
-      );
-
-      const result = await response.json();
-      if (result.success) {
-        toast.success('Order updated!');
-        
-        // Trigger inventory deduction when order is accepted
-        if (newStatus === 'preparing') {
-          const order = orders.find(o => o.id === orderId);
-          if (order) {
-            window.dispatchEvent(new CustomEvent('kitchen:order-accepted', { 
-              detail: { items: order.items } 
-            }));
-            toast.info("Inventory updated automatically");
-          }
-        }
-
-        fetchOrders();
       }
+
+      fetchOrders();
     } catch (error) {
       console.error('Error updating order:', error);
       toast.error('Failed to update order');
@@ -163,7 +134,7 @@ export function KitchenDisplay() {
                         </CardTitle>
                       </div>
                       <CardDescription>
-                        Order #{order.id.split('-')[1]?.slice(0, 6).toUpperCase()}
+                        Order #{order.id?.split('-')[1]?.slice(0, 6).toUpperCase() || 'UNKNOWN'}
                       </CardDescription>
                     </div>
                     <div className="flex flex-col items-end gap-2">
