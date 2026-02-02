@@ -1,6 +1,6 @@
 @echo off
 REM Script to track changes, commit, and push to Git repository
-REM Asks for commit message and branch selection
+REM Asks for commit message and branch selections
 
 setlocal enabledelayedexpansion
 
