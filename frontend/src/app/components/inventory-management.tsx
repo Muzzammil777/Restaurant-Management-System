@@ -164,6 +164,41 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
 
   const uniqueCategories = useMemo(() => Array.from(new Set(ingredients.map(i => i.category))), [ingredients]);
 
+  // Fetch ingredients from backend API
+  useEffect(() => {
+    const fetchIngredients = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/inventory');
+        if (response.ok) {
+          const data = await response.json();
+          // Map API response to component state
+          const mappedIngredients = data.map((ing: any) => ({
+            id: ing._id || ing.id,
+            name: ing.name,
+            category: ing.category,
+            stockLevel: ing.stockLevel,
+            unit: ing.unit,
+            minThreshold: ing.minThreshold,
+            costPerUnit: ing.costPerUnit,
+            supplierId: ing.supplierId,
+            status: ing.status as Ingredient['status'],
+            usageRate: ing.usageRate as Ingredient['usageRate'],
+            lastDeduction: ing.lastDeduction
+          }));
+          setIngredients(mappedIngredients);
+        }
+      } catch (error) {
+        console.log('Using mock data: Could not fetch from API');
+        setIngredients(INITIAL_INGREDIENTS);
+      }
+    };
+
+    fetchIngredients();
+    // Auto-refresh every 10 seconds
+    const interval = setInterval(fetchIngredients, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Simulation Logic
   useEffect(() => {
     let interval: any;

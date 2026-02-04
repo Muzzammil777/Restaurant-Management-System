@@ -39,7 +39,13 @@ app.add_middleware(
 
 @app.on_event('startup')
 async def startup():
-    init_db()
+    try:
+        from .db import init_db
+        init_db()
+        print("✅ MongoDB connected successfully")
+    except Exception as e:
+        print(f"⚠️  MongoDB connection warning: {e}")
+        print("📝 API will work in read-only mode or with mock data")
 
 
 # Settings & Security

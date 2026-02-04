@@ -1,0 +1,42 @@
+[
+  {
+    "name": "North Bangalore",
+    "code": "NB-001",
+    "area": ["Whitefield", "Mahadevapura", "Marathahalli"],
+    "deliveryCharge": 50,
+    "deliveryTime": "30-45 mins",
+    "isActive": true
+  },
+  {
+    "name": "South Bangalore",
+    "code": "SB-002",
+    "area": ["HSR Layout", "Koramangala", "Indiranagar"],
+    "deliveryCharge": 45,
+    "deliveryTime": "25-35 mins",
+    "isActive": true
+  },
+  {
+    "name": "East Bangalore",
+    "code": "EB-003",
+    "area": ["Ulsoor", "Shivajinagar", "Benson Town"],
+    "deliveryCharge": 40,
+    "deliveryTime": "20-30 mins",
+    "isActive": true
+  },
+  {
+    "name": "West Bangalore",
+    "code": "WB-004",
+    "area": ["Yeshwanthpur", "Rajajinagar", "Malleswaram"],
+    "deliveryCharge": 55,
+    "deliveryTime": "35-50 mins",
+    "isActive": true
+  },
+  {
+    "name": "Central Bangalore",
+    "code": "CB-005",
+    "area": ["MG Road", "Brigade Road", "Residency Road"],
+    "deliveryCharge": 60,
+    "deliveryTime": "30-40 mins",
+    "isActive": true
+  }
+]
