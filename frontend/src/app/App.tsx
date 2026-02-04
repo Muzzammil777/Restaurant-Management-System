@@ -7,10 +7,13 @@ import { TableManagement } from '@/app/components/table-management';
 import { CustomerView } from '@/app/components/customer-view';
 import { CustomerManagement } from '@/app/components/customer-management';
 import { InventoryManagement } from '@/app/components/inventory-management';
+import { InventoryManagementPremium } from '@/app/components/inventory-management-premium';
+import { InventoryManagementTable } from '@/app/components/inventory-management-table';
 import { StaffManagement } from '@/app/components/staff-management';
 import { BillingPayment } from '@/app/components/billing-payment';
 import { SecuritySettings } from '@/app/components/security-settings';
 import { DeliveryManagement } from '@/app/components/delivery-management';
+import { DeliveryManagementPremium } from '@/app/components/delivery-management-premium';
 import { OffersLoyalty } from '@/app/components/offers-loyalty';
 import { ReportsAnalytics } from '@/app/components/reports-analytics';
 import { NotificationManagement } from '@/app/components/notification-management';
@@ -289,7 +292,7 @@ function AppContent() {
         </TabsContent>
 
         <TabsContent value="inventory" className="mt-0">
-          <InventoryManagement triggerStockManagement={triggerStockManagement} />
+          <InventoryManagementTable triggerStockManagement={triggerStockManagement} />
         </TabsContent>
 
         <TabsContent value="staff" className="mt-0">
@@ -301,7 +304,7 @@ function AppContent() {
         </TabsContent>
 
         <TabsContent value="delivery" className="mt-0">
-          <DeliveryManagement />
+          <DeliveryManagementPremium />
         </TabsContent>
 
         <TabsContent value="offers" className="mt-0">

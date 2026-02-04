@@ -36,8 +36,13 @@ REM Start Frontend in a new window
 echo Starting Frontend (React) on http://localhost:5173
 start "RMS Frontend" cmd /k "cd frontend && npm run dev"
 
-REM Wait a moment then show message
-timeout /t 3 /nobreak
+REM Wait for servers to fully start before opening Chrome
+echo Waiting for servers to start...
+timeout /t 5 /nobreak
+
+REM Open Chrome
+echo Opening Chrome...
+start chrome http://localhost:5173
 
 echo.
 echo ========================================

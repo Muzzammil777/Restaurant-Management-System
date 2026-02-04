@@ -1,0 +1,8 @@
+PORT=4000
+# Replace with your MongoDB Atlas connection string, e.g.:
+# mongodb+srv://user:password@cluster0.abcd.mongodb.net/rms?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://priyadharshini:Ezhilithanya@cluster0.crvutrr.mongodb.net/restaurant_db
+
+# For FastAPI/uvicorn optional host/port override
+FASTAPI_HOST=0.0.0.0
+FASTAPI_PORT=8000

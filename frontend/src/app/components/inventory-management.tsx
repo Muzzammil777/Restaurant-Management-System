@@ -21,18 +21,6 @@ import {
   AlertOctagon,
   Download
 } from 'lucide-react';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip as RechartsTooltip, 
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  Cell
-} from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
 
@@ -93,25 +81,159 @@ interface PurchaseRecord {
   date: string;
 }
 
+// --- Utility Functions (Backend-Ready) ---
+
+/**
+ * Calculate ingredient status based on stock level
+ * BACKEND: This logic mirrors backend calculate_status function
+ * When backend APIs are connected, this can be removed and status will come from server
+ */
+function calculateStatus(stockLevel: number, minThreshold: number): Ingredient['status'] {
+  if (stockLevel <= 0) return 'Out';
+  if (stockLevel <= minThreshold * 0.5) return 'Critical';
+  if (stockLevel <= minThreshold) return 'Low';
+  return 'Healthy';
+}
+
+/**
+ * Update ingredient stock immutably using ingredient ID
+ * Centralized function for all stock update operations
+ * BACKEND: This mirrors backend stock update logic
+ * Used by: purchases, deductions, manual adjustments
+ */
+function updateIngredientStock(
+  ingredients: Ingredient[],
+  ingredientId: string,
+  quantityDelta: number
+): Ingredient[] {
+  return ingredients.map(ing => {
+    if (ing.id === ingredientId) {
+      const newStock = Math.max(0, ing.stockLevel + quantityDelta);
+      const newStatus = calculateStatus(newStock, ing.minThreshold);
+      return { 
+        ...ing, 
+        stockLevel: newStock, 
+        status: newStatus 
+      };
+    }
+    return ing;
+  });
+}
+
 // --- Mock Data ---
 
 const INITIAL_INGREDIENTS: Ingredient[] = [
-  { id: '1', name: 'Basmati Rice', category: 'Grains', stockLevel: 85, unit: 'kg', minThreshold: 20, costPerUnit: 90, supplierId: 's1', status: 'Healthy', usageRate: 'High' },
-  { id: '2', name: 'Tomatoes', category: 'Produce', stockLevel: 12, unit: 'kg', minThreshold: 15, costPerUnit: 40, supplierId: 's2', status: 'Low', usageRate: 'High' },
-  { id: '3', name: 'Olive Oil', category: 'Oils', stockLevel: 4, unit: 'L', minThreshold: 5, costPerUnit: 850, supplierId: 's3', status: 'Critical', usageRate: 'Medium' },
-  { id: '4', name: 'Mozzarella', category: 'Dairy', stockLevel: 25, unit: 'kg', minThreshold: 10, costPerUnit: 420, supplierId: 's4', status: 'Healthy', usageRate: 'High' },
-  { id: '5', name: 'Chicken Breast', category: 'Meat', stockLevel: 0, unit: 'kg', minThreshold: 20, costPerUnit: 280, supplierId: 's5', status: 'Out', usageRate: 'High' },
-  { id: '6', name: 'Saffron', category: 'Spices', stockLevel: 0.5, unit: 'kg', minThreshold: 0.1, costPerUnit: 150000, supplierId: 's6', status: 'Healthy', usageRate: 'Low' },
-  { id: '7', name: 'Potatoes', category: 'Produce', stockLevel: 45, unit: 'kg', minThreshold: 30, costPerUnit: 25, supplierId: 's2', status: 'Healthy', usageRate: 'High' },
-  { id: '8', name: 'Onions', category: 'Produce', stockLevel: 28, unit: 'kg', minThreshold: 30, costPerUnit: 30, supplierId: 's2', status: 'Low', usageRate: 'High' },
+  // Grains & Flours
+  { id: '1', name: 'Rice', category: 'Grains', stockLevel: 60, unit: 'kg', minThreshold: 50, costPerUnit: 80, supplierId: 's1', status: 'Healthy', usageRate: 'High' },
+  { id: '2', name: 'Wheat Flour', category: 'Grains', stockLevel: 35, unit: 'kg', minThreshold: 30, costPerUnit: 35, supplierId: 's1', status: 'Healthy', usageRate: 'High' },
+  { id: '3', name: 'Maida', category: 'Grains', stockLevel: 25, unit: 'kg', minThreshold: 20, costPerUnit: 45, supplierId: 's1', status: 'Healthy', usageRate: 'Medium' },
+  
+  // Basic Ingredients
+  { id: '4', name: 'Sugar', category: 'Pantry', stockLevel: 18, unit: 'kg', minThreshold: 15, costPerUnit: 50, supplierId: 's1', status: 'Healthy', usageRate: 'Medium' },
+  { id: '5', name: 'Salt', category: 'Pantry', stockLevel: 12, unit: 'kg', minThreshold: 10, costPerUnit: 20, supplierId: 's1', status: 'Healthy', usageRate: 'High' },
+  
+  // Oils & Fats
+  { id: '6', name: 'Cooking Oil', category: 'Oils', stockLevel: 30, unit: 'L', minThreshold: 25, costPerUnit: 120, supplierId: 's3', status: 'Healthy', usageRate: 'High' },
+  { id: '7', name: 'Ghee', category: 'Oils', stockLevel: 12, unit: 'L', minThreshold: 10, costPerUnit: 450, supplierId: 's3', status: 'Healthy', usageRate: 'High' },
+  { id: '8', name: 'Butter', category: 'Dairy', stockLevel: 6, unit: 'kg', minThreshold: 5, costPerUnit: 350, supplierId: 's4', status: 'Healthy', usageRate: 'Medium' },
+  { id: '9', name: 'Coconut Oil', category: 'Oils', stockLevel: 10, unit: 'L', minThreshold: 8, costPerUnit: 180, supplierId: 's3', status: 'Healthy', usageRate: 'Low' },
+  
+  // Dairy
+  { id: '10', name: 'Milk', category: 'Dairy', stockLevel: 35, unit: 'L', minThreshold: 30, costPerUnit: 60, supplierId: 's4', status: 'Healthy', usageRate: 'High' },
+  { id: '11', name: 'Curd', category: 'Dairy', stockLevel: 12, unit: 'kg', minThreshold: 10, costPerUnit: 80, supplierId: 's4', status: 'Healthy', usageRate: 'Medium' },
+  { id: '12', name: 'Paneer', category: 'Dairy', stockLevel: 10, unit: 'kg', minThreshold: 8, costPerUnit: 350, supplierId: 's4', status: 'Healthy', usageRate: 'High' },
+  { id: '13', name: 'Cheese', category: 'Dairy', stockLevel: 6, unit: 'kg', minThreshold: 5, costPerUnit: 400, supplierId: 's4', status: 'Healthy', usageRate: 'Medium' },
+  
+  // Proteins
+  { id: '14', name: 'Eggs', category: 'Proteins', stockLevel: 60, unit: 'units', minThreshold: 50, costPerUnit: 6, supplierId: 's5', status: 'Healthy', usageRate: 'High' },
+  { id: '15', name: 'Chicken', category: 'Proteins', stockLevel: 35, unit: 'kg', minThreshold: 30, costPerUnit: 250, supplierId: 's5', status: 'Healthy', usageRate: 'High' },
+  { id: '16', name: 'Mutton', category: 'Proteins', stockLevel: 25, unit: 'kg', minThreshold: 20, costPerUnit: 350, supplierId: 's5', status: 'Healthy', usageRate: 'Medium' },
+  { id: '17', name: 'Fish', category: 'Proteins', stockLevel: 18, unit: 'kg', minThreshold: 15, costPerUnit: 300, supplierId: 's5', status: 'Healthy', usageRate: 'Medium' },
+  { id: '18', name: 'Prawns', category: 'Proteins', stockLevel: 14, unit: 'kg', minThreshold: 12, costPerUnit: 400, supplierId: 's5', status: 'Healthy', usageRate: 'Low' },
+  
+  // Vegetables - Main
+  { id: '19', name: 'Onions', category: 'Vegetables', stockLevel: 45, unit: 'kg', minThreshold: 40, costPerUnit: 30, supplierId: 's2', status: 'Healthy', usageRate: 'High' },
+  { id: '20', name: 'Tomatoes', category: 'Vegetables', stockLevel: 35, unit: 'kg', minThreshold: 30, costPerUnit: 40, supplierId: 's2', status: 'Healthy', usageRate: 'High' },
+  { id: '21', name: 'Potatoes', category: 'Vegetables', stockLevel: 55, unit: 'kg', minThreshold: 50, costPerUnit: 25, supplierId: 's2', status: 'Healthy', usageRate: 'High' },
+  
+  // Vegetables - Aromatics
+  { id: '22', name: 'Ginger', category: 'Vegetables', stockLevel: 6, unit: 'kg', minThreshold: 5, costPerUnit: 60, supplierId: 's2', status: 'Healthy', usageRate: 'High' },
+  { id: '23', name: 'Garlic', category: 'Vegetables', stockLevel: 4, unit: 'kg', minThreshold: 3, costPerUnit: 80, supplierId: 's2', status: 'Healthy', usageRate: 'High' },
+  { id: '24', name: 'Green Chilli', category: 'Vegetables', stockLevel: 2.5, unit: 'kg', minThreshold: 2, costPerUnit: 100, supplierId: 's2', status: 'Healthy', usageRate: 'Medium' },
+  
+  // Vegetables - Greens
+  { id: '25', name: 'Curry Leaves', category: 'Vegetables', stockLevel: 1.2, unit: 'kg', minThreshold: 1, costPerUnit: 150, supplierId: 's2', status: 'Healthy', usageRate: 'Medium' },
+  { id: '26', name: 'Coriander Leaves', category: 'Vegetables', stockLevel: 1.1, unit: 'kg', minThreshold: 1, costPerUnit: 120, supplierId: 's2', status: 'Healthy', usageRate: 'Medium' },
+  { id: '27', name: 'Mint Leaves', category: 'Vegetables', stockLevel: 0.6, unit: 'kg', minThreshold: 0.5, costPerUnit: 130, supplierId: 's2', status: 'Healthy', usageRate: 'Low' },
+  { id: '28', name: 'Spinach', category: 'Vegetables', stockLevel: 6, unit: 'kg', minThreshold: 5, costPerUnit: 50, supplierId: 's2', status: 'Healthy', usageRate: 'Low' },
+  
+  // Vegetables - Others
+  { id: '29', name: 'Capsicum', category: 'Vegetables', stockLevel: 6, unit: 'kg', minThreshold: 5, costPerUnit: 70, supplierId: 's2', status: 'Healthy', usageRate: 'Medium' },
+  { id: '30', name: 'Carrot', category: 'Vegetables', stockLevel: 12, unit: 'kg', minThreshold: 10, costPerUnit: 35, supplierId: 's2', status: 'Healthy', usageRate: 'Medium' },
+  { id: '31', name: 'Beans', category: 'Vegetables', stockLevel: 6, unit: 'kg', minThreshold: 5, costPerUnit: 60, supplierId: 's2', status: 'Healthy', usageRate: 'Low' },
+  { id: '32', name: 'Cabbage', category: 'Vegetables', stockLevel: 9, unit: 'kg', minThreshold: 8, costPerUnit: 30, supplierId: 's2', status: 'Healthy', usageRate: 'Low' },
+  { id: '33', name: 'Cauliflower', category: 'Vegetables', stockLevel: 6, unit: 'kg', minThreshold: 5, costPerUnit: 50, supplierId: 's2', status: 'Healthy', usageRate: 'Low' },
+  { id: '34', name: 'Brinjal', category: 'Vegetables', stockLevel: 6, unit: 'kg', minThreshold: 5, costPerUnit: 45, supplierId: 's2', status: 'Healthy', usageRate: 'Low' },
+  { id: '35', name: 'Mushroom', category: 'Vegetables', stockLevel: 4, unit: 'kg', minThreshold: 3, costPerUnit: 120, supplierId: 's2', status: 'Healthy', usageRate: 'Low' },
+  
+  // Citrus & Extras
+  { id: '36', name: 'Lemon', category: 'Vegetables', stockLevel: 6, unit: 'kg', minThreshold: 5, costPerUnit: 80, supplierId: 's2', status: 'Healthy', usageRate: 'Medium' },
+  { id: '37', name: 'Tamarind', category: 'Pantry', stockLevel: 2.5, unit: 'kg', minThreshold: 2, costPerUnit: 200, supplierId: 's1', status: 'Healthy', usageRate: 'Low' },
+  { id: '38', name: 'Coconut', category: 'Pantry', stockLevel: 6, unit: 'units', minThreshold: 5, costPerUnit: 40, supplierId: 's1', status: 'Healthy', usageRate: 'Low' },
+  
+  // Nuts & Dry Fruits
+  { id: '39', name: 'Cashew', category: 'Dry Fruits', stockLevel: 2.5, unit: 'kg', minThreshold: 2, costPerUnit: 600, supplierId: 's6', status: 'Healthy', usageRate: 'Low' },
+  { id: '40', name: 'Raisins', category: 'Dry Fruits', stockLevel: 1.2, unit: 'kg', minThreshold: 1, costPerUnit: 350, supplierId: 's6', status: 'Healthy', usageRate: 'Low' },
+  { id: '41', name: 'Almonds', category: 'Dry Fruits', stockLevel: 1.2, unit: 'kg', minThreshold: 1, costPerUnit: 800, supplierId: 's6', status: 'Healthy', usageRate: 'Low' },
+  
+  // Spices - Whole
+  { id: '42', name: 'Pepper', category: 'Spices', stockLevel: 0.6, unit: 'kg', minThreshold: 0.5, costPerUnit: 400, supplierId: 's7', status: 'Healthy', usageRate: 'Medium' },
+  { id: '43', name: 'Cumin', category: 'Spices', stockLevel: 0.6, unit: 'kg', minThreshold: 0.5, costPerUnit: 350, supplierId: 's7', status: 'Healthy', usageRate: 'Medium' },
+  { id: '44', name: 'Fennel', category: 'Spices', stockLevel: 0.6, unit: 'kg', minThreshold: 0.5, costPerUnit: 300, supplierId: 's7', status: 'Healthy', usageRate: 'Low' },
+  { id: '45', name: 'Mustard Seeds', category: 'Spices', stockLevel: 0.6, unit: 'kg', minThreshold: 0.5, costPerUnit: 250, supplierId: 's7', status: 'Healthy', usageRate: 'Medium' },
+  { id: '46', name: 'Cinnamon', category: 'Spices', stockLevel: 0.35, unit: 'kg', minThreshold: 0.3, costPerUnit: 500, supplierId: 's7', status: 'Healthy', usageRate: 'Low' },
+  { id: '47', name: 'Cloves', category: 'Spices', stockLevel: 0.25, unit: 'kg', minThreshold: 0.2, costPerUnit: 800, supplierId: 's7', status: 'Healthy', usageRate: 'Low' },
+  { id: '48', name: 'Cardamom', category: 'Spices', stockLevel: 0.35, unit: 'kg', minThreshold: 0.3, costPerUnit: 1200, supplierId: 's7', status: 'Healthy', usageRate: 'Low' },
+  { id: '49', name: 'Bay Leaf', category: 'Spices', stockLevel: 0.25, unit: 'kg', minThreshold: 0.2, costPerUnit: 600, supplierId: 's7', status: 'Healthy', usageRate: 'Low' },
+  
+  // Spices - Powders
+  { id: '50', name: 'Turmeric Powder', category: 'Spices', stockLevel: 2.5, unit: 'kg', minThreshold: 2, costPerUnit: 150, supplierId: 's7', status: 'Healthy', usageRate: 'High' },
+  { id: '51', name: 'Chilli Powder', category: 'Spices', stockLevel: 2.5, unit: 'kg', minThreshold: 2, costPerUnit: 200, supplierId: 's7', status: 'Healthy', usageRate: 'High' },
+  { id: '52', name: 'Coriander Powder', category: 'Spices', stockLevel: 2.5, unit: 'kg', minThreshold: 2, costPerUnit: 180, supplierId: 's7', status: 'Healthy', usageRate: 'High' },
+  { id: '53', name: 'Garam Masala', category: 'Spices', stockLevel: 1.2, unit: 'kg', minThreshold: 1, costPerUnit: 300, supplierId: 's7', status: 'Healthy', usageRate: 'Medium' },
+  { id: '54', name: 'Sambar Powder', category: 'Spices', stockLevel: 1.2, unit: 'kg', minThreshold: 1, costPerUnit: 250, supplierId: 's7', status: 'Healthy', usageRate: 'Low' },
+  { id: '55', name: 'Rasam Powder', category: 'Spices', stockLevel: 1.2, unit: 'kg', minThreshold: 1, costPerUnit: 220, supplierId: 's7', status: 'Healthy', usageRate: 'Low' },
+  
+  // Beverages
+  { id: '56', name: 'Tea Powder', category: 'Beverages', stockLevel: 3.5, unit: 'kg', minThreshold: 3, costPerUnit: 400, supplierId: 's8', status: 'Healthy', usageRate: 'High' },
+  { id: '57', name: 'Coffee Powder', category: 'Beverages', stockLevel: 2.5, unit: 'kg', minThreshold: 2, costPerUnit: 500, supplierId: 's8', status: 'Healthy', usageRate: 'Medium' },
+  
+  // Bakery Items
+  { id: '58', name: 'Bread', category: 'Bakery', stockLevel: 12, unit: 'units', minThreshold: 10, costPerUnit: 40, supplierId: 's9', status: 'Healthy', usageRate: 'Medium' },
+  { id: '59', name: 'Yeast', category: 'Bakery', stockLevel: 0.6, unit: 'kg', minThreshold: 0.5, costPerUnit: 1200, supplierId: 's9', status: 'Healthy', usageRate: 'Low' },
+  { id: '60', name: 'Baking Powder', category: 'Bakery', stockLevel: 1.2, unit: 'kg', minThreshold: 1, costPerUnit: 150, supplierId: 's9', status: 'Healthy', usageRate: 'Low' },
+  { id: '61', name: 'Baking Soda', category: 'Bakery', stockLevel: 1.2, unit: 'kg', minThreshold: 1, costPerUnit: 120, supplierId: 's9', status: 'Healthy', usageRate: 'Low' },
+  
+  // Condiments & Sauces
+  { id: '62', name: 'Chocolate Syrup', category: 'Condiments', stockLevel: 2.5, unit: 'L', minThreshold: 2, costPerUnit: 200, supplierId: 's10', status: 'Healthy', usageRate: 'Medium' },
+  { id: '63', name: 'Ice Cream', category: 'Condiments', stockLevel: 6, unit: 'L', minThreshold: 5, costPerUnit: 250, supplierId: 's10', status: 'Healthy', usageRate: 'Medium' },
+  { id: '64', name: 'Mayonnaise', category: 'Condiments', stockLevel: 2.5, unit: 'kg', minThreshold: 2, costPerUnit: 180, supplierId: 's10', status: 'Healthy', usageRate: 'Low' },
+  { id: '65', name: 'Ketchup', category: 'Condiments', stockLevel: 2.5, unit: 'L', minThreshold: 2, costPerUnit: 120, supplierId: 's10', status: 'Healthy', usageRate: 'Medium' },
+  { id: '66', name: 'Soy Sauce', category: 'Condiments', stockLevel: 2.5, unit: 'L', minThreshold: 2, costPerUnit: 200, supplierId: 's10', status: 'Healthy', usageRate: 'Low' },
+  { id: '67', name: 'Vinegar', category: 'Condiments', stockLevel: 2.5, unit: 'L', minThreshold: 2, costPerUnit: 80, supplierId: 's10', status: 'Healthy', usageRate: 'Low' },
 ];
 
 const INITIAL_SUPPLIERS: Supplier[] = [
-  { id: 's1', name: 'Grain Masters', contact: '+91 98765 43210', email: 'orders@grainmasters.com', status: 'Active', suppliedItems: ['Rice', 'Flour'] },
-  { id: 's2', name: 'Fresh Fields', contact: '+91 98765 12345', email: 'sales@freshfields.com', status: 'Active', suppliedItems: ['Vegetables'] },
-  { id: 's3', name: 'Global Imports', contact: '+91 99887 76655', email: 'imports@global.com', status: 'Active', suppliedItems: ['Oils', 'Exotic Spices'] },
-  { id: 's4', name: 'Dairy Best', contact: '+91 91234 56789', email: 'supply@dairybest.com', status: 'Active', suppliedItems: ['Cheese', 'Milk'] },
-  { id: 's5', name: 'Poultry Plus', contact: '+91 88990 01122', email: 'orders@poultryplus.com', status: 'Disabled', suppliedItems: ['Chicken', 'Eggs'] },
+  { id: 's1', name: 'General Supplies', contact: '+91 98765 43210', email: 'orders@generalsupplies.com', status: 'Active', suppliedItems: ['Rice', 'Flour', 'Maida', 'Sugar', 'Salt'] },
+  { id: 's2', name: 'Fresh Produce', contact: '+91 98765 12345', email: 'sales@freshproduce.com', status: 'Active', suppliedItems: ['Vegetables', 'Tomatoes', 'Onions'] },
+  { id: 's3', name: 'Oils & Fats Supplier', contact: '+91 99887 76655', email: 'supplies@oilsfats.com', status: 'Active', suppliedItems: ['Cooking Oil', 'Ghee', 'Coconut Oil'] },
+  { id: 's4', name: 'Dairy Best', contact: '+91 91234 56789', email: 'supply@dairybest.com', status: 'Active', suppliedItems: ['Milk', 'Curd', 'Paneer', 'Cheese', 'Butter'] },
+  { id: 's5', name: 'Poultry Plus', contact: '+91 88990 01122', email: 'orders@poultryplus.com', status: 'Active', suppliedItems: ['Eggs', 'Chicken', 'Mutton', 'Fish', 'Prawns'] },
+  { id: 's6', name: 'Nuts & Dry Fruits', contact: '+91 87654 32198', email: 'sales@nutsdryfruit.com', status: 'Active', suppliedItems: ['Cashew', 'Raisins', 'Almonds'] },
+  { id: 's7', name: 'Spice Merchants', contact: '+91 77623 45123', email: 'orders@spicehouse.com', status: 'Active', suppliedItems: ['Spices', 'Pepper', 'Cumin', 'Turmeric', 'Chilli'] },
+  { id: 's8', name: 'Beverages India', contact: '+91 86543 21987', email: 'supply@beveragesindia.com', status: 'Active', suppliedItems: ['Tea Powder', 'Coffee Powder'] },
+  { id: 's9', name: 'Bakery Supplies', contact: '+91 94321 56789', email: 'orders@bakerysupplies.com', status: 'Active', suppliedItems: ['Bread', 'Yeast', 'Baking Powder', 'Baking Soda'] },
+  { id: 's10', name: 'Condiments Corner', contact: '+91 92876 54321', email: 'sales@condimentscorner.com', status: 'Active', suppliedItems: ['Sauces', 'Condiments', 'Ketchup', 'Vinegar'] },
 ];
 
 const DISHES = [
@@ -120,7 +242,23 @@ const DISHES = [
   { name: 'Greek Salad', ingredients: [{ id: '2', amount: 0.2 }, { id: '3', amount: 0.05 }, { id: '8', amount: 0.05 }] },
 ];
 
+/**
+ * InventoryManagement Component
+ * 
+ * FRONTEND-ONLY MODE (Backend-Ready)
+ * ===================================
+ * This component manages all inventory and purchase operations using local React state.
+ * No API calls are made - all data is stored in component state.
+ * 
+ * When backend APIs are ready, the following can be replaced:
+ * - Initial data load: Add useEffect to fetch from GET /api/inventory
+ * - handleAddPurchase: Replace with fetch() to POST /api/inventory/purchases
+ * - handleToggleSupplier: Add API call to PUT /api/inventory/suppliers/{id}
+ * 
+ * The code structure is designed to make API integration seamless.
+ */
 export function InventoryManagement({ triggerStockManagement }: { triggerStockManagement?: boolean }) {
+  // FRONTEND-ONLY: All state is local to this component
   const [activeTab, setActiveTab] = useState('dashboard');
   const [ingredients, setIngredients] = useState<Ingredient[]>(INITIAL_INGREDIENTS);
   const [suppliers, setSuppliers] = useState<Supplier[]>(INITIAL_SUPPLIERS);
@@ -164,7 +302,9 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
 
   const uniqueCategories = useMemo(() => Array.from(new Set(ingredients.map(i => i.category))), [ingredients]);
 
-  // Simulation Logic
+  // Simulation Logic (FRONTEND-ONLY)
+  // This simulates order placement and stock deduction
+  // BACKEND: When integrated, this will call POST /api/orders and receive deduction via socket/webhook
   useEffect(() => {
     let interval: any;
     if (isSimulating) {
@@ -174,26 +314,22 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
         const timestamp = new Date().toISOString();
         
         const usedIngredients: { name: string; amount: number; unit: string }[] = [];
+        let updatedIngs = ingredients;
 
-        setIngredients(prev => prev.map(ing => {
-          const required = randomDish.ingredients.find(r => r.id === ing.id);
-          if (required && ing.stockLevel > 0) {
+        // Update each ingredient that is used in the dish
+        for (const required of randomDish.ingredients) {
+          const ing = updatedIngs.find(i => i.id === required.id);
+          if (ing && ing.stockLevel > 0) {
             const deduct = required.amount;
-            const newLevel = Math.max(0, ing.stockLevel - deduct);
             usedIngredients.push({ name: ing.name, amount: deduct, unit: ing.unit });
-            
-            // Determine new status
-            let newStatus: Ingredient['status'] = 'Healthy';
-            if (newLevel === 0) newStatus = 'Out';
-            else if (newLevel <= ing.minThreshold / 2) newStatus = 'Critical';
-            else if (newLevel <= ing.minThreshold) newStatus = 'Low';
-
-            return { ...ing, stockLevel: newLevel, status: newStatus, lastDeduction: timestamp };
+            // Use centralized stock update function
+            updatedIngs = updateIngredientStock(updatedIngs, required.id, -deduct);
           }
-          return ing;
-        }));
+        }
 
+        // Only update state if any ingredients were deducted
         if (usedIngredients.length > 0) {
+          setIngredients(updatedIngs);
           const newLog: DeductionLog = {
             id: Date.now().toString(),
             orderId,
@@ -208,20 +344,57 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
       }, 3500);
     }
     return () => clearInterval(interval);
-  }, [isSimulating]);
+  }, [isSimulating, ingredients]);
 
   // Actions
   const handleAddPurchase = (data: any) => {
+    // FRONTEND-ONLY MODE
+    // This function works with local state only - no backend API calls
+    // BACKEND: When APIs are ready, replace this with fetch('/api/inventory/purchases', ...)
+    
+    // Check for duplicate purchases within 5 minutes
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const isDuplicate = purchaseRecords.some(record => {
+      const recordTime = new Date(record.date);
+      return (
+        record.ingredientName === data.ingredientName &&
+        record.supplierName === data.supplierName &&
+        record.quantity === data.quantity &&
+        recordTime > fiveMinutesAgo
+      );
+    });
+
+    if (isDuplicate) {
+      toast.error("Duplicate Purchase", { description: "A similar purchase was recorded within the last 5 minutes." });
+      return;
+    }
+
+    // Update ingredients state using centralized stock update function
+    // This ensures all ingredients are properly updated with ID-based lookup
+    const updatedIngredients = updateIngredientStock(
+      ingredients,
+      data.ingredientId,
+      data.quantity
+    );
+    setIngredients(updatedIngredients);
+
+    // Add to purchase records (local state only)
     const newRecord: PurchaseRecord = {
-      id: Date.now().toString(),
-      ...data,
+      id: `PUR-${Date.now()}`,
+      supplierName: data.supplierName,
+      ingredientName: data.ingredientName,
+      quantity: data.quantity,
+      cost: data.cost,
       date: new Date().toISOString()
     };
     setPurchaseRecords(prev => [newRecord, ...prev]);
-    toast.success("Purchase Recorded", { description: "Record added to audit log. Live stock remains unchanged." });
+    
+    toast.success("Purchase Added", { description: `Stock updated for ${data.ingredientName}. Quantity: +${data.quantity}` });
   };
 
   const handleToggleSupplier = (id: string) => {
+    // FRONTEND-ONLY MODE
+    // BACKEND: When ready, add fetch() call to PUT /api/inventory/suppliers/{id}
     setSuppliers(prev => prev.map(s => {
       if (s.id === id) {
         const newStatus = s.status === 'Active' ? 'Disabled' : 'Active';
@@ -330,63 +503,37 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
                <KPICard title="Deductions Today" value={stats.consumptionToday} icon={TrendingDown} color="text-blue-600" bg="bg-blue-50" border="border-blue-200" />
              </div>
 
-             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-2 shadow-sm border-none bg-white">
-                  <CardHeader>
-                    <CardTitle>Consumption Trends</CardTitle>
-                    <CardDescription>Live order-based ingredient usage over time</CardDescription>
-                  </CardHeader>
-                  <CardContent className="h-[350px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={deductionLogs.slice(0, 20).reverse().map((l, i) => ({ time: i, amount: l.ingredients.length }))}>
-                        <defs>
-                          <linearGradient id="colorUsage" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                        <XAxis dataKey="time" hide />
-                        <YAxis hide />
-                        <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                        <Area type="monotone" dataKey="amount" stroke="#10b981" fillOpacity={1} fill="url(#colorUsage)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-
-                <Card className="shadow-sm border-none bg-white">
-                  <CardHeader>
-                    <CardTitle>Low Stock Alerts</CardTitle>
-                    <CardDescription>Advisory only - Action required</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {ingredients.filter(i => i.status !== 'Healthy').slice(0, 4).map(item => (
-                      <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border bg-gray-50/50">
-                        {item.status === 'Out' ? <XCircle className="h-5 w-5 text-red-500 mt-0.5" /> : <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5" />}
-                        <div className="flex-1">
-                          <div className="flex justify-between">
-                            <h4 className="font-medium text-sm">{item.name}</h4>
-                            <span className={`text-xs font-bold ${item.status === 'Out' ? 'text-red-600' : 'text-yellow-600'}`}>{item.status}</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Current: {item.stockLevel} {item.unit} (Min: {item.minThreshold})
-                          </p>
-                          <Button variant="link" className="p-0 h-auto text-xs mt-2 text-primary">
-                            Create Purchase Record
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                    {ingredients.filter(i => i.status !== 'Healthy').length === 0 && (
-                      <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
-                        <CheckCircle2 className="h-10 w-10 text-green-100 mb-2" />
-                        <p>All stock levels are healthy.</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-             </div>
+             <Card className="shadow-sm border-none bg-white">
+               <CardHeader>
+                 <CardTitle>Low Stock Alerts</CardTitle>
+                 <CardDescription>Advisory only - Action required</CardDescription>
+               </CardHeader>
+               <CardContent className="space-y-4">
+                 {ingredients.filter(i => i.status !== 'Healthy').slice(0, 8).map(item => (
+                   <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border bg-gray-50/50">
+                     {item.status === 'Out' ? <XCircle className="h-5 w-5 text-red-500 mt-0.5" /> : <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5" />}
+                     <div className="flex-1">
+                       <div className="flex justify-between">
+                         <h4 className="font-medium text-sm">{item.name}</h4>
+                         <span className={`text-xs font-bold ${item.status === 'Out' ? 'text-red-600' : 'text-yellow-600'}`}>{item.status}</span>
+                       </div>
+                       <p className="text-xs text-muted-foreground mt-1">
+                         Current: {item.stockLevel} {item.unit} (Min: {item.minThreshold})
+                       </p>
+                       <Button variant="link" className="p-0 h-auto text-xs mt-2 text-primary">
+                         Create Purchase Record
+                       </Button>
+                     </div>
+                   </div>
+                 ))}
+                 {ingredients.filter(i => i.status !== 'Healthy').length === 0 && (
+                   <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+                     <CheckCircle2 className="h-10 w-10 text-green-100 mb-2" />
+                     <p>All stock levels are healthy.</p>
+                   </div>
+                 )}
+               </CardContent>
+             </Card>
           </TabsContent>
 
           {/* INVENTORY TAB */}
@@ -700,7 +847,9 @@ function KPICard({ title, value, icon: Icon, color = "text-primary", bg = "bg-pr
 function AddPurchaseDialog({ ingredients, suppliers, onSave }: any) {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
+    ingredientId: '',
     ingredientName: '',
+    supplierId: '',
     supplierName: '',
     quantity: '',
     cost: ''
@@ -708,18 +857,20 @@ function AddPurchaseDialog({ ingredients, suppliers, onSave }: any) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.ingredientName || !formData.supplierName || !formData.quantity || !formData.cost) {
+    if (!formData.ingredientId || !formData.supplierId || !formData.quantity || !formData.cost) {
       toast.error("Missing Fields", { description: "Please fill in all fields." });
       return;
     }
     onSave({
+      ingredientId: formData.ingredientId,
       ingredientName: formData.ingredientName,
+      supplierId: formData.supplierId,
       supplierName: formData.supplierName,
       quantity: Number(formData.quantity),
       cost: Number(formData.cost)
     });
     setOpen(false);
-    setFormData({ ingredientName: '', supplierName: '', quantity: '', cost: '' });
+    setFormData({ ingredientId: '', ingredientName: '', supplierId: '', supplierName: '', quantity: '', cost: '' });
   };
 
   return (
@@ -733,29 +884,35 @@ function AddPurchaseDialog({ ingredients, suppliers, onSave }: any) {
         <DialogHeader>
           <DialogTitle>Add Purchase Record</DialogTitle>
           <DialogDescription>
-             Creates a financial record. <span className="font-bold text-red-500">Does not update live stock.</span>
+             Records a purchase and <span className="font-bold text-green-600">immediately updates live stock.</span>
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="space-y-2">
             <Label>Ingredient</Label>
-            <Select onValueChange={(v) => setFormData({...formData, ingredientName: v})}>
+            <Select onValueChange={(v) => {
+              const selected = ingredients.find((i: any) => i.id === v);
+              setFormData({...formData, ingredientId: v, ingredientName: selected?.name || ''});
+            }}>
               <SelectTrigger>
                 <SelectValue placeholder="Select ingredient" />
               </SelectTrigger>
               <SelectContent>
-                {ingredients.map((i: any) => <SelectItem key={i.id} value={i.name}>{i.name}</SelectItem>)}
+                {ingredients.map((i: any) => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
             <Label>Supplier</Label>
-            <Select onValueChange={(v) => setFormData({...formData, supplierName: v})}>
+            <Select onValueChange={(v) => {
+              const selected = suppliers.find((s: any) => s.id === v);
+              setFormData({...formData, supplierId: v, supplierName: selected?.name || ''});
+            }}>
               <SelectTrigger>
                 <SelectValue placeholder="Select supplier" />
               </SelectTrigger>
               <SelectContent>
-                {suppliers.map((s: any) => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
+                {suppliers.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -770,7 +927,7 @@ function AddPurchaseDialog({ ingredients, suppliers, onSave }: any) {
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit">Create Record</Button>
+            <Button type="submit">Add Purchase & Update Stock</Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -9,7 +9,7 @@ load_dotenv(BASE_DIR / '.env')
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .db import init_db
+from .db import init_db, initialize_master_ingredients
 
 # Import all route modules
 from .routes import settings as settings_router
@@ -40,6 +40,7 @@ app.add_middleware(
 @app.on_event('startup')
 async def startup():
     init_db()
+    await initialize_master_ingredients()
 
 
 # Settings & Security

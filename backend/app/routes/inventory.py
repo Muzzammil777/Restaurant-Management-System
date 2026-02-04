@@ -310,30 +310,71 @@ async def list_purchases(
 
 @router.post("/purchases")
 async def create_purchase(data: dict):
-    """Record a purchase"""
+    """Record a purchase and update ingredient stock immediately"""
     db = get_db()
     
     data["createdAt"] = datetime.utcnow()
     
+    # Find ingredient by name or ID to ensure it exists in master list
+    ingredient = None
+    if data.get("ingredientId"):
+        ingredient = await db.ingredients.find_one({"_id": ObjectId(data["ingredientId"])})
+    elif data.get("ingredientName"):
+        ingredient = await db.ingredients.find_one({"name": data["ingredientName"]})
+        if ingredient:
+            data["ingredientId"] = str(ingredient["_id"])
+    
+    if not ingredient:
+        raise HTTPException(status_code=404, detail="Ingredient not found in master list. Cannot add purchase for non-existent ingredient.")
+    
+    # Check for duplicate recent purchases (same ingredient, supplier, quantity within last 5 minutes)
+    from datetime import timedelta
+    five_min_ago = datetime.utcnow() - timedelta(minutes=5)
+    
+    duplicate_check = await db.purchases.find_one({
+        "ingredientId": data.get("ingredientId"),
+        "supplierId": data.get("supplierId"),
+        "quantity": data.get("quantity"),
+        "createdAt": {"$gte": five_min_ago}
+    })
+    
+    if duplicate_check:
+        raise HTTPException(status_code=400, detail="Duplicate purchase detected. A similar purchase was recorded within the last 5 minutes.")
+    
+    # Insert purchase record
     result = await db.purchases.insert_one(data)
     
-    # Update ingredient stock if linked
-    if data.get("ingredientId") and data.get("quantity"):
-        await db.ingredients.update_one(
-            {"_id": ObjectId(data["ingredientId"])},
-            {"$inc": {"stockLevel": data["quantity"]}}
+    # Update ingredient stock immediately
+    if data.get("quantity"):
+        quantity = data["quantity"]
+        
+        # Increment stock level
+        updated = await db.ingredients.find_one_and_update(
+            {"_id": ObjectId(ingredient["_id"])},
+            {
+                "$inc": {"stockLevel": quantity},
+                "$set": {
+                    "updatedAt": datetime.utcnow(),
+                    "lastPurchase": datetime.utcnow()
+                }
+            },
+            return_document=True
         )
-        # Recalculate status
-        ingredient = await db.ingredients.find_one({"_id": ObjectId(data["ingredientId"])})
-        if ingredient:
-            status = calculate_status(ingredient["stockLevel"], ingredient.get("minThreshold", 10))
+        
+        # Recalculate status based on new stock level
+        if updated:
+            status = calculate_status(updated["stockLevel"], updated.get("minThreshold", 10))
             await db.ingredients.update_one(
-                {"_id": ObjectId(data["ingredientId"])},
+                {"_id": ObjectId(ingredient["_id"])},
                 {"$set": {"status": status}}
             )
     
     created = await db.purchases.find_one({"_id": result.inserted_id})
-    await log_audit("create", "purchase", str(result.inserted_id))
+    await log_audit("create", "purchase", str(result.inserted_id), {
+        "ingredientName": ingredient.get("name"),
+        "quantity": data.get("quantity"),
+        "cost": data.get("cost")
+    })
     
     return serialize_doc(created)
 
