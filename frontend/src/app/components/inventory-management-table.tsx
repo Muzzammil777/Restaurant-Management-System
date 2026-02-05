@@ -309,7 +309,7 @@ export function InventoryManagementTable({ triggerStockManagement }: { triggerSt
   const categories = Array.from(new Set(ingredients.map(i => i.category))).sort();
 
   // Calculate statistics
-  const lowStockItems = useMemo(() => 
+  const lowStockItems = useMemo(() =>
     ingredients.filter(i => i.stockLevel > 0 && i.stockLevel <= i.minThreshold),
     [ingredients]
   );
@@ -323,13 +323,13 @@ export function InventoryManagementTable({ triggerStockManagement }: { triggerSt
   const filteredIngredients = useMemo(() => {
     return ingredients.filter(ingredient => {
       const matchesSearch = ingredient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           ingredient.category.toLowerCase().includes(searchTerm.toLowerCase());
-      
+        ingredient.category.toLowerCase().includes(searchTerm.toLowerCase());
+
       const status = getStatus(ingredient);
       const matchesStatus = statusFilter === 'all' || status === statusFilter;
-      
+
       const matchesCategory = categoryFilter === 'all' || ingredient.category === categoryFilter;
-      
+
       return matchesSearch && matchesStatus && matchesCategory;
     });
   }, [ingredients, searchTerm, statusFilter, categoryFilter]);
@@ -338,11 +338,11 @@ export function InventoryManagementTable({ triggerStockManagement }: { triggerSt
   const handleSimulateOrders = () => {
     console.log('🎬 Simulate Orders clicked! Current ingredients:', ingredients.length);
     const newDeductions: DeductionEvent[] = [];
-    
+
     const updatedIngredients = ingredients.map(ingredient => {
       const deduction = Math.floor(Math.random() * 5) + 1;
       const newStock = Math.max(0, ingredient.stockLevel - deduction);
-      
+
       // Collect deduction event
       newDeductions.push({
         id: `deduction-${Date.now()}-${Math.random()}-${ingredient.id}`,
@@ -351,17 +351,17 @@ export function InventoryManagementTable({ triggerStockManagement }: { triggerSt
         quantity: deduction,
         unit: ingredient.unit,
       });
-      
+
       return {
         ...ingredient,
         stockLevel: newStock,
         lastOrderDate: new Date().toISOString().split('T')[0],
       };
     });
-    
+
     console.log('📊 Deductions recorded:', newDeductions.length);
     console.log('📉 Updated ingredients:', updatedIngredients[0]);
-    
+
     // Update all state at once
     setIngredients(updatedIngredients);
     setDeductionFeed(prev => {
@@ -369,7 +369,7 @@ export function InventoryManagementTable({ triggerStockManagement }: { triggerSt
       console.log('✅ Deduction feed updated. Total:', updated.length);
       return updated;
     });
-    
+
     // Show success notification
     toast.success('Orders Simulated', {
       description: `Deducted stock from ${newDeductions.length} ingredients. Check the Deduction Feed tab!`
@@ -380,7 +380,7 @@ export function InventoryManagementTable({ triggerStockManagement }: { triggerSt
   const handleFormChange = (field: string, value: any) => {
     setPurchaseForm(prev => {
       const updates: any = { [field]: value };
-      
+
       // Auto-populate unit when ingredient changes
       if (field === 'ingredientId') {
         const ingredient = ingredients.find(i => i.id === value);
@@ -388,10 +388,10 @@ export function InventoryManagementTable({ triggerStockManagement }: { triggerSt
           updates.unit = ingredient.unit;
         }
       }
-      
+
       return { ...prev, ...updates };
     });
-    
+
     // Clear error for this field
     if (formErrors[field]) {
       setFormErrors(prev => {
@@ -405,7 +405,7 @@ export function InventoryManagementTable({ triggerStockManagement }: { triggerSt
   // Validate form
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    
+
     if (!purchaseForm.ingredientId) errors.ingredientId = 'Select an ingredient';
     if (!purchaseForm.quantity || Number(purchaseForm.quantity) <= 0) errors.quantity = 'Enter a valid quantity';
     if (!purchaseForm.supplierId) errors.supplierId = 'Select a supplier';
@@ -437,12 +437,12 @@ export function InventoryManagementTable({ triggerStockManagement }: { triggerSt
     // Update stock
     const updatedIngredients = ingredients.map(i =>
       i.id === purchaseForm.ingredientId
-        ? { 
-            ...i, 
-            stockLevel: i.stockLevel + qty,
-            // We could also update lastOrderDate here if desired
-            // lastOrderDate: purchaseForm.purchaseDate 
-          }
+        ? {
+          ...i,
+          stockLevel: i.stockLevel + qty,
+          // We could also update lastOrderDate here if desired
+          // lastOrderDate: purchaseForm.purchaseDate 
+        }
         : i
     );
     setIngredients(updatedIngredients);
@@ -502,7 +502,7 @@ export function InventoryManagementTable({ triggerStockManagement }: { triggerSt
               Simulate Live Orders
             </Button>
             <Button
-              onClick={handleAddPurchase}
+              onClick={() => setShowAddPurchase(true)}
               className="bg-gray-800 hover:bg-gray-900 text-white gap-2"
             >
               <Plus size={16} />
@@ -535,11 +535,10 @@ export function InventoryManagementTable({ triggerStockManagement }: { triggerSt
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as TabType)}
-            className={`px-4 py-3 rounded-t-lg font-medium text-sm whitespace-nowrap transition-all ${
-              activeTab === tab.id
+            className={`px-4 py-3 rounded-t-lg font-medium text-sm whitespace-nowrap transition-all ${activeTab === tab.id
                 ? 'bg-gray-900 text-white'
                 : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
-            }`}
+              }`}
           >
             <span className="mr-2">{tab.icon}</span>
             {tab.label}
@@ -892,8 +891,8 @@ export function InventoryManagementTable({ triggerStockManagement }: { triggerSt
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <Label className="mb-2 block">Ingredient <span className="text-red-500">*</span></Label>
-                <Select 
-                  value={purchaseForm.ingredientId} 
+                <Select
+                  value={purchaseForm.ingredientId}
                   onValueChange={(value) => handleFormChange('ingredientId', value)}
                 >
                   <SelectTrigger className={formErrors.ingredientId ? "border-red-500" : ""}>
@@ -947,8 +946,8 @@ export function InventoryManagementTable({ triggerStockManagement }: { triggerSt
 
               <div>
                 <Label className="mb-2 block">Supplier <span className="text-red-500">*</span></Label>
-                <Select 
-                  value={purchaseForm.supplierId} 
+                <Select
+                  value={purchaseForm.supplierId}
                   onValueChange={(value) => handleFormChange('supplierId', value)}
                 >
                   <SelectTrigger className={formErrors.supplierId ? "border-red-500" : ""}>
