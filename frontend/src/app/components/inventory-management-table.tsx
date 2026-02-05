@@ -244,10 +244,13 @@ export function InventoryManagementTable({ triggerStockManagement }: { triggerSt
   const [showAddPurchase, setShowAddPurchase] = useState(false);
   const [purchaseForm, setPurchaseForm] = useState({
     ingredientId: '',
-    quantity: 0,
+    quantity: '' as number | string,
     supplierId: '',
-    cost: 0,
+    cost: '' as number | string,
+    purchaseDate: new Date().toISOString().split('T')[0],
+    unit: '',
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -373,22 +376,73 @@ export function InventoryManagementTable({ triggerStockManagement }: { triggerSt
     });
   };
 
+  // Handle input changes with error clearing
+  const handleFormChange = (field: string, value: any) => {
+    setPurchaseForm(prev => {
+      const updates: any = { [field]: value };
+      
+      // Auto-populate unit when ingredient changes
+      if (field === 'ingredientId') {
+        const ingredient = ingredients.find(i => i.id === value);
+        if (ingredient) {
+          updates.unit = ingredient.unit;
+        }
+      }
+      
+      return { ...prev, ...updates };
+    });
+    
+    // Clear error for this field
+    if (formErrors[field]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  // Validate form
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    
+    if (!purchaseForm.ingredientId) errors.ingredientId = 'Select an ingredient';
+    if (!purchaseForm.quantity || Number(purchaseForm.quantity) <= 0) errors.quantity = 'Enter a valid quantity';
+    if (!purchaseForm.supplierId) errors.supplierId = 'Select a supplier';
+    if (purchaseForm.cost === '' || Number(purchaseForm.cost) < 0) errors.cost = 'Enter a valid cost';
+    if (!purchaseForm.purchaseDate) errors.purchaseDate = 'Select a date';
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   // Handle add purchase
   const handleAddPurchase = () => {
-    if (!purchaseForm.ingredientId || purchaseForm.quantity <= 0 || !purchaseForm.supplierId) {
-      alert('Please fill all fields');
+    if (!validateForm()) {
+      toast.error('Please fix the errors in the form');
       return;
     }
 
     const ingredient = ingredients.find(i => i.id === purchaseForm.ingredientId);
     const supplier = SUPPLIERS_DATA.find(s => s.id === purchaseForm.supplierId);
 
-    if (!ingredient || !supplier) return;
+    if (!ingredient || !supplier) {
+      toast.error('Invalid ingredient or supplier selected');
+      return;
+    }
+
+    const qty = Number(purchaseForm.quantity);
+    const cost = Number(purchaseForm.cost);
 
     // Update stock
     const updatedIngredients = ingredients.map(i =>
       i.id === purchaseForm.ingredientId
-        ? { ...i, stockLevel: i.stockLevel + purchaseForm.quantity }
+        ? { 
+            ...i, 
+            stockLevel: i.stockLevel + qty,
+            // We could also update lastOrderDate here if desired
+            // lastOrderDate: purchaseForm.purchaseDate 
+          }
         : i
     );
     setIngredients(updatedIngredients);
@@ -398,19 +452,32 @@ export function InventoryManagementTable({ triggerStockManagement }: { triggerSt
       id: `purchase-${Date.now()}`,
       ingredientId: purchaseForm.ingredientId,
       ingredientName: ingredient.name,
-      quantity: purchaseForm.quantity,
+      quantity: qty,
       unit: ingredient.unit,
       supplierId: purchaseForm.supplierId,
       supplierName: supplier.name,
-      purchaseDate: new Date().toISOString().split('T')[0],
-      cost: purchaseForm.cost,
-      referenceId: `PO-${Date.now()}`,
+      purchaseDate: purchaseForm.purchaseDate,
+      cost: cost,
+      referenceId: `PO-${Math.floor(1000 + Math.random() * 9000)}`,
     };
 
     setPurchaseRecords(prev => [newPurchase, ...prev]);
 
+    // Success feedback
+    toast.success('Purchase Added Successfully', {
+      description: `Added ${qty} ${ingredient.unit} of ${ingredient.name} to stock.`
+    });
+
     // Reset form
-    setPurchaseForm({ ingredientId: '', quantity: 0, supplierId: '', cost: 0 });
+    setPurchaseForm({
+      ingredientId: '',
+      quantity: '',
+      supplierId: '',
+      cost: '',
+      purchaseDate: new Date().toISOString().split('T')[0],
+      unit: '',
+    });
+    setFormErrors({});
     setShowAddPurchase(false);
   };
 
@@ -822,54 +889,90 @@ export function InventoryManagementTable({ triggerStockManagement }: { triggerSt
           </DialogHeader>
 
           <div className="space-y-4">
-            <div>
-              <Label>Ingredient</Label>
-              <Select value={purchaseForm.ingredientId} onValueChange={(value) => setPurchaseForm({ ...purchaseForm, ingredientId: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select ingredient" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ingredients.map(ing => (
-                    <SelectItem key={ing.id} value={ing.id}>{ing.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <Label className="mb-2 block">Ingredient <span className="text-red-500">*</span></Label>
+                <Select 
+                  value={purchaseForm.ingredientId} 
+                  onValueChange={(value) => handleFormChange('ingredientId', value)}
+                >
+                  <SelectTrigger className={formErrors.ingredientId ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Select ingredient" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[200px]">
+                    {ingredients.map(ing => (
+                      <SelectItem key={ing.id} value={ing.id}>{ing.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.ingredientId && <p className="text-xs text-red-500 mt-1">{formErrors.ingredientId}</p>}
+              </div>
 
-            <div>
-              <Label>Quantity</Label>
-              <Input
-                type="number"
-                min="1"
-                value={purchaseForm.quantity || ''}
-                onChange={(e) => setPurchaseForm({ ...purchaseForm, quantity: parseFloat(e.target.value) || 0 })}
-                placeholder="Enter quantity"
-              />
-            </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="mb-2 block">Quantity <span className="text-red-500">*</span></Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={purchaseForm.quantity}
+                      onChange={(e) => handleFormChange('quantity', e.target.value)}
+                      placeholder="0.00"
+                      className={formErrors.quantity ? "border-red-500" : ""}
+                    />
+                    {purchaseForm.unit && (
+                      <div className="flex items-center justify-center bg-gray-100 border border-gray-200 rounded-md px-3 text-sm text-gray-500 min-w-[3rem]">
+                        {purchaseForm.unit}
+                      </div>
+                    )}
+                  </div>
+                  {formErrors.quantity && <p className="text-xs text-red-500 mt-1">{formErrors.quantity}</p>}
+                </div>
 
-            <div>
-              <Label>Supplier</Label>
-              <Select value={purchaseForm.supplierId} onValueChange={(value) => setPurchaseForm({ ...purchaseForm, supplierId: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select supplier" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SUPPLIERS_DATA.filter(s => s.status === 'Active').map(sup => (
-                    <SelectItem key={sup.id} value={sup.id}>{sup.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                <div>
+                  <Label className="mb-2 block">Cost (₹) <span className="text-red-500">*</span></Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={purchaseForm.cost}
+                    onChange={(e) => handleFormChange('cost', e.target.value)}
+                    placeholder="0.00"
+                    className={formErrors.cost ? "border-red-500" : ""}
+                  />
+                  {formErrors.cost && <p className="text-xs text-red-500 mt-1">{formErrors.cost}</p>}
+                </div>
+              </div>
 
-            <div>
-              <Label>Cost (₹)</Label>
-              <Input
-                type="number"
-                min="0"
-                value={purchaseForm.cost || ''}
-                onChange={(e) => setPurchaseForm({ ...purchaseForm, cost: parseFloat(e.target.value) || 0 })}
-                placeholder="Enter total cost"
-              />
+              <div>
+                <Label className="mb-2 block">Supplier <span className="text-red-500">*</span></Label>
+                <Select 
+                  value={purchaseForm.supplierId} 
+                  onValueChange={(value) => handleFormChange('supplierId', value)}
+                >
+                  <SelectTrigger className={formErrors.supplierId ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Select supplier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SUPPLIERS_DATA.filter(s => s.status === 'Active').map(sup => (
+                      <SelectItem key={sup.id} value={sup.id}>{sup.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formErrors.supplierId && <p className="text-xs text-red-500 mt-1">{formErrors.supplierId}</p>}
+              </div>
+
+              <div>
+                <Label className="mb-2 block">Purchase Date <span className="text-red-500">*</span></Label>
+                <Input
+                  type="date"
+                  value={purchaseForm.purchaseDate}
+                  onChange={(e) => handleFormChange('purchaseDate', e.target.value)}
+                  className={formErrors.purchaseDate ? "border-red-500" : ""}
+                />
+                {formErrors.purchaseDate && <p className="text-xs text-red-500 mt-1">{formErrors.purchaseDate}</p>}
+              </div>
             </div>
           </div>
 

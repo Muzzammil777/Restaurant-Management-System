@@ -70,6 +70,7 @@ interface Supplier {
   email: string;
   status: 'Active' | 'Disabled';
   suppliedItems: string[];
+  lastSuppliedDate?: string;
 }
 
 interface PurchaseRecord {
@@ -77,8 +78,11 @@ interface PurchaseRecord {
   supplierName: string;
   ingredientName: string;
   quantity: number;
+  unit: string;
   cost: number;
   date: string;
+  purchaseDate: string;
+  supplierId: string;
 }
 
 // --- Utility Functions (Backend-Ready) ---
@@ -272,6 +276,9 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
   const logEndRef = useRef<HTMLDivElement>(null);
+  const feedContainerRef = useRef<HTMLDivElement>(null);
+  const [liveTimestamps, setLiveTimestamps] = useState<{ [key: string]: string }>({});
+  const [autoScrollFeed, setAutoScrollFeed] = useState(true);
 
   // Handle external trigger
   useEffect(() => {
@@ -279,6 +286,40 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
       setActiveTab('inventory');
     }
   }, [triggerStockManagement]);
+
+  // Load purchase records from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('restaurantPurchaseRecords');
+      if (saved) {
+        const records = JSON.parse(saved);
+        if (Array.isArray(records)) {
+          setPurchaseRecords(records);
+        }
+      }
+    } catch (e) {
+      console.warn("Could not load purchase records from localStorage:", e);
+    }
+  }, []);
+
+  // Update timestamps in real-time (every second)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newTimestamps: { [key: string]: string } = {};
+      deductionLogs.forEach(log => {
+        newTimestamps[log.id] = format(new Date(log.timestamp), 'HH:mm:ss');
+      });
+      setLiveTimestamps(newTimestamps);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [deductionLogs]);
+
+  // Auto-scroll to top when new entries are added
+  useEffect(() => {
+    if (autoScrollFeed && feedContainerRef.current) {
+      feedContainerRef.current.scrollTop = 0;
+    }
+  }, [deductionLogs, autoScrollFeed]);
 
   // Derived Stats
   const stats = useMemo(() => {
@@ -337,59 +378,99 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
             ingredients: usedIngredients,
             timestamp
           };
+          // LIVE STREAM: Prepend new entries to the top for real-time feed behavior
           setDeductionLogs(prev => [newLog, ...prev].slice(0, 50));
           toast.info(`Order ${orderId} Confirmed`, { description: `Stock automatically deducted for ${randomDish.name}` });
         }
 
-      }, 3500);
+      }, 2500 + Math.random() * 2500); // Random interval between 2.5-5 seconds for more realistic streaming
     }
     return () => clearInterval(interval);
   }, [isSimulating, ingredients]);
 
   // Actions
-  const handleAddPurchase = (data: any) => {
-    // FRONTEND-ONLY MODE
-    // This function works with local state only - no backend API calls
-    // BACKEND: When APIs are ready, replace this with fetch('/api/inventory/purchases', ...)
-    
-    // Check for duplicate purchases within 5 minutes
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    const isDuplicate = purchaseRecords.some(record => {
-      const recordTime = new Date(record.date);
-      return (
-        record.ingredientName === data.ingredientName &&
-        record.supplierName === data.supplierName &&
-        record.quantity === data.quantity &&
-        recordTime > fiveMinutesAgo
-      );
-    });
-
-    if (isDuplicate) {
-      toast.error("Duplicate Purchase", { description: "A similar purchase was recorded within the last 5 minutes." });
+  const handleAddPurchase = (purchaseData: any) => {
+    // Validation
+    if (!purchaseData || !purchaseData.ingredientId) {
+      toast.error("Invalid Data", { description: "Cannot save invalid purchase record." });
       return;
     }
 
-    // Update ingredients state using centralized stock update function
-    // This ensures all ingredients are properly updated with ID-based lookup
-    const updatedIngredients = updateIngredientStock(
-      ingredients,
-      data.ingredientId,
-      data.quantity
-    );
+    // Validate ingredient exists
+    const ingredient = ingredients.find((i: any) => i.id === purchaseData.ingredientId);
+    if (!ingredient) {
+      toast.error("Ingredient Not Found", { description: `Cannot find ingredient to update.` });
+      return;
+    }
+
+    // Check for duplicate purchases (within 5 minutes)
+    const now = Date.now();
+    const recentPurchase = purchaseRecords.find((record: any) => {
+      const recordTime = typeof record.timestamp === 'number' ? record.timestamp : new Date(record.date).getTime();
+      const timeDiff = now - recordTime;
+      return record.ingredientId === purchaseData.ingredientId && timeDiff < 5 * 60 * 1000;
+    });
+    if (recentPurchase) {
+      toast.warning("Duplicate Alert", { description: "Similar purchase recorded recently. Verify before adding." });
+    }
+
+    // Update ingredients stock directly
+    const updatedIngredients = ingredients.map((ing: any) => {
+      if (ing.id === purchaseData.ingredientId) {
+        const newStockLevel = (ing.stockLevel || 0) + purchaseData.quantity;
+        return {
+          ...ing,
+          stockLevel: newStockLevel,
+          status: calculateStatus(newStockLevel, ing.minThreshold || 10)
+        };
+      }
+      return ing;
+    });
     setIngredients(updatedIngredients);
 
-    // Add to purchase records (local state only)
-    const newRecord: PurchaseRecord = {
-      id: `PUR-${Date.now()}`,
-      supplierName: data.supplierName,
-      ingredientName: data.ingredientName,
-      quantity: data.quantity,
-      cost: data.cost,
-      date: new Date().toISOString()
+    // Create purchase record with unit field
+    const newRecord = {
+      id: `purchase_${Date.now()}`,
+      ingredientId: purchaseData.ingredientId,
+      ingredientName: purchaseData.ingredientName,
+      unit: purchaseData.unit || ingredient.unit || 'pcs',
+      supplierId: purchaseData.supplierId,
+      supplierName: purchaseData.supplierName,
+      quantity: purchaseData.quantity,
+      cost: purchaseData.cost,
+      timestamp: now,
+      date: format(new Date(), 'MMM dd, yyyy HH:mm:ss'),
+      purchaseDate: purchaseData.purchaseDate || format(new Date(), 'yyyy-MM-dd')
     };
-    setPurchaseRecords(prev => [newRecord, ...prev]);
-    
-    toast.success("Purchase Added", { description: `Stock updated for ${data.ingredientName}. Quantity: +${data.quantity}` });
+
+    // Update supplier with last supplied date
+    setSuppliers((prev: any) => prev.map((s: any) => {
+      if (s.id === purchaseData.supplierId) {
+        return {
+          ...s,
+          lastSuppliedDate: format(new Date(), 'MMM dd, yyyy')
+        };
+      }
+      return s;
+    }));
+
+    // Add to purchase records (prepend for live-feed style)
+    setPurchaseRecords((prev: any) => {
+      const updated = [newRecord, ...prev].slice(0, 200); // Keep latest 200 records
+      
+      // Persist to localStorage
+      try {
+        localStorage.setItem('restaurantPurchaseRecords', JSON.stringify(updated));
+      } catch (e) {
+        console.warn("Could not save to localStorage:", e);
+      }
+      
+      return updated;
+    });
+
+    toast.success("Purchase Recorded", { 
+      description: `+${purchaseData.quantity} ${purchaseData.unit || ingredient.unit} of ${purchaseData.ingredientName} at ₹${purchaseData.cost.toFixed(2)}` 
+    });
   };
 
   const handleToggleSupplier = (id: string) => {
@@ -647,74 +728,142 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
           {/* FEED TAB */}
           <TabsContent value="feed" className="space-y-6 animate-in fade-in-50 duration-500">
              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-2 border-none shadow-md overflow-hidden flex flex-col h-[600px] bg-slate-900 text-white relative">
-                   <div className="absolute top-0 w-full h-16 bg-gradient-to-b from-slate-900 to-transparent z-10 pointer-events-none" />
-                   <CardHeader className="z-20 bg-slate-900/80 backdrop-blur border-b border-slate-800">
-                     <CardTitle className="flex items-center gap-2">
+                {/* LIVE DEDUCTION FEED */}
+                <Card className="lg:col-span-2 border-none shadow-lg overflow-hidden flex flex-col h-[650px] bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white relative">
+                   {/* Gradient overlay at top */}
+                   <div className="absolute top-0 w-full h-20 bg-gradient-to-b from-slate-900 via-slate-900/50 to-transparent z-10 pointer-events-none" />
+                   
+                   {/* Live indicator */}
+                   <div className="absolute top-4 right-6 z-30 flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-xs font-semibold text-emerald-300">
+                     <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                     LIVE STREAM
+                   </div>
+
+                   <CardHeader className="z-20 bg-gradient-to-b from-slate-900 to-slate-900/50 backdrop-blur border-b border-slate-700">
+                     <CardTitle className="flex items-center gap-2 text-xl">
                        <ShoppingCart className="h-5 w-5 text-emerald-400" />
                        Real-time Deduction Feed
                      </CardTitle>
-                     <CardDescription className="text-slate-400">
-                       Live stream of stock being deducted as orders confirm.
+                     <CardDescription className="text-slate-400 text-sm">
+                       Live stream of stock being deducted as orders confirm. New entries appear at the top.
                      </CardDescription>
                    </CardHeader>
-                   <CardContent className="flex-1 overflow-y-auto p-0 relative bg-slate-900/50">
-                     <div className="p-6 space-y-4">
-                       <AnimatePresence initial={false}>
-                         {deductionLogs.map((log) => (
-                           <motion.div
-                             key={log.id}
-                             initial={{ opacity: 0, x: -20, height: 0 }}
-                             animate={{ opacity: 1, x: 0, height: 'auto' }}
-                             className="flex gap-4 p-4 rounded-lg bg-slate-800 border border-slate-700 shadow-sm"
-                           >
-                             <div className="h-10 w-10 rounded-full bg-slate-700 flex items-center justify-center shrink-0">
-                               <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                             </div>
-                             <div className="flex-1">
-                               <div className="flex justify-between items-start">
-                                 <div>
-                                   <p className="font-semibold text-white">{log.dishName}</p>
-                                   <p className="text-xs text-slate-400 font-mono">{log.orderId}</p>
+
+                   {/* Feed container with auto-scroll */}
+                   <CardContent 
+                     ref={feedContainerRef}
+                     className="flex-1 overflow-y-auto p-0 relative bg-gradient-to-b from-slate-900/30 to-slate-950/50 space-y-0"
+                   >
+                     <div className="p-6 space-y-3">
+                       <AnimatePresence mode="popLayout">
+                         {deductionLogs.length > 0 ? (
+                           deductionLogs.map((log, index) => (
+                             <motion.div
+                               key={log.id}
+                               initial={{ opacity: 0, y: -20, height: 0 }}
+                               animate={{ opacity: 1, y: 0, height: 'auto' }}
+                               exit={{ opacity: 0, y: 20, height: 0 }}
+                               transition={{ duration: 0.3, type: 'spring', stiffness: 300, damping: 30 }}
+                               className="flex gap-4 p-4 rounded-xl bg-gradient-to-r from-slate-800/80 to-slate-800/40 border border-slate-700/60 shadow-lg hover:shadow-emerald-500/10 hover:border-emerald-500/30 transition-all duration-200"
+                             >
+                               {/* Checkmark Icon */}
+                               <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-emerald-500/30 to-emerald-600/20 flex items-center justify-center shrink-0 border border-emerald-500/40">
+                                 <CheckCircle2 className="h-6 w-6 text-emerald-400 drop-shadow-lg" />
+                               </div>
+
+                               {/* Content */}
+                               <div className="flex-1 min-w-0">
+                                 <div className="flex justify-between items-start gap-2">
+                                   <div>
+                                     <p className="font-bold text-white text-lg">{log.dishName}</p>
+                                     <p className="text-xs text-slate-500 font-mono mt-0.5">Order: {log.orderId}</p>
+                                   </div>
+                                   {/* Live timestamp */}
+                                   <span className="text-xs text-emerald-300 font-mono font-semibold whitespace-nowrap ml-2">
+                                     {liveTimestamps[log.id] || format(new Date(log.timestamp), 'HH:mm:ss')}
+                                   </span>
                                  </div>
-                                 <span className="text-xs text-slate-500 font-mono">
-                                   {format(new Date(log.timestamp), 'HH:mm:ss')}
-                                 </span>
+
+                                 {/* Ingredient deduction pills */}
+                                 <div className="mt-3 flex flex-wrap gap-2">
+                                   {log.ingredients.map((ing, i) => (
+                                     <motion.div
+                                       key={i}
+                                       initial={{ opacity: 0, scale: 0.9 }}
+                                       animate={{ opacity: 1, scale: 1 }}
+                                       transition={{ delay: 0.1 + i * 0.05, duration: 0.2 }}
+                                     >
+                                       <Badge 
+                                         variant="outline" 
+                                         className="bg-slate-900/80 border-slate-600/80 text-slate-200 hover:border-emerald-500/50 transition-colors px-2.5 py-1.5 text-xs font-medium"
+                                       >
+                                         <span className="text-slate-300">{ing.name}</span>
+                                         <span className="text-red-400 font-bold ml-2">−{ing.amount}</span>
+                                         <span className="text-slate-400 ml-1">{ing.unit}</span>
+                                       </Badge>
+                                     </motion.div>
+                                   ))}
+                                 </div>
                                </div>
-                               <div className="mt-3 flex flex-wrap gap-2">
-                                 {log.ingredients.map((ing, i) => (
-                                   <Badge key={i} variant="outline" className="bg-slate-900/50 border-slate-600 text-slate-300">
-                                     {ing.name} <span className="text-red-400 ml-1">-{ing.amount} {ing.unit}</span>
-                                   </Badge>
-                                 ))}
-                               </div>
+
+                               {/* Index indicator */}
+                               {index < 3 && (
+                                 <div className="text-xs text-emerald-400/60 font-mono self-center">#{index + 1}</div>
+                               )}
+                             </motion.div>
+                           ))
+                         ) : (
+                           <motion.div
+                             initial={{ opacity: 0, y: 10 }}
+                             animate={{ opacity: 1, y: 0 }}
+                             className="flex flex-col items-center justify-center h-[400px] text-slate-600"
+                           >
+                             <div className="relative mb-4">
+                               <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full" />
+                               <RefreshCcw className="h-16 w-16 opacity-30 relative" />
                              </div>
+                             <p className="text-sm font-medium">Waiting for live orders...</p>
+                             <p className="text-xs text-slate-500 mt-2">Click "Simulate Live Orders" to see deductions in real-time</p>
                            </motion.div>
-                         ))}
+                         )}
                        </AnimatePresence>
-                       {deductionLogs.length === 0 && (
-                         <div className="flex flex-col items-center justify-center h-[300px] text-slate-600">
-                           <RefreshCcw className="h-12 w-12 mb-4 opacity-20" />
-                           <p>Waiting for live orders...</p>
-                         </div>
-                       )}
                      </div>
                    </CardContent>
                 </Card>
 
+                {/* SYSTEM LOGIC PANEL */}
                 <div className="space-y-6">
-                  <Card className="border-none shadow-md bg-white">
+                  <Card className="border-none shadow-lg bg-gradient-to-br from-white to-gray-50">
                     <CardHeader>
-                      <CardTitle>System Logic</CardTitle>
+                      <CardTitle className="text-lg">System Logic</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4 text-sm">
-                      <div className="p-3 bg-emerald-50 text-emerald-800 rounded border border-emerald-100">
-                         <p className="font-semibold mb-1">Live Connection</p>
-                         <p>Connected to Kitchen Display System (KDS). Deductions occur at "Order Confirmed" stage.</p>
+                      <div className="p-4 bg-gradient-to-br from-emerald-50 to-emerald-100/50 text-emerald-900 rounded-lg border-2 border-emerald-200 shadow-sm">
+                         <p className="font-bold mb-2 flex items-center gap-2">
+                           <CheckCircle2 className="h-4 w-4" />
+                           Live Connection Status
+                         </p>
+                         <p className="text-sm leading-relaxed">
+                           Connected to Kitchen Display System (KDS). Deductions occur at "Order Confirmed" stage.
+                         </p>
                       </div>
-                      <div className="p-3 bg-red-50 text-red-800 rounded border border-red-100">
-                         <p className="font-semibold mb-1">Restrictions</p>
-                         <p>Predictive deduction based on reservations is DISABLED.</p>
+                      <div className="p-4 bg-gradient-to-br from-red-50 to-red-100/50 text-red-900 rounded-lg border-2 border-red-200 shadow-sm">
+                         <p className="font-bold mb-2 flex items-center gap-2">
+                           <AlertTriangle className="h-4 w-4" />
+                           Restrictions & Safety
+                         </p>
+                         <p className="text-sm leading-relaxed">
+                           Predictive deduction based on reservations is DISABLED.
+                         </p>
+                      </div>
+                      <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100/50 text-blue-900 rounded-lg border-2 border-blue-200 shadow-sm">
+                         <p className="font-bold mb-2 flex items-center gap-2">
+                           <Info className="h-4 w-4" />
+                           Feed Behavior
+                         </p>
+                         <p className="text-sm leading-relaxed">
+                           New deductions prepend to the top. Feed updates automatically without refresh.
+                         </p>
                       </div>
                     </CardContent>
                   </Card>
@@ -749,6 +898,11 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
                          <p className="text-muted-foreground flex items-center justify-between">
                            Email <span className="text-foreground font-medium truncate max-w-[150px]">{supplier.email}</span>
                          </p>
+                         {supplier.lastSuppliedDate && (
+                           <p className="text-muted-foreground flex items-center justify-between">
+                             Last Supplied <span className="text-foreground font-medium text-green-700">{supplier.lastSuppliedDate}</span>
+                           </p>
+                         )}
                       </div>
                       <Separator />
                       <div className="space-y-2">
@@ -798,9 +952,9 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
                          <TableCell className="font-medium">{record.ingredientName}</TableCell>
                          <TableCell>{record.supplierName}</TableCell>
                          <TableCell><Badge variant="outline">Purchase</Badge></TableCell>
-                         <TableCell>{record.quantity} Units</TableCell>
+                         <TableCell>{record.quantity} {record.unit}</TableCell>
                          <TableCell>₹{record.cost.toLocaleString()}</TableCell>
-                         <TableCell><Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Pending Receipt</Badge></TableCell>
+                         <TableCell><Badge variant="secondary" className="bg-green-100 text-green-800">Completed</Badge></TableCell>
                        </TableRow>
                      ))}
                      {purchaseRecords.length === 0 && (
@@ -849,28 +1003,106 @@ function AddPurchaseDialog({ ingredients, suppliers, onSave }: any) {
   const [formData, setFormData] = useState({
     ingredientId: '',
     ingredientName: '',
+    unit: '',
     supplierId: '',
     supplierName: '',
     quantity: '',
-    cost: ''
+    cost: '',
+    purchaseDate: format(new Date(), 'yyyy-MM-dd')
   });
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  const validateForm = (): boolean => {
+    const newErrors: { [key: string]: string } = {};
+
+    if (!formData.ingredientId) newErrors.ingredient = "Select an ingredient";
+    if (!formData.supplierId) newErrors.supplier = "Select a supplier";
+    if (!formData.quantity || formData.quantity === '') newErrors.quantity = "Enter quantity";
+    if (!formData.cost || formData.cost === '') newErrors.cost = "Enter cost";
+    if (!formData.unit) newErrors.unit = "Unit not set";
+    if (!formData.purchaseDate) newErrors.purchaseDate = "Select purchase date";
+
+    const qty = Number(formData.quantity);
+    if (formData.quantity && (isNaN(qty) || qty <= 0)) {
+      newErrors.quantity = "Quantity must be positive";
+    }
+
+    const costVal = Number(formData.cost);
+    if (formData.cost && isNaN(costVal)) {
+      newErrors.cost = "Cost must be valid number";
+    }
+
+    if (costVal < 0) {
+      newErrors.cost = "Cost cannot be negative";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.ingredientId || !formData.supplierId || !formData.quantity || !formData.cost) {
-      toast.error("Missing Fields", { description: "Please fill in all fields." });
+
+    if (!validateForm()) {
+      toast.error("Form Errors", { description: "Please fix the errors below" });
       return;
     }
+
+    const selectedIngredient = ingredients.find((i: any) => i.id === formData.ingredientId);
+    
     onSave({
       ingredientId: formData.ingredientId,
       ingredientName: formData.ingredientName,
+      unit: formData.unit,
       supplierId: formData.supplierId,
       supplierName: formData.supplierName,
       quantity: Number(formData.quantity),
-      cost: Number(formData.cost)
+      cost: Number(formData.cost),
+      purchaseDate: formData.purchaseDate
     });
+
+    // Reset form
     setOpen(false);
-    setFormData({ ingredientId: '', ingredientName: '', supplierId: '', supplierName: '', quantity: '', cost: '' });
+    setFormData({
+      ingredientId: '',
+      ingredientName: '',
+      unit: '',
+      supplierId: '',
+      supplierName: '',
+      quantity: '',
+      cost: '',
+      purchaseDate: format(new Date(), 'yyyy-MM-dd')
+    });
+    setErrors({});
+  };
+
+  const handleIngredientChange = (v: string) => {
+    const selected = ingredients.find((i: any) => i.id === v);
+    setFormData({
+      ...formData,
+      ingredientId: v,
+      ingredientName: selected?.name || '',
+      unit: selected?.unit || ''
+    });
+    if (errors.ingredient) {
+      const newErrors = { ...errors };
+      delete newErrors.ingredient;
+      setErrors(newErrors);
+    }
+  };
+
+  const handleSupplierChange = (v: string) => {
+    const selected = suppliers.find((s: any) => s.id === v);
+    setFormData({
+      ...formData,
+      supplierId: v,
+      supplierName: selected?.name || ''
+    });
+    if (errors.supplier) {
+      const newErrors = { ...errors };
+      delete newErrors.supplier;
+      setErrors(newErrors);
+    }
   };
 
   return (
@@ -880,54 +1112,169 @@ function AddPurchaseDialog({ ingredients, suppliers, onSave }: any) {
           <Plus className="mr-2 h-4 w-4" /> Add Purchase
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Add Purchase Record</DialogTitle>
+          <DialogTitle>Record New Purchase</DialogTitle>
           <DialogDescription>
-             Records a purchase and <span className="font-bold text-green-600">immediately updates live stock.</span>
+            Add a purchase record and immediately increase stock levels.
           </DialogDescription>
         </DialogHeader>
+        
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          {/* Ingredient Selection */}
           <div className="space-y-2">
-            <Label>Ingredient</Label>
-            <Select onValueChange={(v) => {
-              const selected = ingredients.find((i: any) => i.id === v);
-              setFormData({...formData, ingredientId: v, ingredientName: selected?.name || ''});
-            }}>
-              <SelectTrigger>
+            <Label htmlFor="ingredient">Ingredient *</Label>
+            <Select value={formData.ingredientId} onValueChange={handleIngredientChange}>
+              <SelectTrigger id="ingredient" className={errors.ingredient ? 'border-red-500' : ''}>
                 <SelectValue placeholder="Select ingredient" />
               </SelectTrigger>
               <SelectContent>
-                {ingredients.map((i: any) => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
+                {ingredients.length > 0 ? (
+                  ingredients.map((i: any) => (
+                    <SelectItem key={i.id} value={i.id}>
+                      {i.name} ({i.unit})
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="" disabled>No ingredients available</SelectItem>
+                )}
               </SelectContent>
             </Select>
+            {errors.ingredient && (
+              <p className="text-xs text-red-500">{errors.ingredient}</p>
+            )}
           </div>
+
+          {/* Supplier Selection */}
           <div className="space-y-2">
-            <Label>Supplier</Label>
-            <Select onValueChange={(v) => {
-              const selected = suppliers.find((s: any) => s.id === v);
-              setFormData({...formData, supplierId: v, supplierName: selected?.name || ''});
-            }}>
-              <SelectTrigger>
+            <Label htmlFor="supplier">Supplier *</Label>
+            <Select value={formData.supplierId} onValueChange={handleSupplierChange}>
+              <SelectTrigger id="supplier" className={errors.supplier ? 'border-red-500' : ''}>
                 <SelectValue placeholder="Select supplier" />
               </SelectTrigger>
               <SelectContent>
-                {suppliers.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                {suppliers.length > 0 ? (
+                  suppliers.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="" disabled>No suppliers available</SelectItem>
+                )}
               </SelectContent>
             </Select>
+            {errors.supplier && (
+              <p className="text-xs text-red-500">{errors.supplier}</p>
+            )}
           </div>
+
+          {/* Quantity and Unit */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Quantity</Label>
-              <Input type="number" placeholder="0.00" value={formData.quantity} onChange={(e) => setFormData({...formData, quantity: e.target.value})} />
+              <Label htmlFor="quantity">Quantity *</Label>
+              <Input
+                id="quantity"
+                type="number"
+                step="any"
+                min="0.01"
+                placeholder="0.00"
+                value={formData.quantity}
+                onChange={(e) => {
+                  setFormData({ ...formData, quantity: e.target.value });
+                  if (errors.quantity) {
+                    const newErrors = { ...errors };
+                    delete newErrors.quantity;
+                    setErrors(newErrors);
+                  }
+                }}
+                className={errors.quantity ? 'border-red-500' : ''}
+              />
+              {errors.quantity && (
+                <p className="text-xs text-red-500">{errors.quantity}</p>
+              )}
             </div>
+
             <div className="space-y-2">
-              <Label>Total Cost (₹)</Label>
-              <Input type="number" placeholder="0.00" value={formData.cost} onChange={(e) => setFormData({...formData, cost: e.target.value})} />
+              <Label htmlFor="unit">Unit *</Label>
+              <div className="px-3 py-2 border rounded-md bg-gray-50 text-sm font-medium">
+                {formData.unit || '—'}
+              </div>
+              {errors.unit && (
+                <p className="text-xs text-red-500">{errors.unit}</p>
+              )}
             </div>
           </div>
+
+          {/* Cost */}
+          <div className="space-y-2">
+            <Label htmlFor="cost">Total Cost (₹) *</Label>
+            <Input
+              id="cost"
+              type="number"
+              step="any"
+              min="0"
+              placeholder="0.00"
+              value={formData.cost}
+              onChange={(e) => {
+                setFormData({ ...formData, cost: e.target.value });
+                if (errors.cost) {
+                  const newErrors = { ...errors };
+                  delete newErrors.cost;
+                  setErrors(newErrors);
+                }
+              }}
+              className={errors.cost ? 'border-red-500' : ''}
+            />
+            {errors.cost && (
+              <p className="text-xs text-red-500">{errors.cost}</p>
+            )}
+          </div>
+
+          {/* Purchase Date */}
+          <div className="space-y-2">
+            <Label htmlFor="purchaseDate">Purchase Date *</Label>
+            <Input
+              id="purchaseDate"
+              type="date"
+              value={formData.purchaseDate}
+              onChange={(e) => {
+                setFormData({ ...formData, purchaseDate: e.target.value });
+                if (errors.purchaseDate) {
+                  const newErrors = { ...errors };
+                  delete newErrors.purchaseDate;
+                  setErrors(newErrors);
+                }
+              }}
+              className={errors.purchaseDate ? 'border-red-500' : ''}
+            />
+            {errors.purchaseDate && (
+              <p className="text-xs text-red-500">{errors.purchaseDate}</p>
+            )}
+          </div>
+
+          {/* Summary */}
+          {formData.ingredientId && formData.quantity && (
+            <div className="p-3 bg-blue-50 rounded-md border border-blue-100 text-sm">
+              <p className="font-medium text-blue-900">
+                Adding: {formData.quantity} {formData.unit} of {formData.ingredientName}
+              </p>
+              {formData.supplierName && (
+                <p className="text-xs text-blue-700 mt-1">
+                  From: {formData.supplierName}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Submit Button */}
           <DialogFooter>
-            <Button type="submit">Add Purchase & Update Stock</Button>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" className="bg-green-600 hover:bg-green-700">
+              <Plus className="mr-2 h-4 w-4" /> Save Purchase
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
