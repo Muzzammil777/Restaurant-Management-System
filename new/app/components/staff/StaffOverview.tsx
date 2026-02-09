@@ -1,0 +1,155 @@
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
+import { Badge } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  AreaChart,
+  Area
+} from 'recharts';
+import { Users, UserCheck, Calendar, Clock, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+
+const attendanceData = [
+  { day: 'Mon', rate: 92 },
+  { day: 'Tue', rate: 93 },
+  { day: 'Wed', rate: 89 },
+  { day: 'Thu', rate: 91 },
+  { day: 'Fri', rate: 95 },
+  { day: 'Sat', rate: 98 },
+  { day: 'Sun', rate: 96 },
+];
+
+export function StaffOverview() {
+  return (
+    <div className="space-y-6">
+      <div className="mb-6">
+        <h2 className="text-3xl font-semibold tracking-tight text-[#2D2D2D]">Dashboard Overview</h2>
+        <p className="text-muted-foreground">Real-time tracking of restaurant operations and personnel metrics.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="border-none shadow-sm bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Total Staff</CardTitle>
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-100">+2%</Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="text-4xl font-semibold text-[#2D2D2D]">124</div>
+          </CardContent>
+        </Card>
+        <Card className="border-none shadow-sm bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Active Staff</CardTitle>
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-100">+5%</Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="text-4xl font-semibold text-[#2D2D2D]">98</div>
+          </CardContent>
+        </Card>
+        <Card className="border-none shadow-sm bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">On Duty Today</CardTitle>
+            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-100">-1%</Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="text-4xl font-semibold text-[#2D2D2D]">42</div>
+          </CardContent>
+        </Card>
+        <Card className="border-none shadow-sm bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Attendance Rate</CardTitle>
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-100">+0.4%</Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="text-4xl font-semibold text-[#2D2D2D]">94.5%</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2 border-none shadow-sm bg-white">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-lg font-semibold text-[#2D2D2D]">Weekly Attendance Trends</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Avg <span className="font-semibold text-[#2D2D2D]">92%</span> • <span className="text-green-600">+1.2% this week</span>
+              </p>
+            </div>
+            <Button variant="ghost" size="sm" className="text-[#8B5A2B]">View Details</Button>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[250px] w-full mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={attendanceData}>
+                  <defs>
+                    <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#8B5A2B" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="#8B5A2B" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#F0F0F0" />
+                  <XAxis 
+                    dataKey="day" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fill: '#9CA3AF', fontSize: 12}}
+                    dy={10}
+                  />
+                  <YAxis 
+                    hide 
+                    domain={[0, 100]}
+                  />
+                  <Tooltip 
+                    contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="rate" 
+                    stroke="#8B5A2B" 
+                    strokeWidth={3}
+                    fillOpacity={1} 
+                    fill="url(#colorRate)" 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-lg bg-[#1A1A1A] text-white">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold">Upcoming Shift</CardTitle>
+            <p className="text-gray-400 text-sm">Floor Management Training</p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="bg-[#8B5A2B] rounded-xl p-3 text-center min-w-[60px]">
+                <div className="text-xs uppercase font-bold text-[#D4B896]">OCT</div>
+                <div className="text-2xl font-bold leading-none">24</div>
+              </div>
+              <div>
+                <div className="text-lg font-semibold">14:00 - 16:30</div>
+                <div className="text-gray-400 text-sm flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  Main Dining Hall
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-gray-800">
+              <Button className="w-full bg-[#8B5A2B] hover:bg-[#724923] text-white border-none py-6 rounded-xl text-lg font-medium">
+                View Schedule
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

@@ -3,8 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
 import { Clock, ChefHat, AlertCircle, Package } from 'lucide-react';
-import { ordersApi } from '@/utils/api';
+import { projectId, publicAnonKey } from '@/utils/supabase/info';
 import { toast } from 'sonner';
+import { mockApi } from '@/app/services/mock-api';
 
 interface Order {
   id: string;
@@ -31,11 +32,13 @@ export function KitchenDisplay() {
 
   const fetchOrders = async () => {
     try {
-      const result = await ordersApi.list();
-      const data = result.data || [];
-      setOrders(data.filter((order: Order) => 
-        ['placed', 'preparing', 'ready'].includes(order.status))
-      );
+      // Use mock API
+      const result = await mockApi.getOrders();
+      if (result.success) {
+        setOrders(result.data.filter((order: Order) => 
+          ['placed', 'preparing', 'ready'].includes(order.status)) as any
+        );
+      }
     } catch (error) {
       console.error('Error fetching orders:', error);
       setOrders([]); // Set empty array on error
@@ -46,22 +49,24 @@ export function KitchenDisplay() {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      const cleanId = orderId.replace('order:', '');
-      await ordersApi.updateStatus(cleanId, newStatus);
-      toast.success('Order updated!');
-      
-      // Trigger inventory deduction when order is accepted
-      if (newStatus === 'preparing') {
-        const order = orders.find(o => o.id === orderId);
-        if (order) {
-          window.dispatchEvent(new CustomEvent('kitchen:order-accepted', { 
-            detail: { items: order.items } 
-          }));
-          toast.info("Inventory updated automatically");
+      // Use mock API
+      const result = await mockApi.updateOrderStatus(orderId, newStatus as any);
+      if (result.success) {
+        toast.success('Order updated!');
+        
+        // Trigger inventory deduction when order is accepted
+        if (newStatus === 'preparing') {
+          const order = orders.find(o => o.id === orderId);
+          if (order) {
+            window.dispatchEvent(new CustomEvent('kitchen:order-accepted', { 
+              detail: { items: order.items } 
+            }));
+            toast.info("Inventory updated automatically");
+          }
         }
-      }
 
-      fetchOrders();
+        fetchOrders();
+      }
     } catch (error) {
       console.error('Error updating order:', error);
       toast.error('Failed to update order');
@@ -134,7 +139,7 @@ export function KitchenDisplay() {
                         </CardTitle>
                       </div>
                       <CardDescription>
-                        Order #{order.id?.split('-')[1]?.slice(0, 6).toUpperCase() || 'UNKNOWN'}
+                        Order #{order.id.split('-')[1]?.slice(0, 6).toUpperCase()}
                       </CardDescription>
                     </div>
                     <div className="flex flex-col items-end gap-2">

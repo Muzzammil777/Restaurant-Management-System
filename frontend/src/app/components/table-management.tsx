@@ -1,919 +1,1280 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/app/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { Input } from '@/app/components/ui/input';
+import { Card, CardContent } from '@/app/components/ui/card';
 import { Label } from '@/app/components/ui/label';
 import { Badge } from '@/app/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/app/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/app/components/ui/sheet';
-import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar';
-import { Separator } from '@/app/components/ui/separator';
 import { cn } from '@/app/components/ui/utils';
 import { 
-  Armchair, Users, Clock, ArrowRight, CheckCircle, User, 
-  UtensilsCrossed, IndianRupee, UserCheck, Trash2, Sparkles,
-  Activity, TrendingUp, Search, MapPin
+  Armchair, Users, Clock, Utensils, Sparkles, CheckCircle,
+  UserCheck, AlertCircle, ChefHat, Timer, MapPin, ShoppingCart, ShieldCheck, Lock, UserPlus, X
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { restaurantState, type RestaurantOrder, type OrderStatus } from '@/app/services/restaurant-state';
+import { projectId, publicAnonKey } from '@/utils/supabase/info';
 
-// Types
-type TableStatus = 'available' | 'occupied' | 'reserved' | 'cleaning';
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
 
-interface TableData {
+export type TableStatus = 'Available' | 'Reserved' | 'Occupied' | 'Eating' | 'Cleaning';
+export type ReservationType = 'None' | 'Web' | 'Phone' | 'Walk-in';
+export type Location = 'VIP' | 'Main Hall' | 'AC Hall';
+export type Segment = 'Front' | 'Middle' | 'Back';
+
+export interface TableData {
+  id: string;
+  displayNumber: string;
+  capacity: 2 | 4 | 6;
+  location: Location;
+  segment: Segment;
+  status: TableStatus;
+  reservationType: ReservationType;
+  guestCount: number;
+  waiterName: string | null;
+  waiterId: string | null;
+  statusStartTime: number | null;
+  currentOrderId: string | null;
+  timeSlot?: string | null; // Added for time slot tracking
+}
+
+export interface WaiterData {
   id: string;
   name: string;
-  capacity: number;
-  status: TableStatus;
-  location: string;
-  currentGuests?: number;
-  waiter?: {
-    name: string;
-    avatar?: string;
-  };
-  orders?: {
-    item: string;
-    price: number;
-    status: 'served' | 'cooking';
-  }[];
-  totalBill?: number;
+  assignedTableId: string | null;
 }
 
-interface TransitionLog {
-  id: string;
-  time: string;
-  tableId: string;
-  fromStatus: TableStatus;
-  toStatus: TableStatus;
-  duration: string;
-}
+// ============================================================================
+// INITIAL DATA
+// ============================================================================
 
-// Mock data
-const initialMockTables: TableData[] = [
-  { 
-    id: 't1', 
-    name: 'T-01', 
-    capacity: 2, 
-    status: 'available', 
-    location: 'Main Hall',
-  },
-  { 
-    id: 't2', 
-    name: 'T-02', 
-    capacity: 4, 
-    status: 'available', 
-    location: 'Main Hall',
-  },
-  { 
-    id: 't3', 
-    name: 'T-03', 
-    capacity: 4, 
-    status: 'occupied', 
-    location: 'Main Hall',
-    currentGuests: 4,
-    waiter: { name: 'Rahul Sharma', avatar: '' },
-    orders: [
-      { item: 'Paneer Butter Masala', price: 280, status: 'served' },
-      { item: 'Butter Naan (x4)', price: 160, status: 'served' },
-      { item: 'Dal Makhani', price: 240, status: 'cooking' },
-      { item: 'Gulab Jamun', price: 120, status: 'cooking' },
-    ],
-    totalBill: 800,
-  },
-  { 
-    id: 't4', 
-    name: 'T-04', 
-    capacity: 6, 
-    status: 'available', 
-    location: 'Private Room',
-  },
-  { 
-    id: 't5', 
-    name: 'T-05', 
-    capacity: 2, 
-    status: 'reserved', 
-    location: 'Window Side',
-    currentGuests: 2,
-  },
-  { 
-    id: 't6', 
-    name: 'T-06', 
-    capacity: 4, 
-    status: 'available', 
-    location: 'Main Hall',
-  },
-  { 
-    id: 't7', 
-    name: 'T-07', 
-    capacity: 8, 
-    status: 'cleaning', 
-    location: 'Private Room',
-  },
-  { 
-    id: 't8', 
-    name: 'T-08', 
-    capacity: 2, 
-    status: 'occupied', 
-    location: 'Window Side',
-    currentGuests: 2,
-    waiter: { name: 'Priya Singh' },
-    orders: [
-      { item: 'Chicken Biryani', price: 320, status: 'served' },
-      { item: 'Raita', price: 80, status: 'served' },
-    ],
-    totalBill: 400,
-  },
-];
-
-const mockTransitionLogs: TransitionLog[] = [
-  {
-    id: 'tl1',
-    time: '14:32',
-    tableId: 'T-03',
-    fromStatus: 'available',
-    toStatus: 'occupied',
-    duration: '45m',
-  },
-  {
-    id: 'tl2',
-    time: '14:15',
-    tableId: 'T-08',
-    fromStatus: 'reserved',
-    toStatus: 'occupied',
-    duration: '30m',
-  },
-  {
-    id: 'tl3',
-    time: '13:55',
-    tableId: 'T-07',
-    fromStatus: 'occupied',
-    toStatus: 'cleaning',
-    duration: '1h 20m',
-  },
-  {
-    id: 'tl4',
-    time: '13:40',
-    tableId: 'T-05',
-    fromStatus: 'available',
-    toStatus: 'reserved',
-    duration: '15m',
-  },
-  {
-    id: 'tl5',
-    time: '13:20',
-    tableId: 'T-01',
-    fromStatus: 'cleaning',
-    toStatus: 'available',
-    duration: '10m',
-  },
-];
-
-export function TableManagement() {
-  const [tables, setTables] = useState<TableData[]>(initialMockTables);
-  const [selectedTable, setSelectedTable] = useState<TableData | null>(null);
-  const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
+const INITIAL_TABLES: TableData[] = [
+  // VIP - Front
+  { id: 't1', displayNumber: 'V1', capacity: 4, location: 'VIP', segment: 'Front', status: 'Available', reservationType: 'None', guestCount: 0, waiterName: null, waiterId: null, statusStartTime: null, currentOrderId: null },
+  { id: 't2', displayNumber: 'V2', capacity: 6, location: 'VIP', segment: 'Front', status: 'Available', reservationType: 'None', guestCount: 0, waiterName: null, waiterId: null, statusStartTime: null, currentOrderId: null },
   
-  // Walk-in form state
-  const [guestCount, setGuestCount] = useState(2);
-  const [guestName, setGuestName] = useState('');
-  const [selectedZone, setSelectedZone] = useState('main-hall');
-  const [searchQuery, setSearchQuery] = useState('');
+  // VIP - Back
+  { id: 't3', displayNumber: 'V3', capacity: 4, location: 'VIP', segment: 'Back', status: 'Available', reservationType: 'None', guestCount: 0, waiterName: null, waiterId: null, statusStartTime: null, currentOrderId: null },
+  
+  // Main Hall - Front
+  { id: 't4', displayNumber: 'M1', capacity: 2, location: 'Main Hall', segment: 'Front', status: 'Available', reservationType: 'None', guestCount: 0, waiterName: null, waiterId: null, statusStartTime: null, currentOrderId: null },
+  { id: 't5', displayNumber: 'M2', capacity: 2, location: 'Main Hall', segment: 'Front', status: 'Available', reservationType: 'None', guestCount: 0, waiterName: null, waiterId: null, statusStartTime: null, currentOrderId: null },
+  { id: 't6', displayNumber: 'M3', capacity: 4, location: 'Main Hall', segment: 'Front', status: 'Available', reservationType: 'None', guestCount: 0, waiterName: null, waiterId: null, statusStartTime: null, currentOrderId: null },
+  
+  // Main Hall - Middle
+  { id: 't7', displayNumber: 'M4', capacity: 4, location: 'Main Hall', segment: 'Middle', status: 'Available', reservationType: 'None', guestCount: 0, waiterName: null, waiterId: null, statusStartTime: null, currentOrderId: null },
+  { id: 't8', displayNumber: 'M5', capacity: 6, location: 'Main Hall', segment: 'Middle', status: 'Available', reservationType: 'None', guestCount: 0, waiterName: null, waiterId: null, statusStartTime: null, currentOrderId: null },
+  
+  // Main Hall - Back
+  { id: 't9', displayNumber: 'M6', capacity: 2, location: 'Main Hall', segment: 'Back', status: 'Available', reservationType: 'None', guestCount: 0, waiterName: null, waiterId: null, statusStartTime: null, currentOrderId: null },
+  { id: 't10', displayNumber: 'M7', capacity: 4, location: 'Main Hall', segment: 'Back', status: 'Available', reservationType: 'None', guestCount: 0, waiterName: null, waiterId: null, statusStartTime: null, currentOrderId: null },
+  
+  // AC Hall - Front
+  { id: 't11', displayNumber: 'A1', capacity: 4, location: 'AC Hall', segment: 'Front', status: 'Available', reservationType: 'None', guestCount: 0, waiterName: null, waiterId: null, statusStartTime: null, currentOrderId: null },
+  { id: 't12', displayNumber: 'A2', capacity: 4, location: 'AC Hall', segment: 'Front', status: 'Available', reservationType: 'None', guestCount: 0, waiterName: null, waiterId: null, statusStartTime: null, currentOrderId: null },
+  
+  // AC Hall - Middle
+  { id: 't13', displayNumber: 'A3', capacity: 6, location: 'AC Hall', segment: 'Middle', status: 'Available', reservationType: 'None', guestCount: 0, waiterName: null, waiterId: null, statusStartTime: null, currentOrderId: null },
+  { id: 't14', displayNumber: 'A4', capacity: 2, location: 'AC Hall', segment: 'Middle', status: 'Available', reservationType: 'None', guestCount: 0, waiterName: null, waiterId: null, statusStartTime: null, currentOrderId: null },
+];
 
-  // Get statistics
-  const stats = {
-    total: tables.length,
-    available: tables.filter(t => t.status === 'available').length,
-    occupied: tables.filter(t => t.status === 'occupied').length,
-    reserved: tables.filter(t => t.status === 'reserved').length,
-    cleaning: tables.filter(t => t.status === 'cleaning').length,
-  };
+const INITIAL_WAITERS: WaiterData[] = [
+  { id: 'w1', name: 'Rahul Sharma', assignedTableId: null },
+  { id: 'w2', name: 'Priya Singh', assignedTableId: null },
+  { id: 'w3', name: 'Amit Kumar', assignedTableId: null },
+  { id: 'w4', name: 'Sneha Patel', assignedTableId: null },
+  { id: 'w5', name: 'Vijay Reddy', assignedTableId: null },
+  { id: 'w6', name: 'Anjali Verma', assignedTableId: null },
+  { id: 'w7', name: 'Rajesh Gupta', assignedTableId: null },
+  { id: 'w8', name: 'Meera Joshi', assignedTableId: null },
+  { id: 'w9', name: 'Arjun Nair', assignedTableId: null },
+  { id: 'w10', name: 'Kavya Iyer', assignedTableId: null },
+  { id: 'w11', name: 'Sanjay Mehta', assignedTableId: null },
+  { id: 'w12', name: 'Pooja Desai', assignedTableId: null },
+];
 
-  // Get status config
-  const getStatusConfig = (status: TableStatus) => {
-    switch (status) {
-      case 'available':
-        return { 
-          label: 'Available', 
-          color: 'text-emerald-600', 
-          bg: 'bg-emerald-50', 
-          border: 'border-emerald-200',
-          glow: 'shadow-emerald-200/50'
-        };
-      case 'occupied':
-        return { 
-          label: 'Occupied', 
-          color: 'text-red-600', 
-          bg: 'bg-red-50', 
-          border: 'border-red-200',
-          glow: 'shadow-red-200/50'
-        };
-      case 'reserved':
-        return { 
-          label: 'Reserved', 
-          color: 'text-orange-600', 
-          bg: 'bg-orange-50', 
-          border: 'border-orange-200',
-          glow: 'shadow-orange-200/50'
-        };
-      case 'cleaning':
-        return { 
-          label: 'Cleaning', 
-          color: 'text-blue-600', 
-          bg: 'bg-blue-50', 
-          border: 'border-blue-200',
-          glow: 'shadow-blue-200/50'
-        };
-    }
-  };
+// Time slots for reservations and walk-ins
+const TIME_SLOTS = [
+  '7:30 AM - 8:50 AM',
+  '9:10 AM - 10:30 AM',
+  '12:00 PM - 1:20 PM',
+  '1:40 PM - 3:00 PM',
+  '6:40 PM - 8:00 PM',
+  '8:20 PM - 9:40 PM'
+];
 
-  // Open table details
-  const openTableDetails = (table: TableData) => {
-    setSelectedTable(table);
-    setIsDetailsPanelOpen(true);
-  };
+// ============================================================================
+// TABLE ILLUSTRATION COMPONENT
+// ============================================================================
 
-  // Handle table status change
-  const changeTableStatus = (tableId: string, newStatus: TableStatus) => {
-    setTables(tables.map(t => t.id === tableId ? { ...t, status: newStatus } : t));
-    toast.success(`Table status updated to ${newStatus}`);
-  };
-
-  // Filter available tables by zone
-  const availableTablesByZone = tables.filter(
-    t => t.status === 'available' && 
-    (selectedZone === 'all' || 
-     t.location.toLowerCase().replace(' ', '-') === selectedZone)
+function TableIllustration({ capacity }: { capacity: 2 | 4 | 6 }) {
+  if (capacity === 2) {
+    return (
+      <div className="flex items-center justify-center gap-1">
+        {/* Left Chair */}
+        <div className="w-3 h-4 bg-gray-400 rounded-sm"></div>
+        {/* Table */}
+        <div className="w-8 h-6 bg-gray-600 rounded"></div>
+        {/* Right Chair */}
+        <div className="w-3 h-4 bg-gray-400 rounded-sm"></div>
+      </div>
+    );
+  }
+  
+  if (capacity === 4) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-0.5">
+        {/* Top Chair */}
+        <div className="w-3 h-3 bg-gray-400 rounded-sm"></div>
+        {/* Middle Row */}
+        <div className="flex items-center gap-0.5">
+          <div className="w-3 h-3 bg-gray-400 rounded-sm"></div>
+          <div className="w-10 h-8 bg-gray-600 rounded"></div>
+          <div className="w-3 h-3 bg-gray-400 rounded-sm"></div>
+        </div>
+        {/* Bottom Chair */}
+        <div className="w-3 h-3 bg-gray-400 rounded-sm"></div>
+      </div>
+    );
+  }
+  
+  // 6 seater
+  return (
+    <div className="flex flex-col items-center justify-center gap-0.5">
+      {/* Top Chairs */}
+      <div className="flex gap-2">
+        <div className="w-3 h-3 bg-gray-400 rounded-sm"></div>
+        <div className="w-3 h-3 bg-gray-400 rounded-sm"></div>
+      </div>
+      {/* Middle Row */}
+      <div className="flex items-center gap-0.5">
+        <div className="w-3 h-4 bg-gray-400 rounded-sm"></div>
+        <div className="w-12 h-10 bg-gray-600 rounded"></div>
+        <div className="w-3 h-4 bg-gray-400 rounded-sm"></div>
+      </div>
+      {/* Bottom Chairs */}
+      <div className="flex gap-2">
+        <div className="w-3 h-3 bg-gray-400 rounded-sm"></div>
+        <div className="w-3 h-3 bg-gray-400 rounded-sm"></div>
+      </div>
+    </div>
   );
+}
 
-  // Handle assign table
-  const handleAssignTable = (table: TableData) => {
-    if (!guestName) {
-      toast.error('Please enter guest name');
-      return;
-    }
-    changeTableStatus(table.id, 'occupied');
-    toast.success(`Table ${table.name} assigned to ${guestName}`);
-    setGuestName('');
-  };
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+function getStatusConfig(status: TableStatus) {
+  switch (status) {
+    case 'Available':
+      return { 
+        color: 'text-emerald-700', 
+        bg: 'bg-emerald-50', 
+        border: 'border-emerald-200',
+        icon: CheckCircle,
+        label: 'Available'
+      };
+    case 'Reserved':
+      return { 
+        color: 'text-orange-700', 
+        bg: 'bg-orange-50', 
+        border: 'border-orange-200',
+        icon: Clock,
+        label: 'Reserved'
+      };
+    case 'Occupied':
+      return { 
+        color: 'text-rose-700', 
+        bg: 'bg-rose-50', 
+        border: 'border-rose-200',
+        icon: Users,
+        label: 'Occupied'
+      };
+    case 'Eating':
+      return { 
+        color: 'text-blue-700', 
+        bg: 'bg-blue-50', 
+        border: 'border-blue-200',
+        icon: Utensils,
+        label: 'Eating'
+      };
+    case 'Cleaning':
+      return { 
+        color: 'text-purple-700', 
+        bg: 'bg-purple-50', 
+        border: 'border-purple-200',
+        icon: Sparkles,
+        label: 'Cleaning'
+      };
+  }
+}
+
+function getOrderStatusBadge(status: OrderStatus) {
+  switch (status) {
+    case 'created':
+      return { label: 'Created', color: 'bg-gray-100 text-gray-700' };
+    case 'accepted':
+      return { label: 'Accepted', color: 'bg-blue-100 text-blue-700' };
+    case 'cooking':
+      return { label: 'Cooking', color: 'bg-yellow-100 text-yellow-700' };
+    case 'ready':
+      return { label: 'Ready', color: 'bg-green-100 text-green-700' };
+    case 'served':
+      return { label: 'Served', color: 'bg-indigo-100 text-indigo-700' };
+    case 'completed':
+      return { label: 'Completed', color: 'bg-emerald-100 text-emerald-700' };
+    case 'cancelled':
+      return { label: 'Cancelled', color: 'bg-red-100 text-red-700' };
+  }
+}
+
+function formatTimer(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function getRemainingTime(table: TableData, currentTime: number): number | null {
+  if (!table.statusStartTime) return null;
+  
+  const elapsed = Math.floor((currentTime - table.statusStartTime) / 1000);
+  
+  if (table.status === 'Reserved') {
+    return Math.max(0, 900 - elapsed); // 15 minutes
+  }
+  
+  // Note: Cleaning timer removed - Admin must manually clean
+  
+  return null;
+}
+
+// ============================================================================
+// TABLE CARD COMPONENT
+// ============================================================================
+
+interface TableCardProps {
+  table: TableData;
+  order: RestaurantOrder | undefined;
+  onGuestsArrived: (tableId: string) => void;
+  onAssignWaiter: (tableId: string) => void;
+  onCreateOrder: (tableId: string) => void;
+  onAcceptOrder: (tableId: string) => void;
+  onSendToCooking: (tableId: string) => void;
+  onMarkReady: (tableId: string) => void;
+  onServeFood: (tableId: string) => void;
+  onCheckout: (tableId: string) => void;
+  onMarkCleaned: (tableId: string) => void;
+  remainingTime: number | null;
+}
+
+function TableCard({
+  table,
+  order,
+  onGuestsArrived,
+  onAssignWaiter,
+  onCreateOrder,
+  onAcceptOrder,
+  onSendToCooking,
+  onMarkReady,
+  onServeFood,
+  onCheckout,
+  onMarkCleaned,
+  remainingTime
+}: TableCardProps) {
+  const statusConfig = getStatusConfig(table.status);
+  const StatusIcon = statusConfig.icon;
+  const isAdmin = restaurantState.getRole() === 'admin';
+  const isWaiter = restaurantState.getRole() === 'waiter';
+  const currentWaiterId = restaurantState.getCurrentWaiterId();
+  const isAssignedWaiter = isWaiter && table.waiterId === currentWaiterId;
+  const canInteract = isAdmin || isAssignedWaiter;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
-      {/* Floating Glass Header */}
-      <div className="sticky top-0 z-40 mx-6 pt-6">
-        <div className="bg-white/70 backdrop-blur-xl border border-white/50 shadow-lg shadow-black/5 rounded-3xl px-8 py-5">
+    <Card 
+      className={cn(
+        "relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1",
+        statusConfig.border,
+        statusConfig.bg
+      )}
+    >
+      <CardContent className="p-4 space-y-3">
+        {/* Header */}
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <div className="text-2xl font-bold text-gray-900">{table.displayNumber}</div>
+            <div className="text-xs text-gray-600">Capacity: {table.capacity}</div>
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <Badge className={cn(statusConfig.bg, statusConfig.color, "border-0 flex items-center gap-1")}>
+              <StatusIcon className="h-3 w-3" />
+              {statusConfig.label}
+            </Badge>
+            {table.reservationType !== 'None' && (
+              <Badge variant="outline" className="text-[10px]">
+                {table.reservationType}
+              </Badge>
+            )}
+            {!canInteract && table.status !== 'Available' && (
+              <Badge variant="secondary" className="text-[10px] flex items-center gap-1">
+                <Lock className="h-2 w-2" />
+                Locked
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {/* Table Illustration */}
+        <div className="flex justify-center py-2">
+          <TableIllustration capacity={table.capacity} />
+        </div>
+
+        {/* Guest Count */}
+        {table.guestCount > 0 && (
+          <div className="flex items-center gap-1 text-xs text-gray-600">
+            <Users className="h-3 w-3" />
+            {table.guestCount} Guests
+          </div>
+        )}
+
+        {/* Waiter Assignment */}
+        {table.waiterName && (
+          <div className="flex items-center gap-1 text-xs text-gray-600">
+            <UserCheck className="h-3 w-3" />
+            {table.waiterName}
+          </div>
+        )}
+
+        {/* Timer Display */}
+        {remainingTime !== null && table.status === 'Reserved' && (
+          <div className={cn(
+            "flex items-center justify-center gap-1 py-1 px-2 rounded text-xs font-mono",
+            'bg-orange-100 text-orange-700'
+          )}>
+            <Timer className="h-3 w-3" />
+            {formatTimer(remainingTime)}
+          </div>
+        )}
+
+        {/* Order Status */}
+        {order && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-center gap-1 py-1 px-2 rounded text-xs bg-indigo-100 text-indigo-700">
+              <ShoppingCart className="h-3 w-3" />
+              Order #{order.id.slice(-4)}
+            </div>
+            <Badge className={cn("w-full justify-center", getOrderStatusBadge(order.status).color)}>
+              {getOrderStatusBadge(order.status).label}
+            </Badge>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="space-y-2 pt-2">
+          {/* Guests Arrived - Admin Only */}
+          {table.status === 'Reserved' && isAdmin && (
+            <Button 
+              size="sm" 
+              className="w-full bg-[#8B5A2B] hover:bg-[#6d4522]"
+              onClick={() => onGuestsArrived(table.id)}
+            >
+              Guests Arrived
+            </Button>
+          )}
+
+          {/* Assign Waiter - Admin Only */}
+          {table.status === 'Occupied' && !table.waiterName && isAdmin && (
+            <Button 
+              size="sm" 
+              variant="outline"
+              className="w-full"
+              onClick={() => onAssignWaiter(table.id)}
+            >
+              <UserCheck className="h-3 w-3 mr-1" />
+              Assign Waiter
+            </Button>
+          )}
+
+          {/* Create Order - Waiter Only (Assigned Waiter) */}
+          {table.status === 'Occupied' && table.waiterName && !order && isAssignedWaiter && (
+            <Button 
+              size="sm" 
+              className="w-full bg-blue-600 hover:bg-blue-700"
+              onClick={() => onCreateOrder(table.id)}
+            >
+              <ShoppingCart className="h-3 w-3 mr-1" />
+              Create Order
+            </Button>
+          )}
+
+          {/* Accept Order - Waiter Only (Assigned Waiter) */}
+          {order && order.status === 'created' && isAssignedWaiter && (
+            <Button 
+              size="sm" 
+              className="w-full bg-blue-600 hover:bg-blue-700"
+              onClick={() => onAcceptOrder(table.id)}
+            >
+              Accept Order
+            </Button>
+          )}
+
+          {/* Send to Cooking - Waiter Only (Assigned Waiter) */}
+          {order && order.status === 'accepted' && isAssignedWaiter && (
+            <Button 
+              size="sm" 
+              className="w-full bg-yellow-600 hover:bg-yellow-700"
+              onClick={() => onSendToCooking(table.id)}
+            >
+              <ChefHat className="h-3 w-3 mr-1" />
+              Send to Kitchen
+            </Button>
+          )}
+
+          {/* Mark as Ready - Waiter Only (Assigned Waiter) */}
+          {order && order.status === 'cooking' && isAssignedWaiter && (
+            <Button 
+              size="sm" 
+              className="w-full bg-green-600 hover:bg-green-700"
+              onClick={() => onMarkReady(table.id)}
+            >
+              Mark as Ready
+            </Button>
+          )}
+
+          {/* Serve Food - Waiter Only (Assigned Waiter) */}
+          {order && order.status === 'ready' && isAssignedWaiter && (
+            <Button 
+              size="sm" 
+              className="w-full bg-green-600 hover:bg-green-700"
+              onClick={() => onServeFood(table.id)}
+            >
+              <Utensils className="h-3 w-3 mr-1" />
+              Serve Food
+            </Button>
+          )}
+
+          {/* Checkout - Admin Only */}
+          {table.status === 'Eating' && isAdmin && (
+            <Button 
+              size="sm" 
+              className="w-full bg-indigo-600 hover:bg-indigo-700"
+              onClick={() => onCheckout(table.id)}
+            >
+              Checkout
+            </Button>
+          )}
+
+          {/* Mark as Cleaned - Admin Only */}
+          {table.status === 'Cleaning' && isAdmin && (
+            <Button 
+              size="sm" 
+              className="w-full bg-purple-600 hover:bg-purple-700"
+              onClick={() => onMarkCleaned(table.id)}
+            >
+              <ShieldCheck className="h-3 w-3 mr-1" />
+              Mark as Cleaned
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
+export function TableManagement() {
+  const [tables, setTables] = useState(INITIAL_TABLES);
+  const [waiters, setWaiters] = useState(INITIAL_WAITERS);
+  const [staffList, setStaffList] = useState<WaiterData[]>([]);
+  const [currentTime, setCurrentTime] = useState(Date.now());
+  const [, setForceUpdate] = useState(0);
+  
+  // Walk-in Modal State
+  const [walkInModalOpen, setWalkInModalOpen] = useState(false);
+  const [walkInGuestCount, setWalkInGuestCount] = useState(2);
+  const [walkInLocation, setWalkInLocation] = useState<Location | 'All'>('All');
+  const [walkInSegment, setWalkInSegment] = useState<Segment | 'All'>('All');
+  const [walkInTimeSlot, setWalkInTimeSlot] = useState<string>(TIME_SLOTS[0]); // Added time slot state
+  
+  // Waiter Assignment Modal State
+  const [waiterModalOpen, setWaiterModalOpen] = useState(false);
+  const [selectedTableForWaiter, setSelectedTableForWaiter] = useState<string | null>(null);
+
+  // Fetch staff from backend
+  useEffect(() => {
+    fetchStaff();
+  }, []);
+
+  const fetchStaff = async () => {
+    try {
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/staff`,
+        {
+          headers: {
+            'Authorization': `Bearer ${publicAnonKey}`,
+          },
+        }
+      );
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          const waiterStaff = result.data
+            .filter((staff: any) => staff.role === 'waiter')
+            .map((staff: any) => ({
+              id: staff.id,
+              name: staff.name,
+              assignedTableId: null
+            }));
+          setStaffList(waiterStaff);
+          // Merge with initial waiters
+          setWaiters(prev => {
+            const merged = [...INITIAL_WAITERS];
+            waiterStaff.forEach((ws: WaiterData) => {
+              const exists = merged.find(w => w.id === ws.id);
+              if (!exists) {
+                merged.push(ws);
+              }
+            });
+            return merged;
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching staff:', error);
+    }
+  };
+
+  // Subscribe to state changes
+  useEffect(() => {
+    const unsubscribe = restaurantState.subscribe((event) => {
+      // Force re-render when state changes
+      setForceUpdate(prev => prev + 1);
+      
+      // Handle specific events
+      if (event.type === 'ORDER_STATUS_CHANGED') {
+        const { orderId, status } = event.payload;
+        const order = restaurantState.getOrder(orderId);
+        
+        if (order && status === 'served') {
+          // Automatically change table status to Eating when order is served
+          setTables(prev => prev.map(t => 
+            t.currentOrderId === orderId 
+              ? { ...t, status: 'Eating' } 
+              : t
+          ));
+        }
+      }
+      
+      if (event.type === 'CHECKOUT_COMPLETED') {
+        const { tableId } = event.payload;
+        // Change table to Cleaning status
+        setTables(prev => prev.map(t => 
+          t.id === tableId 
+            ? { ...t, status: 'Cleaning', statusStartTime: Date.now() } 
+            : t
+        ));
+      }
+      
+      if (event.type === 'TABLE_CLEANED') {
+        const { tableId } = event.payload;
+        // Reset table to Available
+        setTables(prev => prev.map(t => {
+          if (t.id === tableId) {
+            // Free up waiter
+            if (t.waiterId) {
+              setWaiters(prevW => prevW.map(w => 
+                w.id === t.waiterId ? { ...w, assignedTableId: null } : w
+              ));
+            }
+            return {
+              ...t,
+              status: 'Available',
+              reservationType: 'None',
+              statusStartTime: null,
+              waiterName: null,
+              waiterId: null,
+              guestCount: 0,
+              currentOrderId: null
+            };
+          }
+          return t;
+        }));
+      }
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // Update current time every second for timer displays
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Auto-expire reservations
+  useEffect(() => {
+    const checkExpiry = () => {
+      setTables(prev => prev.map(table => {
+        // Auto-expire Reserved tables after 15 minutes
+        if (table.status === 'Reserved' && table.statusStartTime) {
+          const elapsed = Math.floor((Date.now() - table.statusStartTime) / 1000);
+          if (elapsed >= 900) { // 15 minutes = 900 seconds
+            toast.info(`Reservation expired for Table ${table.displayNumber}`);
+            return {
+              ...table,
+              status: 'Available',
+              reservationType: 'None',
+              statusStartTime: null,
+              guestCount: 0
+            };
+          }
+        }
+        
+        return table;
+      }));
+    };
+
+    const interval = setInterval(checkExpiry, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ============================================================================
+  // HANDLERS
+  // ============================================================================
+
+  const reserveTable = (tableId: string, guestCount: number, reservationType: ReservationType) => {
+    const table = tables.find(t => t.id === tableId);
+    if (!table || table.status !== 'Available') {
+      toast.error('Table not available for reservation');
+      return;
+    }
+
+    if (guestCount > table.capacity) {
+      toast.error(`Guest count exceeds capacity of ${table.capacity}`);
+      return;
+    }
+
+    setTables(prev => prev.map(t => 
+      t.id === tableId 
+        ? { 
+            ...t, 
+            status: 'Reserved', 
+            reservationType,
+            guestCount,
+            statusStartTime: Date.now() 
+          }
+        : t
+    ));
+    
+    toast.success(`Table ${table.displayNumber} reserved for ${guestCount} guests`);
+  };
+
+  const seatGuests = (tableId: string) => {
+    setTables(prev => prev.map(t => 
+      t.id === tableId 
+        ? { 
+            ...t, 
+            status: 'Occupied',
+            statusStartTime: null 
+          }
+        : t
+    ));
+    
+    const table = tables.find(t => t.id === tableId);
+    toast.success(`Guests seated at Table ${table?.displayNumber}`);
+  };
+
+  const assignWaiterToTable = (tableId: string, waiterId: string) => {
+    const table = tables.find(t => t.id === tableId);
+    const waiter = waiters.find(w => w.id === waiterId);
+    
+    if (!table || !waiter) return;
+    
+    // Can only assign waiter to Occupied tables
+    if (table.status !== 'Occupied') {
+      toast.error('Waiter can only be assigned to occupied tables');
+      return;
+    }
+
+    setTables(prev => prev.map(t => 
+      t.id === tableId 
+        ? { ...t, waiterName: waiter.name, waiterId: waiter.id } 
+        : t
+    ));
+    
+    setWaiters(prev => prev.map(w => 
+      w.id === waiterId ? { ...w, assignedTableId: tableId } : w
+    ));
+    
+    restaurantState.assignWaiterToTable({
+      tableId,
+      waiterId: waiter.id,
+      waiterName: waiter.name,
+      status: 'Occupied'
+    });
+    
+    toast.success(`${waiter.name} assigned to Table ${table.displayNumber}`);
+  };
+
+  const handleSimulateWebBooking = () => {
+    const availableTable = tables.find(t => t.status === 'Available');
+    if (availableTable) {
+      reserveTable(availableTable.id, 4, 'Web');
+    } else {
+      toast.error('No available tables for booking');
+    }
+  };
+
+  const handleGuestsArrived = (tableId: string) => {
+    seatGuests(tableId);
+    setSelectedTableForWaiter(tableId);
+    setWaiterModalOpen(true);
+  };
+
+  const handleWalkInSubmit = (tableId: string) => {
+    const table = tables.find(t => t.id === tableId);
+    if (table) {
+      reserveTable(tableId, walkInGuestCount, 'Walk-in');
+      // Immediately seat them
+      seatGuests(tableId);
+    }
+    
+    setWalkInModalOpen(false);
+    
+    // Prompt for waiter assignment
+    setSelectedTableForWaiter(tableId);
+    setWaiterModalOpen(true);
+  };
+
+  const handleAssignWaiter = (waiterId: string) => {
+    if (selectedTableForWaiter) {
+      assignWaiterToTable(selectedTableForWaiter, waiterId);
+      setWaiterModalOpen(false);
+      setSelectedTableForWaiter(null);
+    }
+  };
+
+  const handleCreateOrder = (tableId: string) => {
+    const table = tables.find(t => t.id === tableId);
+    
+    if (!table) return;
+    
+    // Validation: Table must be Occupied
+    if (table.status !== 'Occupied') {
+      toast.error('Orders can only be created for Occupied tables');
+      return;
+    }
+    
+    // Validation: Waiter must be assigned
+    if (!table.waiterId || !table.waiterName) {
+      toast.error('Waiter must be assigned first');
+      return;
+    }
+    
+    // Permission check
+    if (!restaurantState.canCreateOrder(table.waiterId)) {
+      toast.error('You can only create orders for your assigned tables');
+      return;
+    }
+    
+    // Create order
+    const orderId = `ORD-${Date.now()}`;
+    const order: RestaurantOrder = {
+      id: orderId,
+      tableId,
+      tableNumber: table.displayNumber,
+      waiterId: table.waiterId,
+      waiterName: table.waiterName,
+      items: [
+        { name: 'Sample Item 1', quantity: 2, price: 150 },
+        { name: 'Sample Item 2', quantity: 1, price: 200 }
+      ],
+      total: 500,
+      status: 'created',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      notes: 'Sample order for demonstration'
+    };
+    
+    // Update table with order ID
+    setTables(prev => prev.map(t => 
+      t.id === tableId ? { ...t, currentOrderId: orderId } : t
+    ));
+    
+    // Create order in restaurant state
+    restaurantState.createOrder(order);
+    
+    toast.success(`Order created for Table ${table.displayNumber}`);
+  };
+
+  const handleAcceptOrder = (tableId: string) => {
+    const table = tables.find(t => t.id === tableId);
+    if (!table || !table.currentOrderId) return;
+    
+    restaurantState.updateOrderStatus(table.currentOrderId, 'accepted');
+    toast.success('Order accepted');
+  };
+
+  const handleSendToCooking = (tableId: string) => {
+    const table = tables.find(t => t.id === tableId);
+    if (!table || !table.currentOrderId) return;
+    
+    restaurantState.updateOrderStatus(table.currentOrderId, 'cooking');
+    toast.success('Order sent to kitchen');
+  };
+
+  const handleMarkReady = (tableId: string) => {
+    const table = tables.find(t => t.id === tableId);
+    if (!table || !table.currentOrderId) return;
+    
+    restaurantState.updateOrderStatus(table.currentOrderId, 'ready');
+    toast.success('Order is ready to serve!');
+  };
+
+  const handleServeFood = (tableId: string) => {
+    const table = tables.find(t => t.id === tableId);
+    if (!table || !table.currentOrderId) return;
+    
+    const order = restaurantState.getOrder(table.currentOrderId);
+    if (!order) return;
+    
+    // Permission check
+    if (!restaurantState.canServeOrder(order.waiterId)) {
+      toast.error('Only the assigned waiter can serve this order');
+      return;
+    }
+    
+    // Mark order as served
+    restaurantState.updateOrderStatus(table.currentOrderId, 'served');
+    
+    // Update table status to Eating (handled by event listener)
+    toast.success(`Food served to Table ${table.displayNumber}!`);
+  };
+
+  const handleCheckout = (tableId: string) => {
+    const table = tables.find(t => t.id === tableId);
+    if (!table || !table.currentOrderId) return;
+    
+    // Permission check - Only Admin can perform checkout
+    if (!restaurantState.canCheckout()) {
+      toast.error('Only Admin can perform checkout');
+      return;
+    }
+    
+    // Process checkout
+    restaurantState.processCheckout(tableId, table.currentOrderId);
+    
+    toast.success(`Checkout completed for Table ${table.displayNumber}`);
+  };
+
+  const handleMarkCleaned = (tableId: string) => {
+    // Only admin can clean tables
+    if (!restaurantState.canCleanTable()) {
+      toast.error('Only Admin can mark tables as cleaned');
+      return;
+    }
+    
+    const table = tables.find(t => t.id === tableId);
+    if (!table) return;
+    
+    // Clear the order
+    if (table.currentOrderId) {
+      setTables(prev => prev.map(t => 
+        t.id === tableId ? { ...t, currentOrderId: null } : t
+      ));
+    }
+    
+    // Clear table assignment
+    restaurantState.clearTableAssignment(tableId);
+    
+    toast.success(`Table ${table.displayNumber} is now available`);
+  };
+
+  // ============================================================================
+  // FILTERING & GROUPING
+  // ============================================================================
+
+  const getFilteredTablesForWalkIn = () => {
+    return tables.filter(t => {
+      if (t.status !== 'Available') return false;
+      if (t.capacity < walkInGuestCount) return false;
+      if (walkInLocation !== 'All' && t.location !== walkInLocation) return false;
+      if (walkInSegment !== 'All' && t.segment !== walkInSegment) return false;
+      return true;
+    });
+  };
+
+  const groupTablesByLocation = () => {
+    const locations: Location[] = ['VIP', 'Main Hall', 'AC Hall'];
+    const grouped: Record<Location, Record<Segment, TableData[]>> = {
+      'VIP': { Front: [], Middle: [], Back: [] },
+      'Main Hall': { Front: [], Middle: [], Back: [] },
+      'AC Hall': { Front: [], Middle: [], Back: [] }
+    };
+
+    tables.forEach(table => {
+      grouped[table.location][table.segment].push(table);
+    });
+
+    // Sort tables by displayNumber within each segment
+    locations.forEach(location => {
+      (['Front', 'Middle', 'Back'] as Segment[]).forEach(segment => {
+        grouped[location][segment].sort((a, b) => 
+          a.displayNumber.localeCompare(b.displayNumber)
+        );
+      });
+    });
+
+    return grouped;
+  };
+
+  const groupedTables = groupTablesByLocation();
+
+  // Get available waiters (not assigned to active tables)
+  const getAvailableWaiters = () => {
+    return waiters.map(waiter => {
+      if (!waiter.assignedTableId) {
+        return { ...waiter, available: true };
+      }
+      
+      const assignedTable = tables.find(t => t.id === waiter.assignedTableId);
+      const isBusy = assignedTable && (assignedTable.status === 'Occupied' || assignedTable.status === 'Eating');
+      
+      return { ...waiter, available: !isBusy };
+    });
+  };
+
+  // ============================================================================
+  // STATISTICS
+  // ============================================================================
+
+  const stats = {
+    available: tables.filter(t => t.status === 'Available').length,
+    reserved: tables.filter(t => t.status === 'Reserved').length,
+    occupied: tables.filter(t => t.status === 'Occupied').length,
+    eating: tables.filter(t => t.status === 'Eating').length,
+    cleaning: tables.filter(t => t.status === 'Cleaning').length,
+    total: tables.length
+  };
+
+  // ============================================================================
+  // RENDER
+  // ============================================================================
+
+  return (
+    <div className="min-h-screen bg-[#F7F3EE] pb-8">
+      {/* Header */}
+      <div className="sticky top-0 z-40 bg-[#F7F3EE] border-b border-gray-200 px-6 py-4">
+        <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg shadow-indigo-200/50">
+              <div className="p-3 bg-[#8B5A2B] rounded-xl">
                 <Armchair className="h-7 w-7 text-white" />
               </div>
               <div>
                 <h1 className="text-2xl font-semibold text-gray-900">Table Management</h1>
-                <p className="text-sm text-gray-500 mt-0.5 flex items-center gap-2">
-                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                  System Online
-                </p>
+                <p className="text-sm text-gray-600">Floor Command Center</p>
               </div>
             </div>
-            <Badge variant="secondary" className="px-4 py-2 text-sm">
-              <Activity className="h-4 w-4 mr-2" />
-              Live Tracking
-            </Badge>
+            
+            <div className="flex items-center gap-3">
+              {/* Quick Actions */}
+              <Button
+                onClick={() => setWalkInModalOpen(true)}
+                className="bg-[#8B5A2B] hover:bg-[#6d4522]"
+              >
+                <Users className="h-4 w-4 mr-2" />
+                New Walk-In
+              </Button>
+              
+              {/* Simulate Booking - Admin/Test Feature */}
+              <Button
+                variant="outline"
+                onClick={handleSimulateWebBooking}
+              >
+                <Clock className="h-4 w-4 mr-2" />
+                Simulate Booking
+              </Button>
+            </div>
+          </div>
+          
+          {/* Stats Bar */}
+          <div className="mt-4 grid grid-cols-6 gap-3">
+            <div className="bg-white rounded-lg p-3 border border-gray-200">
+              <div className="text-xs text-gray-600">Total</div>
+              <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+            </div>
+            <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
+              <div className="text-xs text-emerald-700">Available</div>
+              <div className="text-2xl font-bold text-emerald-700">{stats.available}</div>
+            </div>
+            <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
+              <div className="text-xs text-orange-700">Reserved</div>
+              <div className="text-2xl font-bold text-orange-700">{stats.reserved}</div>
+            </div>
+            <div className="bg-rose-50 rounded-lg p-3 border border-rose-200">
+              <div className="text-xs text-rose-700">Occupied</div>
+              <div className="text-2xl font-bold text-rose-700">{stats.occupied}</div>
+            </div>
+            <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+              <div className="text-xs text-blue-700">Eating</div>
+              <div className="text-2xl font-bold text-blue-700">{stats.eating}</div>
+            </div>
+            <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+              <div className="text-xs text-purple-700">Cleaning</div>
+              <div className="text-2xl font-bold text-purple-700">{stats.cleaning}</div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="px-6 pb-6 mt-6">
-        {/* Tab Navigation */}
-        <div className="w-full overflow-x-auto pb-4">
-          <nav className="flex gap-3 min-w-max p-1">
-            {[
-              { id: 'dashboard', label: 'Dashboard', icon: TrendingUp, description: 'Live overview & stats' },
-              { id: 'entry', label: 'Entry Management', icon: Users, description: 'Guest seating & walk-ins' },
-              { id: 'tables', label: 'All Tables', icon: Armchair, description: 'Detailed floor status' },
-            ].map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
+      <div className="max-w-7xl mx-auto px-6 mt-6 space-y-8">
+        {(['VIP', 'Main Hall', 'AC Hall'] as Location[]).map(location => {
+          const locationTables = groupedTables[location];
+          const hasAnyTables = Object.values(locationTables).some(segment => segment.length > 0);
+          
+          if (!hasAnyTables) return null;
+          
+          return (
+            <div key={location} className="space-y-4">
+              {/* Location Header */}
+              <div className="flex items-center gap-3">
+                <MapPin className="h-5 w-5 text-[#8B5A2B]" />
+                <h2 className="text-xl font-semibold text-gray-900">{location}</h2>
+                <div className="h-px flex-1 bg-gray-300"></div>
+              </div>
+              
+              {/* Segments */}
+              {(['Front', 'Middle', 'Back'] as Segment[]).map(segment => {
+                const segmentTables = locationTables[segment];
+                
+                if (segmentTables.length === 0) return null;
+                
+                return (
+                  <div key={segment} className="ml-8">
+                    {/* Segment Container */}
+                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 bg-white/40">
+                      <div className="text-sm font-medium text-gray-600 mb-3">{segment} Section</div>
+                      
+                      {/* Table Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {segmentTables
+                          .filter(table => table.status !== 'Eating' && table.status !== 'Cleaning')
+                          .map(table => {
+                          const order = table.currentOrderId 
+                            ? restaurantState.getOrder(table.currentOrderId) 
+                            : undefined;
+                          return (
+                            <TableCard
+                              key={table.id}
+                              table={table}
+                              order={order}
+                              onGuestsArrived={handleGuestsArrived}
+                              onAssignWaiter={(id) => {
+                                setSelectedTableForWaiter(id);
+                                setWaiterModalOpen(true);
+                              }}
+                              onCreateOrder={handleCreateOrder}
+                              onAcceptOrder={handleAcceptOrder}
+                              onSendToCooking={handleSendToCooking}
+                              onMarkReady={handleMarkReady}
+                              onServeFood={handleServeFood}
+                              onCheckout={handleCheckout}
+                              onMarkCleaned={handleMarkCleaned}
+                              remainingTime={getRemainingTime(table, currentTime)}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}{/* Walk-In Modal */}
+      <Dialog open={walkInModalOpen} onOpenChange={setWalkInModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-[#8B5A2B]" />
+              New Walk-In Guest
+            </DialogTitle>
+            <DialogDescription>
+              Select guest count and preferences to find available tables
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Guest Count */}
+            <div className="space-y-2">
+              <Label>Guest Count</Label>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setWalkInGuestCount(Math.max(1, walkInGuestCount - 1))}
+                >
+                  -
+                </Button>
+                <div className="flex-1 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <span className="text-4xl font-bold text-gray-900">{walkInGuestCount}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setWalkInGuestCount(walkInGuestCount + 1)}
+                >
+                  +
+                </Button>
+              </div>
+            </div>
+            
+            {/* Location Filter */}
+            <div className="space-y-2">
+              <Label>Location Preference (Optional)</Label>
+              <Select value={walkInLocation} onValueChange={(v) => setWalkInLocation(v as Location | 'All')}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All Locations</SelectItem>
+                  <SelectItem value="VIP">VIP</SelectItem>
+                  <SelectItem value="Main Hall">Main Hall</SelectItem>
+                  <SelectItem value="AC Hall">AC Hall</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Segment Filter */}
+            <div className="space-y-2">
+              <Label>Segment Preference (Optional)</Label>
+              <Select value={walkInSegment} onValueChange={(v) => setWalkInSegment(v as Segment | 'All')}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All Segments</SelectItem>
+                  <SelectItem value="Front">Front</SelectItem>
+                  <SelectItem value="Middle">Middle</SelectItem>
+                  <SelectItem value="Back">Back</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Time Slot */}
+            <div className="space-y-2">
+              <Label>Time Slot (Optional)</Label>
+              <Select value={walkInTimeSlot} onValueChange={(v) => setWalkInTimeSlot(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIME_SLOTS.map(slot => (
+                    <SelectItem key={slot} value={slot}>{slot}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Available Tables */}
+            <div className="space-y-2">
+              <Label>Available Tables (Capacity ≥ {walkInGuestCount})</Label>
+              {getFilteredTablesForWalkIn().length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No tables available matching your criteria</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-3 max-h-[300px] overflow-y-auto p-2">
+                  {getFilteredTablesForWalkIn().map(table => (
+                    <Button
+                      key={table.id}
+                      variant="outline"
+                      className="h-auto py-4 flex flex-col items-center gap-2 hover:bg-emerald-50 hover:border-emerald-500"
+                      onClick={() => handleWalkInSubmit(table.id)}
+                    >
+                      <TableIllustration capacity={table.capacity} />
+                      <div className="font-bold">{table.displayNumber}</div>
+                      <div className="text-xs text-gray-600">
+                        {table.location} - {table.segment}
+                      </div>
+                      <Badge variant="secondary" className="text-xs">
+                        Seats {table.capacity}
+                      </Badge>
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Waiter Assignment Modal */}
+      <Dialog open={waiterModalOpen} onOpenChange={setWaiterModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-[#8B5A2B]" />
+              Assign Waiter
+            </DialogTitle>
+            <DialogDescription>
+              Select an available waiter for Table{' '}
+              {tables.find(t => t.id === selectedTableForWaiter)?.displayNumber}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-3">
+            {getAvailableWaiters().map(waiter => {
+              const table = waiter.assignedTableId 
+                ? tables.find(t => t.id === waiter.assignedTableId)
+                : null;
               
               return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className={cn(
-                    'flex items-start gap-3 p-3 rounded-lg transition-colors text-left min-w-[220px]',
-                    isActive
-                      ? 'bg-primary text-primary-foreground shadow-md'
-                      : 'bg-white/70 backdrop-blur-md border border-white/50 hover:bg-white shadow-sm'
-                  )}
+                <Button
+                  key={waiter.id}
+                  variant={waiter.available ? 'outline' : 'ghost'}
+                  className="w-full justify-start h-auto py-3"
+                  disabled={!waiter.available}
+                  onClick={() => handleAssignWaiter(waiter.id)}
                 >
-                  <Icon className={cn('h-5 w-5 mt-0.5 flex-shrink-0', isActive ? '' : 'text-muted-foreground')} />
-                  <div className="flex-1 min-w-0">
-                    <p className={cn('text-sm font-medium', isActive ? '' : '')}>
-                      {item.label}
-                    </p>
-                    <p className={cn('text-xs mt-0.5', isActive ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
-                      {item.description}
-                    </p>
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2">
+                      <UserCheck className={cn(
+                        "h-4 w-4",
+                        waiter.available ? "text-emerald-600" : "text-gray-400"
+                      )} />
+                      <span>{waiter.name}</span>
+                    </div>
+                    {!waiter.available && table && (
+                      <Badge variant="secondary" className="text-xs">
+                        Busy at {table.displayNumber}
+                      </Badge>
+                    )}
                   </div>
-                </button>
+                </Button>
               );
             })}
-          </nav>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          {/* TabsList removed and replaced by horizontal nav above */}
-
-          {/* Dashboard View */}
-          <TabsContent value="dashboard" className="space-y-6">
-            {/* Stat Cards */}
-            <div className="grid gap-5 md:grid-cols-4">
-              {/* Total Tables */}
-              <Card className="relative overflow-hidden bg-white/80 backdrop-blur-sm border-white/50 shadow-xl shadow-black/5 rounded-3xl">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-100/40 to-transparent rounded-full blur-2xl"></div>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium text-gray-600">Total Tables</CardTitle>
-                    <div className="p-3 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-2xl">
-                      <Armchair className="h-7 w-7 text-indigo-500 opacity-60" />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-4xl font-bold text-gray-900 mb-1">{stats.total}</div>
-                  <p className="text-xs text-gray-500">Restaurant capacity</p>
-                </CardContent>
-              </Card>
-
-              {/* Available */}
-              <Card className="relative overflow-hidden bg-gradient-to-br from-emerald-50/80 to-white/80 backdrop-blur-sm border-emerald-100 shadow-xl shadow-emerald-100/20 rounded-3xl">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-200/30 to-transparent rounded-full blur-2xl"></div>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium text-emerald-700">Available</CardTitle>
-                    <div className="p-3 bg-emerald-100 rounded-2xl">
-                      <CheckCircle className="h-7 w-7 text-emerald-500 opacity-60" />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-4xl font-bold text-emerald-600 mb-1">{stats.available}</div>
-                  <p className="text-xs text-emerald-600">Ready to seat</p>
-                </CardContent>
-              </Card>
-
-              {/* Occupied */}
-              <Card className="relative overflow-hidden bg-gradient-to-br from-red-50/80 to-white/80 backdrop-blur-sm border-red-100 shadow-xl shadow-red-100/20 rounded-3xl">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-red-200/30 to-transparent rounded-full blur-2xl"></div>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium text-red-700">Occupied</CardTitle>
-                    <div className="p-3 bg-red-100 rounded-2xl">
-                      <Users className="h-7 w-7 text-red-500 opacity-60" />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-4xl font-bold text-red-600 mb-1">{stats.occupied}</div>
-                  <p className="text-xs text-red-600">Currently dining</p>
-                </CardContent>
-              </Card>
-
-              {/* Reserved */}
-              <Card className="relative overflow-hidden bg-gradient-to-br from-orange-50/80 to-white/80 backdrop-blur-sm border-orange-100 shadow-xl shadow-orange-100/20 rounded-3xl">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-200/30 to-transparent rounded-full blur-2xl"></div>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium text-orange-700">Reserved</CardTitle>
-                    <div className="p-3 bg-orange-100 rounded-2xl">
-                      <Clock className="h-7 w-7 text-orange-500 opacity-60" />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-4xl font-bold text-orange-600 mb-1">{stats.reserved}</div>
-                  <p className="text-xs text-orange-600">Upcoming bookings</p>
-                </CardContent>
-              </Card>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setWaiterModalOpen(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
             </div>
-
-            {/* Lifecycle Monitor */}
-            <Card className="bg-white/80 backdrop-blur-sm border-white/50 shadow-xl shadow-black/5 rounded-3xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-gray-50/80 to-white/80">
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-indigo-500" />
-                  Table Lifecycle Monitor
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-8">
-                <div className="flex items-center justify-between max-w-4xl mx-auto">
-                  {/* Available */}
-                  <div className="flex flex-col items-center gap-3">
-                    <div className={`w-24 h-24 rounded-full flex items-center justify-center ${stats.available > 0 ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-300/50' : 'bg-gray-200'} transition-all duration-500`}>
-                      <CheckCircle className={`h-12 w-12 ${stats.available > 0 ? 'text-white' : 'text-gray-400'}`} />
-                    </div>
-                    <div className="text-center">
-                      <p className="font-semibold text-gray-900">Available</p>
-                      <p className="text-2xl font-bold text-emerald-600">{stats.available}</p>
-                    </div>
-                  </div>
-
-                  <ArrowRight className="h-8 w-8 text-gray-300" />
-
-                  {/* Reserved */}
-                  <div className="flex flex-col items-center gap-3">
-                    <div className={`w-24 h-24 rounded-full flex items-center justify-center ${stats.reserved > 0 ? 'bg-gradient-to-br from-orange-400 to-orange-600 shadow-lg shadow-orange-300/50' : 'bg-gray-200'} transition-all duration-500`}>
-                      <Clock className={`h-12 w-12 ${stats.reserved > 0 ? 'text-white' : 'text-gray-400'}`} />
-                    </div>
-                    <div className="text-center">
-                      <p className="font-semibold text-gray-900">Reserved</p>
-                      <p className="text-2xl font-bold text-orange-600">{stats.reserved}</p>
-                    </div>
-                  </div>
-
-                  <ArrowRight className="h-8 w-8 text-gray-300" />
-
-                  {/* Occupied */}
-                  <div className="flex flex-col items-center gap-3">
-                    <div className={`w-24 h-24 rounded-full flex items-center justify-center ${stats.occupied > 0 ? 'bg-gradient-to-br from-red-400 to-red-600 shadow-lg shadow-red-300/50' : 'bg-gray-200'} transition-all duration-500`}>
-                      <Users className={`h-12 w-12 ${stats.occupied > 0 ? 'text-white' : 'text-gray-400'}`} />
-                    </div>
-                    <div className="text-center">
-                      <p className="font-semibold text-gray-900">Occupied</p>
-                      <p className="text-2xl font-bold text-red-600">{stats.occupied}</p>
-                    </div>
-                  </div>
-
-                  <ArrowRight className="h-8 w-8 text-gray-300" />
-
-                  {/* Cleaning */}
-                  <div className="flex flex-col items-center gap-3">
-                    <div className={`w-24 h-24 rounded-full flex items-center justify-center ${stats.cleaning > 0 ? 'bg-gradient-to-br from-blue-400 to-blue-600 shadow-lg shadow-blue-300/50' : 'bg-gray-200'} transition-all duration-500`}>
-                      <Sparkles className={`h-12 w-12 ${stats.cleaning > 0 ? 'text-white' : 'text-gray-400'}`} />
-                    </div>
-                    <div className="text-center">
-                      <p className="font-semibold text-gray-900">Cleaning</p>
-                      <p className="text-2xl font-bold text-blue-600">{stats.cleaning}</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Transition Log */}
-            <Card className="bg-white/80 backdrop-blur-sm border-white/50 shadow-xl shadow-black/5 rounded-3xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-gray-50/80 to-white/80">
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-indigo-500" />
-                  Transition Log
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-gray-50/50 hover:bg-gray-50/50">
-                        <TableHead className="font-semibold">Time</TableHead>
-                        <TableHead className="font-semibold">Table ID</TableHead>
-                        <TableHead className="font-semibold">Transition</TableHead>
-                        <TableHead className="font-semibold text-right">Duration</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {mockTransitionLogs.map((log) => {
-                        const fromConfig = getStatusConfig(log.fromStatus);
-                        const toConfig = getStatusConfig(log.toStatus);
-                        return (
-                          <TableRow key={log.id} className="hover:bg-gray-50/50 transition-colors">
-                            <TableCell className="font-medium text-gray-900">{log.time}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="font-mono">
-                                {log.tableId}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Badge className={`${fromConfig.bg} ${fromConfig.color} border-0`}>
-                                  {fromConfig.label}
-                                </Badge>
-                                <ArrowRight className="h-4 w-4 text-gray-400" />
-                                <Badge className={`${toConfig.bg} ${toConfig.color} border-0`}>
-                                  {toConfig.label}
-                                </Badge>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <span className="text-sm text-gray-600 font-medium">{log.duration}</span>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Entry Management (Walk-In) View */}
-          <TabsContent value="entry" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Panel - Form */}
-              <Card className="lg:col-span-1 bg-white/80 backdrop-blur-sm border-white/50 shadow-xl shadow-black/5 rounded-3xl">
-                <CardHeader className="border-b bg-gradient-to-r from-gray-50/80 to-white/80">
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5 text-indigo-500" />
-                    Walk-In Guest
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6 space-y-6">
-                  {/* Guest Count */}
-                  <div className="space-y-3">
-                    <Label className="text-sm font-semibold text-gray-700">Guest Count</Label>
-                    <div className="flex items-center gap-3">
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        className="h-14 w-14 rounded-2xl"
-                        onClick={() => setGuestCount(Math.max(1, guestCount - 1))}
-                      >
-                        -
-                      </Button>
-                      <div className="flex-1 h-20 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl flex items-center justify-center border-2 border-indigo-100">
-                        <span className="text-5xl font-bold text-indigo-600">{guestCount}</span>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        className="h-14 w-14 rounded-2xl"
-                        onClick={() => setGuestCount(guestCount + 1)}
-                      >
-                        +
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Guest Name */}
-                  <div className="space-y-3">
-                    <Label htmlFor="guest-name" className="text-sm font-semibold text-gray-700">
-                      Guest Name
-                    </Label>
-                    <Input
-                      id="guest-name"
-                      placeholder="Enter guest name"
-                      value={guestName}
-                      onChange={(e) => setGuestName(e.target.value)}
-                      className="h-12 rounded-xl bg-white border-gray-200"
-                    />
-                  </div>
-
-                  {/* Zone Preference */}
-                  <div className="space-y-3">
-                    <Label className="text-sm font-semibold text-gray-700">Zone Preference</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { value: 'all', label: 'All Zones', icon: MapPin },
-                        { value: 'main-hall', label: 'Main Hall', icon: Armchair },
-                        { value: 'window-side', label: 'Window Side', icon: Sparkles },
-                        { value: 'private-room', label: 'Private', icon: Users },
-                      ].map((zone) => (
-                        <Button
-                          key={zone.value}
-                          variant={selectedZone === zone.value ? 'default' : 'outline'}
-                          size="sm"
-                          className={`rounded-xl flex-1 min-w-[120px] ${
-                            selectedZone === zone.value 
-                              ? 'bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200' 
-                              : ''
-                          }`}
-                          onClick={() => setSelectedZone(zone.value)}
-                        >
-                          <zone.icon className="h-4 w-4 mr-2" />
-                          {zone.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Find Table Button */}
-                  <Button 
-                    size="lg" 
-                    className="w-full h-14 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg shadow-indigo-200/50"
-                  >
-                    <Search className="h-5 w-5 mr-2" />
-                    Find Available Table
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Right Panel - Available Tables Grid */}
-              <Card className="lg:col-span-2 bg-white/80 backdrop-blur-sm border-white/50 shadow-xl shadow-black/5 rounded-3xl">
-                <CardHeader className="border-b bg-gradient-to-r from-gray-50/80 to-white/80">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <Armchair className="h-5 w-5 text-indigo-500" />
-                      Available Tables
-                    </CardTitle>
-                    <Badge variant="secondary" className="px-3 py-1">
-                      {availableTablesByZone.length} tables
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6">
-                  {availableTablesByZone.length === 0 ? (
-                    <div className="h-64 flex flex-col items-center justify-center text-gray-500">
-                      <Armchair className="h-16 w-16 mb-4 opacity-30" />
-                      <p className="text-lg font-medium">No tables available in this zone</p>
-                      <p className="text-sm">Try selecting a different zone</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {availableTablesByZone.map((table) => (
-                        <Card
-                          key={table.id}
-                          className="relative group hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer bg-gradient-to-br from-emerald-50/50 to-white border-emerald-100 rounded-2xl overflow-hidden"
-                        >
-                          <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-200/20 rounded-full blur-2xl"></div>
-                          <CardContent className="p-5 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <h3 className="text-2xl font-bold text-gray-900">{table.name}</h3>
-                              <Badge className="bg-emerald-100 text-emerald-700 border-0">
-                                Available
-                              </Badge>
-                            </div>
-                            
-                            <div className="flex items-center gap-2 text-gray-600">
-                              <Users className="h-4 w-4" />
-                              <span className="text-sm font-medium">Seats {table.capacity}</span>
-                            </div>
-
-                            <div className="flex items-center gap-2 text-gray-500">
-                              <MapPin className="h-4 w-4" />
-                              <span className="text-xs">{table.location}</span>
-                            </div>
-
-                            <Button
-                              size="sm"
-                              className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 shadow-md"
-                              onClick={() => handleAssignTable(table)}
-                            >
-                              Assign Table
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* All Tables View */}
-          <TabsContent value="tables" className="space-y-6">
-            <Card className="bg-white/80 backdrop-blur-sm border-white/50 shadow-xl shadow-black/5 rounded-3xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-gray-50/80 to-white/80">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Armchair className="h-5 w-5 text-indigo-500" />
-                    All Tables Overview
-                  </CardTitle>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Search tables..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 w-64 rounded-xl"
-                    />
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {tables
-                    .filter(t => 
-                      searchQuery === '' || 
-                      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      t.location.toLowerCase().includes(searchQuery.toLowerCase())
-                    )
-                    .map((table) => {
-                      const statusConfig = getStatusConfig(table.status);
-                      return (
-                        <Card
-                          key={table.id}
-                          className={`relative group hover:shadow-xl transition-all duration-300 cursor-pointer ${statusConfig.bg} ${statusConfig.border} border-2 rounded-2xl overflow-hidden`}
-                          onClick={() => openTableDetails(table)}
-                        >
-                          <div className={`absolute top-0 right-0 w-24 h-24 ${statusConfig.bg} opacity-50 rounded-full blur-2xl`}></div>
-                          <CardContent className="p-5 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <h3 className="text-2xl font-bold text-gray-900">{table.name}</h3>
-                              <Badge className={`${statusConfig.bg} ${statusConfig.color} border-0`}>
-                                {statusConfig.label}
-                              </Badge>
-                            </div>
-                            
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2 text-gray-600">
-                                <Users className="h-4 w-4" />
-                                <span className="text-sm font-medium">Capacity: {table.capacity}</span>
-                              </div>
-
-                              <div className="flex items-center gap-2 text-gray-500">
-                                <MapPin className="h-4 w-4" />
-                                <span className="text-xs">{table.location}</span>
-                              </div>
-
-                              {table.currentGuests && (
-                                <div className="flex items-center gap-2 text-gray-700">
-                                  <UserCheck className="h-4 w-4" />
-                                  <span className="text-sm font-semibold">{table.currentGuests} guests</span>
-                                </div>
-                              )}
-                            </div>
-
-                            {table.totalBill && (
-                              <div className="pt-3 border-t border-gray-200">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs text-gray-500">Bill Amount</span>
-                                  <span className="text-lg font-bold text-gray-900 flex items-center">
-                                    <IndianRupee className="h-4 w-4" />
-                                    {table.totalBill}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+          );
+        })}
       </div>
-
-      {/* Table Details Slide-over Panel */}
-      <Sheet open={isDetailsPanelOpen} onOpenChange={setIsDetailsPanelOpen}>
-        <SheetContent className="w-full sm:max-w-lg bg-white">
-          {selectedTable && (
-            <>
-              <SheetHeader className="border-b pb-6">
-                <div className="flex items-center justify-between">
-                  <SheetTitle className="text-4xl font-bold text-gray-900">
-                    {selectedTable.name}
-                  </SheetTitle>
-                  <Badge 
-                    className={`text-base px-4 py-2 ${getStatusConfig(selectedTable.status).bg} ${getStatusConfig(selectedTable.status).color} border-0`}
-                  >
-                    {getStatusConfig(selectedTable.status).label}
-                  </Badge>
-                </div>
-                <SheetDescription className="text-base text-gray-600">
-                  <div className="flex items-center gap-4 mt-3">
-                    <span className="flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      Capacity: {selectedTable.capacity}
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      {selectedTable.location}
-                    </span>
-                  </div>
-                </SheetDescription>
-              </SheetHeader>
-
-              <div className="py-6 space-y-6">
-                {/* Waiter Section */}
-                {selectedTable.waiter && (
-                  <div className="space-y-3">
-                    <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                      <UserCheck className="h-5 w-5 text-indigo-500" />
-                      Assigned Staff
-                    </h3>
-                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl">
-                      <Avatar className="h-12 w-12">
-                        <AvatarFallback className="bg-indigo-100 text-indigo-700 font-semibold">
-                          {selectedTable.waiter.name.split(' ').map(n => n[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-semibold text-gray-900">{selectedTable.waiter.name}</p>
-                        <p className="text-sm text-gray-500">Server</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Orders Section */}
-                {selectedTable.orders && selectedTable.orders.length > 0 && (
-                  <div className="space-y-3">
-                    <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                      <UtensilsCrossed className="h-5 w-5 text-indigo-500" />
-                      Order Items
-                    </h3>
-                    <div className="space-y-2">
-                      {selectedTable.orders.map((order, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900">{order.item}</p>
-                            <Badge 
-                              variant="outline" 
-                              className={`mt-1 text-xs ${
-                                order.status === 'served' 
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                                  : 'bg-orange-50 text-orange-700 border-orange-200'
-                              }`}
-                            >
-                              {order.status === 'served' ? 'Served' : 'Cooking'}
-                            </Badge>
-                          </div>
-                          <span className="font-bold text-gray-900 flex items-center">
-                            <IndianRupee className="h-4 w-4" />
-                            {order.price}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Total Bill */}
-                {selectedTable.totalBill && (
-                  <div className="p-6 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border-2 border-indigo-100">
-                    <div className="flex items-center justify-between">
-                      <span className="text-lg font-semibold text-gray-700">Total Bill</span>
-                      <span className="text-3xl font-bold text-indigo-600 flex items-center">
-                        <IndianRupee className="h-7 w-7" />
-                        {selectedTable.totalBill}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <Separator className="my-6" />
-
-              {/* Action Buttons */}
-              <SheetFooter className="flex-col gap-3 sm:flex-col">
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="h-14 rounded-xl"
-                    onClick={() => {
-                      changeTableStatus(selectedTable.id, 'reserved');
-                      setIsDetailsPanelOpen(false);
-                    }}
-                  >
-                    <Clock className="h-5 w-5 mr-2" />
-                    Reserve
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="h-14 rounded-xl"
-                    onClick={() => {
-                      changeTableStatus(selectedTable.id, 'occupied');
-                      setIsDetailsPanelOpen(false);
-                    }}
-                  >
-                    <Users className="h-5 w-5 mr-2" />
-                    Seat Guests
-                  </Button>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    size="lg"
-                    className="h-14 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800"
-                    onClick={() => {
-                      toast.success('Bill generated successfully');
-                      setIsDetailsPanelOpen(false);
-                    }}
-                  >
-                    <IndianRupee className="h-5 w-5 mr-2" />
-                    Bill Order
-                  </Button>
-                  <Button
-                    size="lg"
-                    className="h-14 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-                    onClick={() => {
-                      changeTableStatus(selectedTable.id, 'cleaning');
-                      setIsDetailsPanelOpen(false);
-                    }}
-                  >
-                    <Sparkles className="h-5 w-5 mr-2" />
-                    Assign Cleaner
-                  </Button>
-                </div>
-              </SheetFooter>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }

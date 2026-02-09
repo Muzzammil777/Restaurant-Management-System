@@ -7,8 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from '@/app/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { ShoppingCart, Plus, Minus, Trash2, Clock, CreditCard, IndianRupee } from 'lucide-react';
-import { menuApi, ordersApi } from '@/utils/api';
-import { USE_MOCK_DATA, mockMenuItems } from '@/utils/mock-data';
+import { projectId, publicAnonKey } from '@/utils/supabase/info';
 import { toast } from 'sonner';
 
 interface MenuItem {
@@ -38,33 +37,126 @@ export function CustomerView() {
     type: 'dine-in',
   });
 
+  // Mock menu data as fallback
+  const mockMenuData: MenuItem[] = [
+    {
+      id: 'mock-1',
+      name: 'Butter Chicken',
+      category: 'main-course',
+      price: 350,
+      description: 'Creamy tomato-based curry with tender chicken pieces',
+      available: true,
+      prepTime: 25,
+    },
+    {
+      id: 'mock-2',
+      name: 'Paneer Tikka',
+      category: 'appetizers',
+      price: 280,
+      description: 'Grilled cottage cheese with aromatic spices',
+      available: true,
+      prepTime: 15,
+    },
+    {
+      id: 'mock-3',
+      name: 'Biryani',
+      category: 'main-course',
+      price: 320,
+      description: 'Fragrant rice cooked with spices and meat',
+      available: true,
+      prepTime: 30,
+    },
+    {
+      id: 'mock-4',
+      name: 'Garlic Naan',
+      category: 'breads',
+      price: 60,
+      description: 'Fresh flatbread with garlic and butter',
+      available: true,
+      prepTime: 10,
+    },
+    {
+      id: 'mock-5',
+      name: 'Dal Makhani',
+      category: 'main-course',
+      price: 220,
+      description: 'Black lentils cooked in creamy tomato gravy',
+      available: true,
+      prepTime: 20,
+    },
+    {
+      id: 'mock-6',
+      name: 'Gulab Jamun',
+      category: 'desserts',
+      price: 120,
+      description: 'Deep-fried milk dumplings in sugar syrup',
+      available: true,
+      prepTime: 5,
+    },
+    {
+      id: 'mock-7',
+      name: 'Masala Dosa',
+      category: 'appetizers',
+      price: 150,
+      description: 'Crispy rice crepe with spiced potato filling',
+      available: true,
+      prepTime: 15,
+    },
+    {
+      id: 'mock-8',
+      name: 'Mango Lassi',
+      category: 'beverages',
+      price: 80,
+      description: 'Sweet yogurt drink with fresh mango',
+      available: true,
+      prepTime: 5,
+    },
+  ];
+
   useEffect(() => {
-    if (USE_MOCK_DATA) {
-      const itemsWithPrepTime = mockMenuItems.map((item) => ({
-        ...item,
-        prepTime: item.prepTime || Math.floor(Math.random() * 20) + 10,
-      }));
-      setMenuItems(itemsWithPrepTime.filter((item) => item.available));
-      setLoading(false);
-    } else {
-      fetchMenu();
-    }
+    fetchMenu();
   }, []);
 
   const fetchMenu = async () => {
     try {
-      const result = await menuApi.list();
-      const data = result.data || result || [];
-      // Add default prep times if not present
-      const itemsWithPrepTime = data.map((item: MenuItem) => ({
-        ...item,
-        prepTime: item.prepTime || Math.floor(Math.random() * 20) + 10, // 10-30 mins
-      }));
-      setMenuItems(itemsWithPrepTime.filter((item: MenuItem) => item.available !== false));
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/menu`,
+        {
+          headers: {
+            'Authorization': `Bearer ${publicAnonKey}`,
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      if (result.success) {
+        // Add default prep times if not present
+        const itemsWithPrepTime = result.data.map((item: MenuItem) => ({
+          ...item,
+          prepTime: item.prepTime || Math.floor(Math.random() * 20) + 10, // 10-30 mins
+        }));
+        const availableItems = itemsWithPrepTime.filter((item: MenuItem) => item.available);
+        
+        // If API returns empty data, use mock data
+        if (availableItems.length === 0) {
+          console.log('No menu items found in database, using mock data');
+          setMenuItems(mockMenuData);
+          toast.info('Showing sample menu. Configure menu items in Menu Management.');
+        } else {
+          setMenuItems(availableItems);
+        }
+      } else {
+        throw new Error(result.error || 'Failed to fetch menu');
+      }
     } catch (error) {
       console.error('Error fetching menu:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to fetch menu. Please check your connection.');
-      setMenuItems([]);
+      // Use mock data as fallback
+      setMenuItems(mockMenuData);
+      toast.error('Using sample menu data. Please check your connection or configure Supabase.');
     } finally {
       setLoading(false);
     }
@@ -116,28 +208,41 @@ export function CustomerView() {
     }
 
     try {
-      await ordersApi.create({
-        customerName: orderDetails.customerName || 'Guest',
-        tableNumber: orderDetails.tableNumber ? parseInt(orderDetails.tableNumber) : undefined,
-        type: orderDetails.type,
-        items: cart.map(item => ({
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-        })),
-        total: getTotalPrice(),
-        status: 'placed',
-      });
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/orders`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${publicAnonKey}`,
+          },
+          body: JSON.stringify({
+            customerName: orderDetails.customerName || 'Guest',
+            tableNumber: orderDetails.tableNumber ? parseInt(orderDetails.tableNumber) : undefined,
+            type: orderDetails.type,
+            items: cart.map(item => ({
+              name: item.name,
+              quantity: item.quantity,
+              price: item.price,
+            })),
+            total: getTotalPrice(),
+            status: 'placed',
+          }),
+        }
+      );
 
-      toast.success('Order placed successfully!');
-      setCart([]);
-      setCheckoutOpen(false);
-      setPaymentOpen(false);
-      setOrderDetails({
-        customerName: '',
-        tableNumber: '',
-        type: 'dine-in',
-      });
+      const result = await response.json();
+      if (result.success) {
+        toast.success('Order placed successfully!');
+        setCart([]);
+        setCheckoutOpen(false);
+        setPaymentOpen(false);
+        setOrderDetails({
+          customerName: '',
+          tableNumber: '',
+          type: 'dine-in',
+        });
+      }
     } catch (error) {
       console.error('Error placing order:', error);
       toast.error('Failed to place order');
@@ -242,7 +347,7 @@ export function CustomerView() {
                     <div className="text-center py-8">
                       <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
                       <p className="text-sm text-muted-foreground">Your cart is empty</p>
-                      <p className="text-xs text-muted-foreground mt-1">Add items to get started</p>
+                      <p className="text-xs text-muted-foreground mt-1">Select items to begin ordering</p>
                     </div>
                   ) : (
                     <>
