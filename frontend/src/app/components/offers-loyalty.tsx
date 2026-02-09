@@ -46,6 +46,9 @@ import {
   Settings,
   Save,
   Info,
+  MessageSquare,
+  Heart,
+  AlertOctagon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/app/components/ui/utils';
@@ -93,6 +96,18 @@ interface LoyaltyConfig {
   autoExpiryEnabled: boolean;
 }
 
+interface Feedback {
+  id: string;
+  customerId: string;
+  customerName: string;
+  orderId: string;
+  rating: number; // 1-5
+  comment: string;
+  pointsAwarded: number; // 10 points per feedback
+  submittedAt: string;
+  approved: boolean;
+}
+
 export function OffersLoyalty() {
   const [activeTab, setActiveTab] = useState('coupons');
   const [searchQuery, setSearchQuery] = useState('');
@@ -124,6 +139,19 @@ export function OffersLoyalty() {
     freeDelivery: false,
     prioritySupport: false,
   });
+
+  // Feedback Form Data
+  const [feedbackFormData, setFeedbackFormData] = useState({
+    customerName: '',
+    orderId: '',
+    rating: 5,
+    comment: '',
+  });
+
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+  const [editingFeedback, setEditingFeedback] = useState<Feedback | null>(null);
+
+  const FEEDBACK_POINTS = 10; // Points per feedback
 
   const [coupons, setCoupons] = useState<Coupon[]>([
     {
@@ -233,7 +261,43 @@ export function OffersLoyalty() {
     autoExpiryEnabled: true,
   });
 
-  // Check if coupon is expired based on date
+  // Feedbacks State
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([
+    {
+      id: '1',
+      customerId: 'CUST001',
+      customerName: 'Rajesh Kumar',
+      orderId: 'ORD-2026-001',
+      rating: 5,
+      comment: 'Excellent food quality and fast delivery! Will order again.',
+      pointsAwarded: FEEDBACK_POINTS,
+      submittedAt: '2026-02-03',
+      approved: true,
+    },
+    {
+      id: '2',
+      customerId: 'CUST002',
+      customerName: 'Priya Singh',
+      orderId: 'ORD-2026-002',
+      rating: 4,
+      comment: 'Good taste but delivery was a bit late.',
+      pointsAwarded: FEEDBACK_POINTS,
+      submittedAt: '2026-02-02',
+      approved: true,
+    },
+    {
+      id: '3',
+      customerId: 'CUST003',
+      customerName: 'Amit Patel',
+      orderId: 'ORD-2026-003',
+      rating: 5,
+      comment: 'Amazing pizza! Perfect preparation and hot delivery.',
+      pointsAwarded: FEEDBACK_POINTS,
+      submittedAt: '2026-02-01',
+      approved: true,
+    },
+  ]);
+
   const isCouponExpired = (validTo: string): boolean => {
     return new Date(validTo) < new Date();
   };
@@ -469,6 +533,42 @@ export function OffersLoyalty() {
     toast.success('Loyalty points configuration saved successfully!');
   };
 
+  // Feedback Functions
+  const resetFeedbackForm = () => {
+    setFeedbackFormData({
+      customerName: '',
+      orderId: '',
+      rating: 5,
+      comment: '',
+    });
+    setEditingFeedback(null);
+  };
+
+  const handleCreateFeedback = () => {
+    if (!feedbackFormData.customerName || !feedbackFormData.orderId || !feedbackFormData.comment) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+
+    const newFeedback: Feedback = {
+      id: Date.now().toString(),
+      customerId: `CUST${Date.now().toString().slice(-3)}`,
+      customerName: feedbackFormData.customerName,
+      orderId: feedbackFormData.orderId,
+      rating: feedbackFormData.rating,
+      comment: feedbackFormData.comment,
+      pointsAwarded: FEEDBACK_POINTS,
+      submittedAt: new Date().toISOString().split('T')[0],
+      approved: true,
+    };
+
+    setFeedbacks([newFeedback, ...feedbacks]);
+    resetFeedbackForm();
+    setFeedbackDialogOpen(false);
+    toast.success(`Feedback added successfully! Customer received ${FEEDBACK_POINTS} loyalty points.`);
+  };
+
+
   // Filter coupons by search query
   const filteredCoupons = coupons.filter(coupon => {
     const query = searchQuery.toLowerCase();
@@ -496,6 +596,7 @@ export function OffersLoyalty() {
             { id: 'coupons', label: 'Coupons', icon: Tag, description: 'Manage promo codes' },
             { id: 'membership', label: 'Membership Plans', icon: Crown, description: 'Subscription tiers' },
             { id: 'loyalty', label: 'Loyalty Config', icon: Star, description: 'Points & rewards' },
+            { id: 'feedback', label: 'Feedback & Points', icon: MessageSquare, description: 'Customer feedback' },
           ].map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -1356,6 +1457,142 @@ export function OffersLoyalty() {
               Save Configuration
             </Button>
           </div>
+        </TabsContent>
+
+        {/* ==================== TAB 4: FEEDBACK & LOYALTY POINTS ==================== */}
+        <TabsContent value="feedback" className="space-y-4">
+          <div>
+            <h2 className="text-2xl font-bold">Customer Feedback & Loyalty Points</h2>
+            <p className="text-muted-foreground mt-1">Manage customer feedback and award loyalty points ({FEEDBACK_POINTS} points per feedback)</p>
+          </div>
+
+          {/* Feedback Statistics */}
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Feedback</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{feedbacks.length}</div>
+                <p className="text-xs text-muted-foreground mt-1">All feedback submissions</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Points Awarded</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">
+                  {feedbacks.length * FEEDBACK_POINTS}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Total loyalty points</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Average Rating</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-yellow-600">
+                  {feedbacks.length > 0 ? (feedbacks.reduce((sum, f) => sum + f.rating, 0) / feedbacks.length).toFixed(1) : '0'}★
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Customer satisfaction</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Feedbacks Table */}
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="font-semibold">CUSTOMER NAME</TableHead>
+                    <TableHead className="font-semibold">ORDER ID</TableHead>
+                    <TableHead className="font-semibold">RATING</TableHead>
+                    <TableHead className="font-semibold">COMMENT</TableHead>
+                    <TableHead className="font-semibold">POINTS</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {feedbacks.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                        <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                        <p>No feedback submitted yet</p>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    feedbacks.map((feedback) => (
+                      <TableRow key={feedback.id} className="hover:bg-muted/30">
+                        <TableCell>
+                          <div className="font-medium">{feedback.customerName}</div>
+                          <div className="text-xs text-muted-foreground">{feedback.customerId}</div>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">{feedback.orderId}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            {[...Array(5)].map((_, i) => (
+                              <span key={i} className={i < feedback.rating ? 'text-yellow-400' : 'text-gray-300'}>
+                                ★
+                              </span>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          <p className="text-sm truncate" title={feedback.comment}>{feedback.comment}</p>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 font-semibold">
+                            +{feedback.pointsAwarded} pts
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* Feedback Points Information */}
+          <Card className="border-2 border-green-200 bg-green-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Info className="h-5 w-5 text-green-600" />
+                Automatic Feedback & Loyalty Points System
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 text-sm">
+                <div className="flex items-start gap-3">
+                  <Heart className="h-4 w-4 text-red-500 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">Instant Rewards</p>
+                    <p className="text-muted-foreground">Customers automatically receive {FEEDBACK_POINTS} loyalty points when feedback is submitted</p>
+                  </div>
+                </div>
+                <Separator />
+                <div className="flex items-start gap-3">
+                  <Award className="h-4 w-4 text-orange-500 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">Encourage Participation</p>
+                    <p className="text-muted-foreground">No approval delays - points are awarded immediately to motivate more customer feedback</p>
+                  </div>
+                </div>
+                <Separator />
+                <div className="flex items-start gap-3">
+                  <TrendingUp className="h-4 w-4 text-green-500 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">Track Satisfaction</p>
+                    <p className="text-muted-foreground">Monitor customer ratings and reviews to identify areas of improvement and celebrate successes</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
