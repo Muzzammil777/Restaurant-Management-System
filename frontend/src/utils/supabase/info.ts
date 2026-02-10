@@ -1,5 +1,8 @@
-// Supabase configuration - placeholder values
-// Replace these with actual Supabase credentials when integrating with Supabase
+// API Configuration - Using local FastAPI backend
+// When deploying, change this to your production API URL
 
-export const projectId = 'your-project-id';
-export const publicAnonKey = 'your-public-anon-key';
+export const API_BASE_URL = 'http://localhost:8000/api';
+
+// Legacy exports (kept for compatibility, not used with local backend)
+export const projectId = 'localhost';
+export const publicAnonKey = '';

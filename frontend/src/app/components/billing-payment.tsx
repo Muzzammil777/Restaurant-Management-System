@@ -32,7 +32,7 @@ import {
   Calculator,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { projectId, publicAnonKey } from '@/utils/supabase/info';
+import { API_BASE_URL } from '@/utils/supabase/info';
 import { mockApi } from '@/app/services/mock-api';
 
 interface Order {

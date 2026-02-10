@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { restaurantState, type RestaurantOrder, type OrderStatus } from '@/app/services/restaurant-state';
-import { projectId, publicAnonKey } from '@/utils/supabase/info';
+import { API_BASE_URL } from '@/utils/supabase/info';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -513,12 +513,7 @@ export function TableManagement() {
   const fetchStaff = async () => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/staff`,
-        {
-          headers: {
-            'Authorization': `Bearer ${publicAnonKey}`,
-          },
-        }
+        `${API_BASE_URL}/staff`,
       );
       
       if (response.ok) {

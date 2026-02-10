@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { toast } from 'sonner';
-import { projectId, publicAnonKey } from '@/utils/supabase/info';
+import { API_BASE_URL } from '@/utils/supabase/info';
 
 // ==================== DATA ENTITIES ====================
 
@@ -383,12 +383,11 @@ export function TableStoreProvider({ children }: { children: ReactNode }) {
   const pushOrderToBackend = async (order: OrderEntity) => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/orders`,
+        `${API_BASE_URL}/orders`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${publicAnonKey}`,
           },
           body: JSON.stringify({
             tableNumber: parseInt(order.TableNumber.replace(/[^0-9]/g, '')) || 0,

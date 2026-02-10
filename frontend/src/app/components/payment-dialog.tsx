@@ -5,6 +5,8 @@ import { Label } from '@/app/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/app/components/ui/radio-group';
 import { CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
 import { ordersApi } from '@/utils/api';
+import { mockApi } from '@/app/services/mock-api';
+import { USE_MOCK_DATA } from '@/utils/mock-data';
 import { toast } from 'sonner';
 
 interface PaymentDialogProps {
@@ -23,12 +25,19 @@ export function PaymentDialog({ open, onOpenChange, orderId, amount, onSuccess }
     setProcessing(true);
     try {
       // Update order with payment info
-      await ordersApi.update(orderId, {
-        paymentMethod: paymentMethod,
-        paymentStatus: 'paid',
-        paidAmount: amount,
-        status: 'completed'
-      });
+      if (USE_MOCK_DATA) {
+        await mockApi.updateOrder(orderId, {
+          paymentStatus: 'paid',
+          status: 'completed'
+        });
+      } else {
+        await ordersApi.update(orderId, {
+          paymentMethod: paymentMethod,
+          paymentStatus: 'paid',
+          paidAmount: amount,
+          status: 'completed'
+        });
+      }
       
       toast.success('Payment processed successfully!');
       onOpenChange(false);

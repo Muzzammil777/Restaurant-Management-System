@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from '@/app/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { ShoppingCart, Plus, Minus, Trash2, Clock, CreditCard, IndianRupee } from 'lucide-react';
-import { projectId, publicAnonKey } from '@/utils/supabase/info';
+import { API_BASE_URL } from '@/utils/supabase/info';
 import { toast } from 'sonner';
 
 interface MenuItem {
@@ -120,12 +120,7 @@ export function CustomerView() {
   const fetchMenu = async () => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/menu`,
-        {
-          headers: {
-            'Authorization': `Bearer ${publicAnonKey}`,
-          },
-        }
+        `${API_BASE_URL}/menu`,
       );
       
       if (!response.ok) {
@@ -133,30 +128,30 @@ export function CustomerView() {
       }
       
       const result = await response.json();
-      if (result.success) {
-        // Add default prep times if not present
-        const itemsWithPrepTime = result.data.map((item: MenuItem) => ({
-          ...item,
-          prepTime: item.prepTime || Math.floor(Math.random() * 20) + 10, // 10-30 mins
-        }));
-        const availableItems = itemsWithPrepTime.filter((item: MenuItem) => item.available);
-        
-        // If API returns empty data, use mock data
-        if (availableItems.length === 0) {
-          console.log('No menu items found in database, using mock data');
-          setMenuItems(mockMenuData);
-          toast.info('Showing sample menu. Configure menu items in Menu Management.');
-        } else {
-          setMenuItems(availableItems);
-        }
+      // Handle both array response (from FastAPI) and { success, data } format
+      const menuData = Array.isArray(result) ? result : (result.success ? result.data : []);
+      
+      // Add default prep times if not present
+      const itemsWithPrepTime = menuData.map((item: MenuItem) => ({
+        ...item,
+        id: item.id || item._id, // Handle MongoDB _id
+        prepTime: item.prepTime || item.preparationTime || Math.floor(Math.random() * 20) + 10,
+      }));
+      const availableItems = itemsWithPrepTime.filter((item: MenuItem) => item.available);
+      
+      // If API returns empty data, use mock data
+      if (availableItems.length === 0) {
+        console.log('No menu items found in database, using mock data');
+        setMenuItems(mockMenuData);
+        toast.info('Showing sample menu. Configure menu items in Menu Management.');
       } else {
-        throw new Error(result.error || 'Failed to fetch menu');
+        setMenuItems(availableItems);
       }
     } catch (error) {
       console.error('Error fetching menu:', error);
       // Use mock data as fallback
       setMenuItems(mockMenuData);
-      toast.error('Using sample menu data. Please check your connection or configure Supabase.');
+      toast.error('Using sample menu data. Please check your connection.');
     } finally {
       setLoading(false);
     }
@@ -209,12 +204,11 @@ export function CustomerView() {
 
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/orders`,
+        `${API_BASE_URL}/orders`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${publicAnonKey}`,
           },
           body: JSON.stringify({
             customerName: orderDetails.customerName || 'Guest',

@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from '@/app/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/app/components/ui/radio-group';
 import { CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
-import { projectId, publicAnonKey } from '@/utils/supabase/info';
+import { API_BASE_URL } from '@/utils/supabase/info';
 import { toast } from 'sonner';
 
 interface PaymentDialogProps {
@@ -23,12 +23,11 @@ export function PaymentDialog({ open, onOpenChange, orderId, amount, onSuccess }
     setProcessing(true);
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/payments`,
+        `${API_BASE_URL}/billing/payments`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${publicAnonKey}`,
           },
           body: JSON.stringify({
             orderId,

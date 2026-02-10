@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/app/components/ui/input';
 import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { Clock, Package, CheckCircle, XCircle, CreditCard, Eye, IndianRupee, UtensilsCrossed, Zap, Search, Repeat, AlertCircle, TrendingUp, Activity, Timer, Undo2, Gauge, MoveRight, Ban, Sparkles, Trash2 } from 'lucide-react';
-import { projectId, publicAnonKey } from '@/utils/supabase/info';
+import { API_BASE_URL } from '@/utils/supabase/info';
 import { toast } from 'sonner';
 import { PaymentDialog } from '@/app/components/billing/payment-dialog';
 import { QuickOrderPOS } from '@/app/components/quick-order-pos';

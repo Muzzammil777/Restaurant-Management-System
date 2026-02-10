@@ -9,7 +9,6 @@ import {
   Database, 
   Wrench,
   DollarSign,
-  Bell,
   Lock,
   Settings,
 } from 'lucide-react';
@@ -22,7 +21,6 @@ import { AuditLogs } from '@/app/components/settings/audit-logs';
 import { SystemConfiguration } from '@/app/components/settings/system-configuration';
 import { TaxServiceSettings } from '@/app/components/settings/tax-service-settings';
 import { BackupRecovery } from '@/app/components/settings/backup-recovery';
-import { NotificationSettings } from '@/app/components/settings/notification-settings';
 
 type SettingsSection = 
   | 'account' 
@@ -30,8 +28,7 @@ type SettingsSection =
   | 'audit' 
   | 'system' 
   | 'tax' 
-  | 'backup' 
-  | 'notifications';
+  | 'backup';
 
 interface NavigationItem {
   id: SettingsSection;
@@ -77,12 +74,6 @@ const navigationItems: NavigationItem[] = [
     icon: Database,
     description: 'Manage data backups',
   },
-  {
-    id: 'notifications',
-    label: 'Notification Settings',
-    icon: Bell,
-    description: 'Configure alerts and notifications',
-  },
 ];
 
 export function SecuritySettings() {
@@ -102,8 +93,6 @@ export function SecuritySettings() {
         return <TaxServiceSettings />;
       case 'backup':
         return <BackupRecovery />;
-      case 'notifications':
-        return <NotificationSettings />;
       default:
         return <AccountAuthentication />;
     }

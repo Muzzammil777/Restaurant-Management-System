@@ -18,7 +18,7 @@ import {
   Timer, TrendingUp, Package
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { projectId, publicAnonKey } from '@/utils/supabase/info';
+import { API_BASE_URL } from '@/utils/supabase/info';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/app/components/ui/dialog';
 import { restaurantState } from '@/app/services/restaurant-state';
 import { Switch } from '@/app/components/ui/switch';
@@ -407,12 +407,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
       try {
         const menuResponse = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/menu`,
-          {
-            headers: {
-              'Authorization': `Bearer ${publicAnonKey}`,
-            },
-          }
+          `${API_BASE_URL}/menu`,
         );
 
         if (menuResponse.ok) {
@@ -429,12 +424,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
       try {
         const comboResponse = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/combos`,
-          {
-            headers: {
-              'Authorization': `Bearer ${publicAnonKey}`,
-            },
-          }
+          `${API_BASE_URL}/menu/combos`,
         );
 
         if (comboResponse.ok) {
@@ -785,12 +775,11 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
       };
 
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/orders`,
+        `${API_BASE_URL}/orders`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${publicAnonKey}`,
           },
           body: JSON.stringify(orderData),
         }

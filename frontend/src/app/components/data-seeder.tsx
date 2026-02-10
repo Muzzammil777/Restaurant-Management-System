@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Database, RefreshCw } from 'lucide-react';
-import { projectId, publicAnonKey } from '@/utils/supabase/info';
+import { API_BASE_URL } from '@/utils/supabase/info';
 import { toast } from 'sonner';
 
 export function DataSeeder() {
@@ -74,12 +74,11 @@ export function DataSeeder() {
       // Create menu items
       for (const item of sampleMenuItems) {
         await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/menu`,
+          `${API_BASE_URL}/menu`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${publicAnonKey}`,
             },
             body: JSON.stringify(item),
           }
@@ -99,12 +98,11 @@ export function DataSeeder() {
       // Create tables
       for (const table of sampleTables) {
         await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/tables`,
+          `${API_BASE_URL}/tables`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${publicAnonKey}`,
             },
             body: JSON.stringify(table),
           }
@@ -146,12 +144,11 @@ export function DataSeeder() {
       // Create staff members
       for (const member of sampleStaff) {
         await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/staff`,
+          `${API_BASE_URL}/staff`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${publicAnonKey}`,
             },
             body: JSON.stringify(member),
           }
@@ -193,12 +190,11 @@ export function DataSeeder() {
       // Create inventory items
       for (const item of sampleInventory) {
         await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/inventory`,
+          `${API_BASE_URL}/inventory`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${publicAnonKey}`,
             },
             body: JSON.stringify(item),
           }
@@ -219,12 +215,11 @@ export function DataSeeder() {
       };
 
       await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-3d0ba2a2/orders`,
+        `${API_BASE_URL}/orders`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${publicAnonKey}`,
           },
           body: JSON.stringify(sampleOrder),
         }
