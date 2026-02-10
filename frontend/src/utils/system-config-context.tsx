@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { systemConfigApi } from './api';
+import { USE_MOCK_DATA } from './mock-data';
 
 export interface SystemConfig {
   restaurantName: string;
@@ -63,6 +64,12 @@ export function SystemConfigProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refreshConfig = async () => {
+    // Skip API call in mock mode - use defaults
+    if (USE_MOCK_DATA) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       const data = await systemConfigApi.get();
       const currencySymbol = currencySymbols[data.currency] || data.currency;

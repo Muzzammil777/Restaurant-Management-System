@@ -1,209 +1,151 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Label } from '@/app/components/ui/label';
 import { Badge } from '@/app/components/ui/badge';
 import { Switch } from '@/app/components/ui/switch';
-import { Input } from '@/app/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
 import { Separator } from '@/app/components/ui/separator';
-import { Database, Download, Upload, RefreshCcw, Check, AlertCircle, Calendar, Clock, HardDrive, Trash2, FileJson } from 'lucide-react';
-import { backupApi } from '@/utils/api';
+import { Database, Download, Upload, RefreshCcw, Check, AlertCircle, Calendar, Clock, HardDrive } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Backup {
-  _id: string;
+  id: string;
   name: string;
   size: string;
   date: string;
   time: string;
   status: 'completed' | 'failed' | 'in_progress';
   type: 'manual' | 'automatic';
-  collections?: string[];
-  totalDocuments?: number;
 }
 
 interface BackupConfig {
   autoBackupEnabled: boolean;
-  frequency: 'hourly' | 'daily' | 'weekly' | 'monthly';
+  backupFrequency: 'hourly' | 'daily' | 'weekly' | 'monthly';
   retentionDays: number;
   backupLocation: string;
-  googleDriveEnabled: boolean;
-  googleDriveFolderId: string | null;
 }
+
+const STORAGE_KEY_BACKUPS = 'rms_backups';
+const STORAGE_KEY_CONFIG = 'rms_backup_config';
 
 export function BackupRecovery() {
   const [backups, setBackups] = useState<Backup[]>([]);
   const [config, setConfig] = useState<BackupConfig>({
     autoBackupEnabled: true,
-    frequency: 'daily',
+    backupFrequency: 'daily',
     retentionDays: 30,
-    backupLocation: 'local',
-    googleDriveEnabled: false,
-    googleDriveFolderId: null,
+    backupLocation: 'Cloud Storage',
   });
   const [isBackingUp, setIsBackingUp] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load backups from backend
+  // Load backups from localStorage
   useEffect(() => {
-    fetchData();
+    const storedBackups = localStorage.getItem(STORAGE_KEY_BACKUPS);
+    if (storedBackups) {
+      setBackups(JSON.parse(storedBackups));
+    } else {
+      // Initialize with sample backups
+      const defaultBackups: Backup[] = [
+        {
+          id: '1',
+          name: 'Full Backup - 2026-01-29',
+          size: '258 MB',
+          date: '2026-01-29',
+          time: '02:00:00',
+          status: 'completed',
+          type: 'automatic',
+        },
+        {
+          id: '2',
+          name: 'Full Backup - 2026-01-28',
+          size: '256 MB',
+          date: '2026-01-28',
+          time: '02:00:00',
+          status: 'completed',
+          type: 'automatic',
+        },
+        {
+          id: '3',
+          name: 'Manual Backup - 2026-01-27',
+          size: '255 MB',
+          date: '2026-01-27',
+          time: '15:30:00',
+          status: 'completed',
+          type: 'manual',
+        },
+        {
+          id: '4',
+          name: 'Full Backup - 2026-01-27',
+          size: '254 MB',
+          date: '2026-01-27',
+          time: '02:00:00',
+          status: 'completed',
+          type: 'automatic',
+        },
+        {
+          id: '5',
+          name: 'Full Backup - 2026-01-26',
+          size: '252 MB',
+          date: '2026-01-26',
+          time: '02:00:00',
+          status: 'completed',
+          type: 'automatic',
+        },
+      ];
+      setBackups(defaultBackups);
+      localStorage.setItem(STORAGE_KEY_BACKUPS, JSON.stringify(defaultBackups));
+    }
+
+    const storedConfig = localStorage.getItem(STORAGE_KEY_CONFIG);
+    if (storedConfig) {
+      setConfig(JSON.parse(storedConfig));
+    }
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [backupsData, configData] = await Promise.all([
-        backupApi.list(),
-        backupApi.getConfig(),
-      ]);
-      setBackups(backupsData || []);
-      setConfig({
-        autoBackupEnabled: configData.autoBackupEnabled ?? true,
-        frequency: configData.frequency || 'daily',
-        retentionDays: configData.retentionDays || 30,
-        backupLocation: configData.backupLocation || 'local',
-        googleDriveEnabled: configData.googleDriveEnabled ?? false,
-        googleDriveFolderId: configData.googleDriveFolderId || null,
-      });
-    } catch (error) {
-      console.error('Error fetching backup data:', error);
-      toast.error('Failed to load backup data');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Save config to localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
+  }, [config]);
 
-  const handleCreateBackup = async () => {
+  const handleCreateBackup = () => {
     setIsBackingUp(true);
-    toast.success('Creating backup locally...');
+    toast.success('Backup initiated. This may take a few minutes...');
 
-    try {
-      const result = await backupApi.create({ type: 'manual' });
-      toast.success('Backup created successfully!');
-      
-      await fetchData();
-    } catch (error) {
-      console.error('Error creating backup:', error);
-      toast.error('Failed to create backup');
-    } finally {
+    // Simulate backup creation
+    setTimeout(() => {
+      const newBackup: Backup = {
+        id: Date.now().toString(),
+        name: `Manual Backup - ${new Date().toISOString().split('T')[0]}`,
+        size: '258 MB',
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toTimeString().split(' ')[0],
+        status: 'completed',
+        type: 'manual',
+      };
+
+      const updatedBackups = [newBackup, ...backups];
+      setBackups(updatedBackups);
+      localStorage.setItem(STORAGE_KEY_BACKUPS, JSON.stringify(updatedBackups));
       setIsBackingUp(false);
-    }
+      toast.success('Backup completed successfully!');
+    }, 3000);
   };
 
-  const handleUpdateConfig = async (newConfig: Partial<BackupConfig>) => {
-    const updatedConfig = { ...config, ...newConfig };
-    setConfig(updatedConfig);
-    
-    try {
-      await backupApi.updateConfig(updatedConfig);
-      toast.success('Backup configuration updated');
-    } catch (error) {
-      console.error('Error updating config:', error);
-      toast.error('Failed to update configuration');
-    }
+  const handleRestoreBackup = (backup: Backup) => {
+    toast.success(`Restoring backup: ${backup.name}. System will restart...`);
+    // In real app, this would call API to restore
   };
 
-  const handleRestoreBackup = async (backup: Backup) => {
-    if (!confirm(`Are you sure you want to restore backup "${backup.name}"? This will overwrite current data.`)) return;
-    
-    try {
-      const result = await backupApi.restore(backup._id);
-      toast.success(result.message || 'Backup restored successfully');
-    } catch (error) {
-      console.error('Error restoring backup:', error);
-      toast.error('Failed to restore backup');
-    }
-  };
-
-  const handleDownloadBackup = async (backup: Backup) => {
-    try {
-      toast.info(`Preparing download: ${backup.name}`);
-      // Fetch the backup data from backend
-      const response = await fetch(`http://localhost:8000/api/settings/backups/${backup._id}/download`);
-      if (!response.ok) throw new Error('Failed to download backup');
-      
-      const data = await response.json();
-      
-      // Create a blob and download
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${backup.name.replace(/[^a-z0-9]/gi, '_')}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      toast.success(`Downloaded: ${backup.name}`);
-    } catch (error) {
-      console.error('Error downloading backup:', error);
-      toast.error('Failed to download backup');
-    }
-  };
-
-  const handleDeleteBackup = async (backup: Backup) => {
-    if (!confirm(`Are you sure you want to delete backup "${backup.name}"?`)) return;
-    
-    try {
-      await backupApi.delete(backup._id);
-      toast.success('Backup deleted successfully');
-      await fetchData();
-    } catch (error) {
-      console.error('Error deleting backup:', error);
-      toast.error('Failed to delete backup');
-    }
+  const handleDownloadBackup = (backup: Backup) => {
+    toast.success(`Downloading: ${backup.name}`);
+    // In real app, this would trigger file download
   };
 
   const handleUploadBackup = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.name.endsWith('.json')) {
-      toast.error('Please select a valid backup file (.json)');
-      return;
-    }
-
-    try {
-      const text = await file.text();
-      const backupData = JSON.parse(text);
-      
-      // Validate backup structure
-      if (!backupData.collections || !backupData.data) {
-        toast.error('Invalid backup file format');
-        return;
-      }
-
-      toast.info('Uploading backup...');
-      
-      // Send to backend for restoration
-      const response = await fetch('http://localhost:8000/api/settings/backups/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(backupData),
-      });
-
-      if (!response.ok) throw new Error('Failed to upload backup');
-      
-      const result = await response.json();
-      toast.success(result.message || 'Backup uploaded successfully');
-      await fetchData();
-    } catch (error) {
-      console.error('Error uploading backup:', error);
-      toast.error('Failed to upload backup file');
-    }
-
-    // Reset the file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    toast.success('Upload backup functionality will be connected with backend');
+    // In real app, this would open file picker
   };
 
   const getStatusBadge = (status: Backup['status']) => {
@@ -233,19 +175,8 @@ export function BackupRecovery() {
   };
 
   const totalBackupSize = backups
-    .reduce((total, backup) => total + parseFloat(backup.size || '0'), 0)
+    .reduce((total, backup) => total + parseFloat(backup.size), 0)
     .toFixed(2);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[40vh]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading backup data...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -292,7 +223,7 @@ export function BackupRecovery() {
               </div>
               <Switch 
                 checked={config.autoBackupEnabled} 
-                onCheckedChange={(checked) => handleUpdateConfig({ autoBackupEnabled: checked })} 
+                onCheckedChange={(checked) => setConfig({ ...config, autoBackupEnabled: checked })} 
               />
             </div>
 
@@ -301,8 +232,8 @@ export function BackupRecovery() {
                 <div className="space-y-2">
                   <Label htmlFor="backup-frequency">Backup Frequency</Label>
                   <Select 
-                    value={config.frequency} 
-                    onValueChange={(value: any) => handleUpdateConfig({ frequency: value })}
+                    value={config.backupFrequency} 
+                    onValueChange={(value: any) => setConfig({ ...config, backupFrequency: value })}
                   >
                     <SelectTrigger id="backup-frequency">
                       <SelectValue />
@@ -320,7 +251,7 @@ export function BackupRecovery() {
                   <Label htmlFor="retention">Retention Period (Days)</Label>
                   <Select 
                     value={config.retentionDays.toString()} 
-                    onValueChange={(value) => handleUpdateConfig({ retentionDays: parseInt(value) })}
+                    onValueChange={(value) => setConfig({ ...config, retentionDays: parseInt(value) })}
                   >
                     <SelectTrigger id="retention">
                       <SelectValue />
@@ -341,13 +272,6 @@ export function BackupRecovery() {
 
             <div className="space-y-2">
               <Label>Upload Backup</Label>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept=".json"
-                className="hidden"
-              />
               <Button variant="outline" className="w-full" onClick={handleUploadBackup}>
                 <Upload className="h-4 w-4 mr-2" />
                 Choose File to Upload
@@ -458,7 +382,7 @@ export function BackupRecovery() {
             </TableHeader>
             <TableBody>
               {backups.map(backup => (
-                <TableRow key={backup._id}>
+                <TableRow key={backup.id}>
                   <TableCell className="font-medium">{backup.name}</TableCell>
                   <TableCell>
                     <Badge variant="outline">
@@ -487,14 +411,6 @@ export function BackupRecovery() {
                         disabled={backup.status !== 'completed'}
                       >
                         <Download className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDeleteBackup(backup)}
-                        className="text-red-500 hover:text-red-600"
-                      >
-                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </TableCell>

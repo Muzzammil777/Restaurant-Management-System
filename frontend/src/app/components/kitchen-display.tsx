@@ -2,25 +2,14 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
+import { LoadingKitchen } from '@/app/components/ui/loading-spinner';
 import { Clock, ChefHat, AlertCircle, Package } from 'lucide-react';
-import { ordersApi } from '@/utils/api';
+import { API_BASE_URL } from '@/utils/supabase/info';
 import { toast } from 'sonner';
-
-interface Order {
-  id: string;
-  tableNumber?: number;
-  items: Array<{
-    name: string;
-    quantity: number;
-    customizations?: string[];
-  }>;
-  status: string;
-  createdAt: string;
-  type: string;
-}
+import { mockApi, type MockOrder } from '@/app/services/mock-api';
 
 export function KitchenDisplay() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<MockOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,11 +20,13 @@ export function KitchenDisplay() {
 
   const fetchOrders = async () => {
     try {
-      const result = await ordersApi.list();
-      const data = result.data || [];
-      setOrders(data.filter((order: Order) => 
-        ['placed', 'preparing', 'ready'].includes(order.status))
-      );
+      // Use mock API
+      const result = await mockApi.getOrders();
+      if (result.success) {
+        setOrders(result.data.filter((order: MockOrder) => 
+          ['placed', 'preparing', 'ready'].includes(order.status))
+        );
+      }
     } catch (error) {
       console.error('Error fetching orders:', error);
       setOrders([]); // Set empty array on error
@@ -46,22 +37,24 @@ export function KitchenDisplay() {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      const cleanId = orderId.replace('order:', '');
-      await ordersApi.updateStatus(cleanId, newStatus);
-      toast.success('Order updated!');
-      
-      // Trigger inventory deduction when order is accepted
-      if (newStatus === 'preparing') {
-        const order = orders.find(o => o.id === orderId);
-        if (order) {
-          window.dispatchEvent(new CustomEvent('kitchen:order-accepted', { 
-            detail: { items: order.items } 
-          }));
-          toast.info("Inventory updated automatically");
+      // Use mock API
+      const result = await mockApi.updateOrderStatus(orderId, newStatus as any);
+      if (result.success) {
+        toast.success('Order updated!');
+        
+        // Trigger inventory deduction when order is accepted
+        if (newStatus === 'preparing') {
+          const order = orders.find(o => o.id === orderId);
+          if (order) {
+            window.dispatchEvent(new CustomEvent('kitchen:order-accepted', { 
+              detail: { items: order.items } 
+            }));
+            toast.info("Inventory updated automatically");
+          }
         }
-      }
 
-      fetchOrders();
+        fetchOrders();
+      }
     } catch (error) {
       console.error('Error updating order:', error);
       toast.error('Failed to update order');
@@ -84,7 +77,7 @@ export function KitchenDisplay() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-full">Loading kitchen display...</div>;
+    return <LoadingKitchen />;
   }
 
   return (
@@ -134,7 +127,7 @@ export function KitchenDisplay() {
                         </CardTitle>
                       </div>
                       <CardDescription>
-                        Order #{order.id?.split('-')[1]?.slice(0, 6).toUpperCase() || 'UNKNOWN'}
+                        Order #{order.id.split('-')[1]?.slice(0, 6).toUpperCase()}
                       </CardDescription>
                     </div>
                     <div className="flex flex-col items-end gap-2">
@@ -155,12 +148,10 @@ export function KitchenDisplay() {
                           <span className="font-semibold text-lg">{item.quantity}x</span>
                           <span className="font-medium flex-1 ml-2">{item.name}</span>
                         </div>
-                        {item.customizations && item.customizations.length > 0 && (
-                          <ul className="text-sm text-muted-foreground ml-8 list-disc">
-                            {item.customizations.map((custom, i) => (
-                              <li key={i}>{custom}</li>
-                            ))}
-                          </ul>
+                        {item.specialInstructions && (
+                          <p className="text-sm text-muted-foreground ml-8 italic">
+                            {item.specialInstructions}
+                          </p>
                         )}
                       </div>
                     ))}
