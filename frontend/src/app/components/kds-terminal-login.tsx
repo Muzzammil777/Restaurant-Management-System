@@ -188,8 +188,8 @@ export function KDSTerminalLogin({ onLogin }: KDSTerminalLoginProps) {
             <ChefHat className="h-16 w-16 text-white" />
           </div>
           <h1 
-            className="text-5xl font-bold text-white mb-3" 
-            style={{ fontFamily: 'Poppins, sans-serif', textShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+            className="text-5xl font-bold mb-3" 
+            style={{ fontFamily: 'Poppins, sans-serif', textShadow: '0 4px 12px rgba(0,0,0,0.3)', color: '#F5E6D3' }}
           >
             MochaKDS Enterprise
           </h1>

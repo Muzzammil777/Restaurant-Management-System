@@ -99,7 +99,7 @@ export default function App() {
   return (
     <TableStoreProvider>
       <div className="min-h-screen bg-background">
-        <Toaster position="top-right" />
+        <Toaster position="top-right" offset="80px" />
 
         {/* Header */}
         <header className="border-b bg-white shadow-sm sticky top-0 z-50">
