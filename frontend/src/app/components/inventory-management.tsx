@@ -389,7 +389,7 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
   }, [isSimulating, ingredients]);
 
   // Actions
-  const handleAddPurchase = (purchaseData: any) => {
+  const handleAddPurchase = async (purchaseData: any) => {
     // Validation
     if (!purchaseData || !purchaseData.ingredientId) {
       toast.error("Invalid Data", { description: "Cannot save invalid purchase record." });
@@ -414,63 +414,99 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
       toast.warning("Duplicate Alert", { description: "Similar purchase recorded recently. Verify before adding." });
     }
 
-    // Update ingredients stock directly
-    const updatedIngredients = ingredients.map((ing: any) => {
-      if (ing.id === purchaseData.ingredientId) {
-        const newStockLevel = (ing.stockLevel || 0) + purchaseData.quantity;
-        return {
-          ...ing,
-          stockLevel: newStockLevel,
-          status: calculateStatus(newStockLevel, ing.minThreshold || 10)
-        };
-      }
-      return ing;
-    });
-    setIngredients(updatedIngredients);
-
-    // Create purchase record with unit field
-    const newRecord = {
-      id: `purchase_${Date.now()}`,
+    // Prepare data for backend API - convert frontend ID to ingredientName for backend
+    const backendPurchaseData = {
       ingredientId: purchaseData.ingredientId,
-      ingredientName: purchaseData.ingredientName,
-      unit: purchaseData.unit || ingredient.unit || 'pcs',
-      supplierId: purchaseData.supplierId,
-      supplierName: purchaseData.supplierName,
+      ingredientName: purchaseData.ingredientName || ingredient.name,
+      supplierId: purchaseData.supplierId || "",
+      supplierName: purchaseData.supplierName || "",
       quantity: purchaseData.quantity,
       cost: purchaseData.cost,
-      timestamp: now,
-      date: format(new Date(), 'MMM dd, yyyy HH:mm:ss'),
-      purchaseDate: purchaseData.purchaseDate || format(new Date(), 'yyyy-MM-dd')
+      date: new Date().toISOString(),
+      purchaseDate: purchaseData.purchaseDate || format(new Date(), 'yyyy-MM-dd'),
+      unit: purchaseData.unit || ingredient.unit || 'pcs'
     };
 
-    // Update supplier with last supplied date
-    setSuppliers((prev: any) => prev.map((s: any) => {
-      if (s.id === purchaseData.supplierId) {
-        return {
-          ...s,
-          lastSuppliedDate: format(new Date(), 'MMM dd, yyyy')
-        };
-      }
-      return s;
-    }));
+    // Send to backend API
+    try {
+      const response = await fetch('http://localhost:8000/api/inventory/purchases', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(backendPurchaseData)
+      });
 
-    // Add to purchase records (prepend for live-feed style)
-    setPurchaseRecords((prev: any) => {
-      const updated = [newRecord, ...prev].slice(0, 200); // Keep latest 200 records
-      
-      // Persist to localStorage
-      try {
-        localStorage.setItem('restaurantPurchaseRecords', JSON.stringify(updated));
-      } catch (e) {
-        console.warn("Could not save to localStorage:", e);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to record purchase');
       }
-      
-      return updated;
-    });
 
-    toast.success("Purchase Recorded", { 
-      description: `+${purchaseData.quantity} ${purchaseData.unit || ingredient.unit} of ${purchaseData.ingredientName} at ₹${purchaseData.cost.toFixed(2)}` 
-    });
+      const savedData = await response.json();
+      
+      // Update ingredients stock directly (local state)
+      const updatedIngredients = ingredients.map((ing: any) => {
+        if (ing.id === purchaseData.ingredientId) {
+          const newStockLevel = (ing.stockLevel || 0) + purchaseData.quantity;
+          return {
+            ...ing,
+            stockLevel: newStockLevel,
+            status: calculateStatus(newStockLevel, ing.minThreshold || 10)
+          };
+        }
+        return ing;
+      });
+      setIngredients(updatedIngredients);
+
+      // Create purchase record with unit field
+      const newRecord = {
+        id: savedData._id || `purchase_${Date.now()}`,
+        ingredientId: purchaseData.ingredientId,
+        ingredientName: purchaseData.ingredientName,
+        unit: purchaseData.unit || ingredient.unit || 'pcs',
+        supplierId: purchaseData.supplierId,
+        supplierName: purchaseData.supplierName,
+        quantity: purchaseData.quantity,
+        cost: purchaseData.cost,
+        timestamp: now,
+        date: format(new Date(), 'MMM dd, yyyy HH:mm:ss'),
+        purchaseDate: purchaseData.purchaseDate || format(new Date(), 'yyyy-MM-dd')
+      };
+
+      // Update supplier with last supplied date
+      setSuppliers((prev: any) => prev.map((s: any) => {
+        if (s.id === purchaseData.supplierId) {
+          return {
+            ...s,
+            lastSuppliedDate: format(new Date(), 'MMM dd, yyyy')
+          };
+        }
+        return s;
+      }));
+
+      // Add to purchase records (prepend for live-feed style)
+      setPurchaseRecords((prev: any) => {
+        const updated = [newRecord, ...prev].slice(0, 200); // Keep latest 200 records
+        
+        // Persist to localStorage
+        try {
+          localStorage.setItem('restaurantPurchaseRecords', JSON.stringify(updated));
+        } catch (e) {
+          console.warn("Could not save to localStorage:", e);
+        }
+        
+        return updated;
+      });
+
+      toast.success("Purchase Recorded", { 
+        description: `+${purchaseData.quantity} ${purchaseData.unit || ingredient.unit} of ${purchaseData.ingredientName} at ₹${purchaseData.cost.toFixed(2)} - Saved to Database` 
+      });
+    } catch (error: any) {
+      console.error('Error recording purchase:', error);
+      toast.error("Failed to Record Purchase", { 
+        description: error.message || "Could not connect to database. Check if backend is running." 
+      });
+    }
   };
 
   const handleToggleSupplier = (id: string) => {
