@@ -7,6 +7,7 @@ import { DataSeeder } from '@/app/components/data-seeder';
 import { Alert, AlertDescription, AlertTitle } from '@/app/components/ui/alert';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
+import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
 
 interface Analytics {
   totalOrders: number;
@@ -88,7 +89,7 @@ export function AdminDashboard() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-full">Loading dashboard...</div>;
+    return <LoadingSpinner message="Loading dashboard..." />;
   }
 
   return (

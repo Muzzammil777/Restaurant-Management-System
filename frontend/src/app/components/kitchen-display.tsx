@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
+import { LoadingKitchen } from '@/app/components/ui/loading-spinner';
 import { Clock, ChefHat, AlertCircle, Package } from 'lucide-react';
 import { API_BASE_URL } from '@/utils/supabase/info';
 import { toast } from 'sonner';
@@ -76,7 +77,7 @@ export function KitchenDisplay() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-full">Loading kitchen display...</div>;
+    return <LoadingKitchen />;
   }
 
   return (

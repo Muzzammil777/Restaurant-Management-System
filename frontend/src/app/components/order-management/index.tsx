@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { Input } from '@/app/components/ui/input';
 import { ScrollArea } from '@/app/components/ui/scroll-area';
+import { LoadingOrders } from '@/app/components/ui/loading-spinner';
 import { Clock, Package, CheckCircle, XCircle, CreditCard, Eye, IndianRupee, UtensilsCrossed, Zap, Search, Repeat, AlertCircle, TrendingUp, Activity, Timer, Undo2, Gauge, MoveRight, Ban, Sparkles, Trash2 } from 'lucide-react';
 import { API_BASE_URL } from '@/utils/supabase/info';
 import { toast } from 'sonner';
@@ -276,7 +277,7 @@ export function OrderManagement() {
   const tableNumbers = Array.from(new Set(orders.map(o => o.tableNumber).filter(Boolean)));
 
   if (loading) {
-    return <div className="flex items-center justify-center h-full">Loading orders...</div>;
+    return <LoadingOrders />;
   }
 
   return (

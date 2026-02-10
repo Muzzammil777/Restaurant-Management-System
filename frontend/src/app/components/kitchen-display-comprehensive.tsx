@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/ta
 import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { Checkbox } from '@/app/components/ui/checkbox';
 import { cn } from '@/app/components/ui/utils';
+import { LoadingKitchen } from '@/app/components/ui/loading-spinner';
 import {
   ChefHat, Clock, Flame, CheckCircle, Package,
   AlertTriangle, Coffee, Zap, Users
@@ -372,14 +373,7 @@ export function KitchenDisplayComprehensive() {
   );
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-stone-900">
-        <div className="text-center">
-          <ChefHat className="w-16 h-16 mx-auto mb-4 text-gray-400 animate-bounce" />
-          <p className="text-gray-400 text-lg">Loading kitchen...</p>
-        </div>
-      </div>
-    );
+    return <LoadingKitchen />;
   }
 
   return (

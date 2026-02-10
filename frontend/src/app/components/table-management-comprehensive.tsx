@@ -10,6 +10,7 @@ import { Label } from '@/app/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { cn } from '@/app/components/ui/utils';
+import { LoadingTables } from '@/app/components/ui/loading-spinner';
 import {
   Users, Clock, Utensils, Sparkles, CheckCircle, UserPlus,
   AlertCircle, ChefHat, Timer, MapPin, Calendar, X, Coffee, DollarSign
@@ -490,14 +491,7 @@ export function TableManagementComprehensive() {
   }, {} as Record<Location, MockTable[]>);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <Coffee className="w-12 h-12 mx-auto mb-4 text-gray-400 animate-spin" />
-          <p className="text-gray-500">Loading tables...</p>
-        </div>
-      </div>
-    );
+    return <LoadingTables />;
   }
 
   return (

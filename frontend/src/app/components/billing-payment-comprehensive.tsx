@@ -12,6 +12,7 @@ import { Switch } from '@/app/components/ui/switch';
 import { Separator } from '@/app/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { cn } from '@/app/components/ui/utils';
+import { LoadingBilling } from '@/app/components/ui/loading-spinner';
 import {
   DollarSign, CreditCard, Smartphone, Wallet, Receipt,
   CheckCircle, Clock, AlertCircle, Percent, IndianRupee,
@@ -475,14 +476,7 @@ export function BillingPaymentComprehensive() {
   const billRequestedOrders = orders.filter(o => o.status === 'bill_requested');
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <Coffee className="w-12 h-12 mx-auto mb-4 text-gray-400 animate-spin" />
-          <p className="text-gray-500">Loading billing data...</p>
-        </div>
-      </div>
-    );
+    return <LoadingBilling />;
   }
 
   return (

@@ -8,6 +8,7 @@ import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { cn } from '@/app/components/ui/utils';
+import { LoadingOrders } from '@/app/components/ui/loading-spinner';
 import {
   Clock, Package, CheckCircle, XCircle, AlertCircle, Zap, 
   Undo2, Play, ChefHat, Utensils, DollarSign, Trash2, Search,
@@ -397,14 +398,7 @@ export function OrderManagementComprehensive() {
   );
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <Coffee className="w-12 h-12 mx-auto mb-4 text-gray-400 animate-spin" />
-          <p className="text-gray-500">Loading orders...</p>
-        </div>
-      </div>
-    );
+    return <LoadingOrders />;
   }
 
   return (
