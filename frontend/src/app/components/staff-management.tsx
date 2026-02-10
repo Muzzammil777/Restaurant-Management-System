@@ -4,14 +4,17 @@ import { Input } from '@/app/components/ui/input';
 import { 
   Tabs, 
   TabsContent, 
-  TabsList, 
-  TabsTrigger 
 } from '@/app/components/ui/tabs';
 import { 
   Search, 
-  ChevronDown,
+  LayoutDashboard,
+  Users,
+  CalendarCheck,
+  Clock,
+  FileBarChart,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar";
+import { cn } from '@/app/components/ui/utils';
 
 // Import sub-components
 import { StaffOverview } from "./staff/StaffOverview";
@@ -22,6 +25,14 @@ import { StaffReports } from "./staff/StaffReports";
 
 export function StaffManagement() {
   const [activeTab, setActiveTab] = useState('overview');
+
+  const tabs = [
+    { id: 'overview', label: 'Dashboard', icon: LayoutDashboard, description: 'Staff overview' },
+    { id: 'staff', label: 'Staff', icon: Users, description: 'Employee records' },
+    { id: 'attendance', label: 'Attendance', icon: CalendarCheck, description: 'Daily tracking' },
+    { id: 'shift-timings', label: 'Shift Timings', icon: Clock, description: 'Schedule management' },
+    { id: 'reports', label: 'Reports', icon: FileBarChart, description: 'Analytics & insights' },
+  ];
 
   return (
     <div className="min-h-screen bg-[#FDFCFB] flex flex-col">
@@ -47,17 +58,41 @@ export function StaffManagement() {
         </div>
       </div>
 
-      <div className="flex-1 container mx-auto px-6 py-2">
+      <div className="flex-1 container mx-auto px-6 py-4">
+        {/* Custom Tab Navigation - matching Inventory style */}
+        <div className="w-full overflow-x-auto pb-6">
+          <nav className="flex gap-3 min-w-max p-1">
+            {tabs.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={cn(
+                    'flex items-start gap-3 p-3 rounded-lg transition-colors text-left min-w-[180px]',
+                    isActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card border border-border hover:bg-muted shadow-sm'
+                  )}
+                >
+                  <Icon className={cn('h-5 w-5 mt-0.5 flex-shrink-0', isActive ? '' : 'text-muted-foreground')} />
+                  <div className="flex-1 min-w-0">
+                    <p className={cn('text-sm font-medium', isActive ? '' : '')}>
+                      {item.label}
+                    </p>
+                    <p className={cn('text-xs mt-0.5', isActive ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
+                      {item.description}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="mb-6">
-            <TabsList className="bg-muted rounded-xl p-1">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="staff">Staff</TabsTrigger>
-              <TabsTrigger value="attendance">Attendance</TabsTrigger>
-              <TabsTrigger value="shift-timings">Shift Timings</TabsTrigger>
-              <TabsTrigger value="reports">Reports</TabsTrigger>
-            </TabsList>
-          </div>
 
           <TabsContent value="overview" className="mt-0 focus-visible:outline-none">
             <StaffOverview />
