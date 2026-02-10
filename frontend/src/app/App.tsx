@@ -425,7 +425,7 @@ export default function App() {
               Restaurant Management System • Movicloud Labs
             </p>
             <p className="text-xs text-muted-foreground mt-2">
-              Powered by Figma
+              Powered by RMS TEAM 2
             </p>
           </div>
         </footer>
