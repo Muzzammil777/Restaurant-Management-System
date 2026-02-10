@@ -57,7 +57,7 @@ class EnhancedNotificationService {
         borderRadius: '12px',
         boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
       },
-      icon: <span style={{ fontSize: '20px', fontWeight: 'bold' }}>{style.icon}</span>,
+      icon: style.icon,
     });
   }
 
@@ -78,7 +78,7 @@ class EnhancedNotificationService {
         borderRadius: '12px',
         boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
       },
-      icon: <span style={{ fontSize: '20px', fontWeight: 'bold' }}>{style.icon}</span>,
+      icon: style.icon,
     });
   }
 
@@ -99,7 +99,7 @@ class EnhancedNotificationService {
         borderRadius: '12px',
         boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
       },
-      icon: <span style={{ fontSize: '20px', fontWeight: 'bold' }}>{style.icon}</span>,
+      icon: style.icon,
     });
   }
 
@@ -120,7 +120,7 @@ class EnhancedNotificationService {
         borderRadius: '12px',
         boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
       },
-      icon: <span style={{ fontSize: '20px', fontWeight: 'bold' }}>{style.icon}</span>,
+      icon: style.icon,
     });
   }
 

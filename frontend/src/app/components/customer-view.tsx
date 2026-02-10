@@ -132,7 +132,7 @@ export function CustomerView() {
       const menuData = Array.isArray(result) ? result : (result.success ? result.data : []);
       
       // Add default prep times if not present
-      const itemsWithPrepTime = menuData.map((item: MenuItem) => ({
+      const itemsWithPrepTime = menuData.map((item: any) => ({
         ...item,
         id: item.id || item._id, // Handle MongoDB _id
         prepTime: item.prepTime || item.preparationTime || Math.floor(Math.random() * 20) + 10,

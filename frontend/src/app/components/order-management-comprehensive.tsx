@@ -267,7 +267,7 @@ export function OrderManagementComprehensive() {
 
   const [undoState, setUndoState] = useState<UndoState | null>(null);
   const [undoCountdown, setUndoCountdown] = useState(0);
-  const undoTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetchOrders();

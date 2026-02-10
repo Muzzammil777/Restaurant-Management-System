@@ -5,23 +5,10 @@ import { Badge } from '@/app/components/ui/badge';
 import { Clock, ChefHat, AlertCircle, Package } from 'lucide-react';
 import { API_BASE_URL } from '@/utils/supabase/info';
 import { toast } from 'sonner';
-import { mockApi } from '@/app/services/mock-api';
-
-interface Order {
-  id: string;
-  tableNumber?: number;
-  items: Array<{
-    name: string;
-    quantity: number;
-    customizations?: string[];
-  }>;
-  status: string;
-  createdAt: string;
-  type: string;
-}
+import { mockApi, type MockOrder } from '@/app/services/mock-api';
 
 export function KitchenDisplay() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<MockOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,8 +22,8 @@ export function KitchenDisplay() {
       // Use mock API
       const result = await mockApi.getOrders();
       if (result.success) {
-        setOrders(result.data.filter((order: Order) => 
-          ['placed', 'preparing', 'ready'].includes(order.status)) as any
+        setOrders(result.data.filter((order: MockOrder) => 
+          ['placed', 'preparing', 'ready'].includes(order.status))
         );
       }
     } catch (error) {
@@ -160,12 +147,10 @@ export function KitchenDisplay() {
                           <span className="font-semibold text-lg">{item.quantity}x</span>
                           <span className="font-medium flex-1 ml-2">{item.name}</span>
                         </div>
-                        {item.customizations && item.customizations.length > 0 && (
-                          <ul className="text-sm text-muted-foreground ml-8 list-disc">
-                            {item.customizations.map((custom, i) => (
-                              <li key={i}>{custom}</li>
-                            ))}
-                          </ul>
+                        {item.specialInstructions && (
+                          <p className="text-sm text-muted-foreground ml-8 italic">
+                            {item.specialInstructions}
+                          </p>
                         )}
                       </div>
                     ))}

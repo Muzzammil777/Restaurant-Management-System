@@ -202,7 +202,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
   // Feature #12: Gesture Shortcuts State
   const [lastTap, setLastTap] = useState<number>(0);
-  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
+  const [longPressTimer, setLongPressTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   // Refs for gesture handling
   const orderCardRef = useRef<HTMLDivElement>(null);

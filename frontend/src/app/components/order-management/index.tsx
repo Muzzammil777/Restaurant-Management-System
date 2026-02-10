@@ -63,7 +63,7 @@ export function OrderManagement() {
     timestamp: number;
   } | null>(null);
   const [undoCountdown, setUndoCountdown] = useState<number>(0);
-  const undoTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetchOrders();
