@@ -1,6 +1,6 @@
 // Mock data for development without backend
 // Set this to false when you connect to a real backend
-export const USE_MOCK_DATA = true;
+export const USE_MOCK_DATA = false;
 
 export const mockAnalytics = {
   totalOrders: 156,

@@ -61,6 +61,18 @@ function AppContent() {
   const [notificationCount, setNotificationCount] = useState(3); // Mock notification count
   const [triggerStockManagement, setTriggerStockManagement] = useState(false);
 
+  // DEV MODE: Auto-set admin user for API calls (replace with real login later)
+  useEffect(() => {
+    if (!localStorage.getItem('rms_current_user')) {
+      localStorage.setItem('rms_current_user', JSON.stringify({
+        id: '698b3cf2420708d34704575f',
+        name: 'Test Admin',
+        email: 'admin@example.com',
+        role: 'admin'
+      }));
+    }
+  }, []);
+
   // Listen for stock management navigation event from Kitchen
   useEffect(() => {
     const handleStockManagementRequest = () => {
