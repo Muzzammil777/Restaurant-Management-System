@@ -10,16 +10,17 @@ import { cn } from '@/app/components/ui/utils';
 import { LoadingKitchen } from '@/app/components/ui/loading-spinner';
 import {
   ChefHat, Clock, Flame, CheckCircle, Package,
-  AlertTriangle, Coffee, Zap, Users
+  AlertTriangle, Coffee, Zap, Users, LogOut, Crown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { mockApi, type MockOrder } from '@/app/services/mock-api';
+import { KDSTerminalLogin, type KitchenTerminalStation, TERMINAL_STATIONS } from '@/app/components/kds-terminal-login';
 
 // ============================================================================
 // STATION ASSIGNMENT LOGIC
 // ============================================================================
 
-type Station = 'FRY' | 'CURRY' | 'GRILL' | 'COLD' | 'BEVERAGE';
+type Station = Exclude<KitchenTerminalStation, 'HEAD_CHEF'>;
 
 function getStationForItem(itemName: string): Station {
   const name = itemName.toLowerCase();
@@ -36,22 +37,27 @@ function getStationForItem(itemName: string): Station {
     return 'CURRY';
   }
   
+  // RICE Station
+  if (name.includes('rice') || name.includes('biryani') || name.includes('pulao')) {
+    return 'RICE';
+  }
+
   // GRILL Station
   if (name.includes('tikka') || name.includes('kebab') || name.includes('tandoor') ||
       name.includes('grill') || name.includes('pizza')) {
     return 'GRILL';
   }
   
-  // BEVERAGE Station
+  // DESSERT Station
   if (name.includes('lassi') || name.includes('coffee') || name.includes('tea') ||
       name.includes('juice') || name.includes('shake')) {
-    return 'BEVERAGE';
+    return 'DESSERT';
   }
   
-  // COLD Station (desserts, salads)
+  // PREP Station
   if (name.includes('gulab') || name.includes('ice cream') || name.includes('salad') ||
       name.includes('raita') || name.includes('kulfi')) {
-    return 'COLD';
+    return 'PREP';
   }
   
   // Default to CURRY for misc items
@@ -62,9 +68,10 @@ function getStationColor(station: Station): string {
   switch (station) {
     case 'FRY': return 'bg-orange-900 text-orange-200 border-orange-600';
     case 'CURRY': return 'bg-yellow-900 text-yellow-200 border-yellow-600';
+    case 'RICE': return 'bg-amber-900 text-amber-200 border-amber-600';
     case 'GRILL': return 'bg-red-900 text-red-200 border-red-600';
-    case 'COLD': return 'bg-blue-900 text-blue-200 border-blue-600';
-    case 'BEVERAGE': return 'bg-purple-900 text-purple-200 border-purple-600';
+    case 'PREP': return 'bg-green-900 text-green-200 border-green-600';
+    case 'DESSERT': return 'bg-purple-900 text-purple-200 border-purple-600';
   }
 }
 
@@ -74,11 +81,12 @@ function getStationColor(station: Station): string {
 
 interface ProductionTicketProps {
   order: MockOrder;
+  activeTerminal: KitchenTerminalStation;
   onItemToggle: (orderId: string, itemId: string, completed: boolean) => void;
   onMarkReady: (orderId: string) => void;
 }
 
-function ProductionTicket({ order, onItemToggle, onMarkReady }: ProductionTicketProps) {
+function ProductionTicket({ order, activeTerminal, onItemToggle, onMarkReady }: ProductionTicketProps) {
   const ageMinutes = Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 1000 / 60);
   const isUrgent = ageMinutes > 15;
 
@@ -89,8 +97,12 @@ function ProductionTicket({ order, onItemToggle, onMarkReady }: ProductionTicket
     completed: item.completed || false
   }));
 
+  const visibleItems = activeTerminal === 'HEAD_CHEF'
+    ? itemsWithStations
+    : itemsWithStations.filter(item => item.station === activeTerminal);
+
   // Group by station
-  const itemsByStation = itemsWithStations.reduce((acc, item) => {
+  const itemsByStation = visibleItems.reduce((acc, item) => {
     if (!acc[item.station]) {
       acc[item.station] = [];
     }
@@ -133,7 +145,7 @@ function ProductionTicket({ order, onItemToggle, onMarkReady }: ProductionTicket
             {order.tableNumber || 'Takeaway'} • {order.customerName}
           </span>
           <span className="text-amber-400 font-medium">
-            {order.items.length} items
+            {visibleItems.length} items
           </span>
         </div>
       </div>
@@ -188,21 +200,23 @@ function ProductionTicket({ order, onItemToggle, onMarkReady }: ProductionTicket
       )}
 
       {/* Action */}
-      <div className="p-4 bg-stone-900 border-t border-stone-700">
-        <Button
-          className={cn(
-            'w-full text-lg font-bold',
-            allItemsCompleted
-              ? 'bg-green-700 hover:bg-green-600 text-white'
-              : 'bg-stone-600 text-stone-400 cursor-not-allowed'
-          )}
-          disabled={!allItemsCompleted}
-          onClick={() => onMarkReady(order.id)}
-        >
-          <CheckCircle className="w-5 h-5 mr-2" />
-          Mark Ready
-        </Button>
-      </div>
+      {activeTerminal === 'HEAD_CHEF' && (
+        <div className="p-4 bg-stone-900 border-t border-stone-700">
+          <Button
+            className={cn(
+              'w-full text-lg font-bold',
+              allItemsCompleted
+                ? 'bg-green-700 hover:bg-green-600 text-white'
+                : 'bg-stone-600 text-stone-400 cursor-not-allowed'
+            )}
+            disabled={!allItemsCompleted}
+            onClick={() => onMarkReady(order.id)}
+          >
+            <CheckCircle className="w-5 h-5 mr-2" />
+            Mark Ready
+          </Button>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -218,7 +232,7 @@ interface BatchItem {
   station: Station;
 }
 
-function BatchView({ orders }: { orders: MockOrder[] }) {
+function BatchView({ orders, activeTerminal }: { orders: MockOrder[]; activeTerminal: KitchenTerminalStation }) {
   // Aggregate all items across all orders
   const batchItems: Record<string, BatchItem> = {};
 
@@ -237,7 +251,9 @@ function BatchView({ orders }: { orders: MockOrder[] }) {
     });
   });
 
-  const sortedItems = Object.values(batchItems).sort((a, b) => 
+  const sortedItems = Object.values(batchItems).filter(item =>
+    activeTerminal === 'HEAD_CHEF' ? true : item.station === activeTerminal
+  ).sort((a, b) => 
     b.totalQuantity - a.totalQuantity
   );
 
@@ -309,6 +325,7 @@ export function KitchenDisplayComprehensive() {
   const [orders, setOrders] = useState<MockOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'tickets' | 'batch'>('tickets');
+  const [activeTerminal, setActiveTerminal] = useState<KitchenTerminalStation | null>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -372,9 +389,22 @@ export function KitchenDisplayComprehensive() {
     ['accepted', 'preparing'].includes(o.status)
   );
 
+  const visibleOrders = activeTerminal === null
+    ? []
+    : preparingOrders.filter((order) => {
+        if (activeTerminal === 'HEAD_CHEF') return true;
+        return order.items.some((item) => getStationForItem(item.name) === activeTerminal);
+      });
+
   if (loading) {
     return <LoadingKitchen />;
   }
+
+  if (!activeTerminal) {
+    return <KDSTerminalLogin onLogin={setActiveTerminal} />;
+  }
+
+  const activeTerminalMeta = TERMINAL_STATIONS.find((s) => s.id === activeTerminal);
 
   return (
     <div className="min-h-screen bg-stone-900">
@@ -386,13 +416,32 @@ export function KitchenDisplayComprehensive() {
               <ChefHat className="w-10 h-10 text-amber-500" />
               Kitchen Display System
             </h1>
-            <p className="text-gray-400 mt-2">Production tracking and order management</p>
+            <p className="text-gray-400 mt-2">
+              {activeTerminalMeta?.name} • Production tracking and order management
+            </p>
           </div>
           <div className="flex items-center gap-4">
+            <Badge className={cn(
+              'text-lg px-4 py-2 border',
+              activeTerminal === 'HEAD_CHEF'
+                ? 'bg-amber-900 text-amber-100 border-amber-500'
+                : 'bg-stone-800 text-stone-100 border-stone-600'
+            )}>
+              {activeTerminal === 'HEAD_CHEF' ? <Crown className="w-5 h-5 mr-2" /> : <ChefHat className="w-5 h-5 mr-2" />}
+              {activeTerminalMeta?.name}
+            </Badge>
             <Badge className="text-lg px-4 py-2 bg-amber-900 text-amber-100 border-amber-600">
               <Flame className="w-5 h-5 mr-2" />
-              {preparingOrders.length} Active Orders
+              {visibleOrders.length} Active Orders
             </Badge>
+            <Button
+              variant="outline"
+              className="border-stone-600 text-stone-200 hover:bg-stone-800"
+              onClick={() => setActiveTerminal(null)}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Switch Terminal
+            </Button>
           </div>
         </div>
       </div>
@@ -415,10 +464,11 @@ export function KitchenDisplayComprehensive() {
           <ScrollArea className="h-[calc(100vh-220px)]">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-6">
               <AnimatePresence>
-                {preparingOrders.map(order => (
+                {visibleOrders.map(order => (
                   <ProductionTicket
                     key={order.id}
                     order={order}
+                    activeTerminal={activeTerminal}
                     onItemToggle={handleItemToggle}
                     onMarkReady={handleMarkReady}
                   />
@@ -426,7 +476,7 @@ export function KitchenDisplayComprehensive() {
               </AnimatePresence>
             </div>
             
-            {preparingOrders.length === 0 && (
+            {visibleOrders.length === 0 && (
               <div className="text-center py-20 text-gray-500">
                 <Coffee className="w-20 h-20 mx-auto mb-4 opacity-30" />
                 <p className="text-2xl font-bold">No orders in production</p>
@@ -439,7 +489,7 @@ export function KitchenDisplayComprehensive() {
         {/* Batch View */}
         <TabsContent value="batch" className="mt-6">
           <ScrollArea className="h-[calc(100vh-220px)]">
-            <BatchView orders={preparingOrders} />
+            <BatchView orders={visibleOrders} activeTerminal={activeTerminal} />
           </ScrollArea>
         </TabsContent>
       </Tabs>
