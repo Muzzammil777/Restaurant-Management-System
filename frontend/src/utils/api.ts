@@ -3,8 +3,8 @@
  * Restaurant Management System
  */
 
-// Backend API base URL
-const API_BASE_URL = 'https://restaurant-management-system-24c2.onrender.com/api';
+// Backend API base URL - use env variable or default to production
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://restaurant-management-system-24c2.onrender.com/api';
 
 // Get current user info from localStorage (for audit headers)
 const getCurrentUser = () => {
