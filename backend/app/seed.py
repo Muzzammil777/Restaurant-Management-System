@@ -13,11 +13,22 @@ from pathlib import Path
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime
+from passlib.hash import bcrypt
 
 # Load environment
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
+
+# Sample Staff Accounts
+SAMPLE_STAFF = [
+    {"name": "Admin User", "email": "admin@restaurant.com", "phone": "+91 98765 00001", "role": "admin", "password": "admin123"},
+    {"name": "Manager User", "email": "manager@restaurant.com", "phone": "+91 98765 00002", "role": "manager", "password": "manager123"},
+    {"name": "Chef User", "email": "chef@restaurant.com", "phone": "+91 98765 00003", "role": "chef", "password": "chef123"},
+    {"name": "Waiter User", "email": "waiter@restaurant.com", "phone": "+91 98765 00004", "role": "waiter", "password": "waiter123"},
+    {"name": "Cashier User", "email": "cashier@restaurant.com", "phone": "+91 98765 00005", "role": "cashier", "password": "cashier123"},
+    {"name": "Delivery User", "email": "delivery@restaurant.com", "phone": "+91 98765 00006", "role": "delivery", "password": "delivery123"},
+]
 
 # Sample Data
 SAMPLE_INGREDIENTS = [
@@ -62,6 +73,25 @@ async def seed_database():
     db = client.get_default_database() or client['rms']
     
     print("Starting database seed...")
+    
+    # Seed Staff Accounts
+    print("\n👥 Seeding staff accounts...")
+    for staff in SAMPLE_STAFF:
+        existing = await db.staff.find_one({"email": staff["email"].lower()})
+        if existing:
+            print(f"  ↳ Skipping {staff['name']} (exists)")
+        else:
+            staff_doc = {
+                "name": staff["name"],
+                "email": staff["email"].lower(),
+                "phone": staff["phone"],
+                "role": staff["role"],
+                "password_hash": bcrypt.hash(staff["password"]),
+                "active": True,
+                "createdAt": datetime.utcnow(),
+            }
+            await db.staff.insert_one(staff_doc)
+            print(f"  ✓ Created {staff['name']} ({staff['role']})")
     
     # Seed Ingredients
     print("\n📦 Seeding ingredients...")
