@@ -4,8 +4,6 @@ import { MenuManagement } from '@/app/components/menu-management';
 import { OrderManagement } from '@/app/components/order-management';
 import { KitchenDisplay } from '@/app/components/kitchen-display';
 import { TableManagement } from '@/app/components/table-management';
-import { CustomerView } from '@/app/components/customer-view';
-import { CustomerManagement } from '@/app/components/customer-management';
 import { InventoryManagement } from '@/app/components/inventory-management';
 import { StaffManagement } from '@/app/components/staff-management';
 import { BillingPayment } from '@/app/components/billing-payment';
@@ -15,17 +13,18 @@ import { OffersLoyalty } from '@/app/components/offers-loyalty';
 import { ReportsAnalytics } from '@/app/components/reports-analytics';
 import { NotificationManagement } from '@/app/components/notification-management';
 import { WelcomeBanner } from '@/app/components/welcome-banner';
+import { LoginPage } from '@/app/components/login-page';
 import { Button } from '@/app/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Toaster } from '@/app/components/ui/sonner';
 import { SystemConfigProvider, useSystemConfig } from '@/utils/system-config-context';
+import { AuthProvider, useAuth, DEFAULT_TAB } from '@/utils/auth-context';
 import { 
   LayoutDashboard, 
   UtensilsCrossed, 
   ShoppingCart, 
   ChefHat, 
   Users,
-  Menu as MenuIcon,
   Package,
   UserCog,
   Bell,
@@ -57,9 +56,42 @@ import { AdminChatBox } from '@/app/components/AdminChatBox';
 
 function AppContent() {
   const { config, refreshConfig } = useSystemConfig();
-  const [activeTab, setActiveTab] = useState('customer');
+  const { user, isAuthenticated, logout, hasPermission } = useAuth();
+  const [activeTab, setActiveTab] = useState(() => {
+    // Get saved user to determine default tab
+    const savedUser = localStorage.getItem('rms_current_user');
+    if (savedUser) {
+      try {
+        const userData = JSON.parse(savedUser);
+        return DEFAULT_TAB[userData.role as keyof typeof DEFAULT_TAB] || 'dashboard';
+      } catch {
+        return 'dashboard';
+      }
+    }
+    return 'dashboard';
+  });
   const [notificationCount, setNotificationCount] = useState(3); // Mock notification count
   const [triggerStockManagement, setTriggerStockManagement] = useState(false);
+
+  // Update active tab when user changes
+  useEffect(() => {
+    if (user) {
+      const defaultTab = DEFAULT_TAB[user.role];
+      if (defaultTab && !hasPermission(activeTab)) {
+        setActiveTab(defaultTab);
+      }
+    }
+  }, [user]);
+
+  // If not authenticated, show login page
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Toaster position="top-right" />
+        <LoginPage />
+      </>
+    );
+  }
 
   // Listen for stock management navigation event from Kitchen
   useEffect(() => {
@@ -113,59 +145,64 @@ function AppContent() {
                 )}
               </Button>
 
-              {/* Settings Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <Settings className="h-5 w-5" style={{ color: '#000000' }} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>Settings & Configuration</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setActiveTab('settings')}>
-                    <Shield className="mr-2 h-4 w-4" />
-                    Security & Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setActiveTab('settings')}>
-                    <Users className="mr-2 h-4 w-4" />
-                    Role & Permissions
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setActiveTab('settings')}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    Audit Logs
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setActiveTab('settings')}>
-                    <Database className="mr-2 h-4 w-4" />
-                    Backup & Recovery
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setActiveTab('settings')}>
-                    <Wrench className="mr-2 h-4 w-4" />
+              {/* Settings Dropdown - only show for users with settings permission */}
+              {hasPermission('settings') && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <Settings className="h-5 w-5" style={{ color: '#000000' }} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>Settings & Configuration</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setActiveTab('settings')}>
+                      <Shield className="mr-2 h-4 w-4" />
+                      Security & Settings
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setActiveTab('settings')}>
+                      <Users className="mr-2 h-4 w-4" />
+                      Role & Permissions
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setActiveTab('settings')}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      Audit Logs
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setActiveTab('settings')}>
+                      <Database className="mr-2 h-4 w-4" />
+                      Backup & Recovery
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setActiveTab('settings')}>
+                      <Wrench className="mr-2 h-4 w-4" />
                     System Configuration
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-red-600">
+                  <DropdownMenuItem className="text-red-600" onClick={logout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Logout
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              )}
 
               {/* Profile Avatar */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar>
-                      <AvatarImage src="" alt="Admin" />
-                      <AvatarFallback className="bg-primary text-primary-foreground">AD</AvatarFallback>
+                      <AvatarImage src="" alt={user?.name} />
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        {user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
+                      </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium">Admin User</p>
-                      <p className="text-xs text-muted-foreground">admin@movicloud.com</p>
+                      <p className="text-sm font-medium">{user?.name}</p>
+                      <p className="text-xs text-muted-foreground">{user?.email}</p>
+                      <p className="text-xs text-muted-foreground capitalize">Role: {user?.role}</p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -173,12 +210,14 @@ function AppContent() {
                     <User className="mr-2 h-4 w-4" />
                     Profile Settings
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setActiveTab('settings')}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    Preferences
-                  </DropdownMenuItem>
+                  {hasPermission('settings') && (
+                    <DropdownMenuItem onClick={() => setActiveTab('settings')}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      Preferences
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-red-600">
+                  <DropdownMenuItem className="text-red-600" onClick={logout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Logout
                   </DropdownMenuItem>
@@ -190,69 +229,87 @@ function AppContent() {
       </header>
 
       {/* Main Navigation Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="container mx-auto">
+      <Tabs value={activeTab} onValueChange={(value) => hasPermission(value) && setActiveTab(value)} className="container mx-auto">
         <div className="border-b bg-white sticky top-[73px] z-40">
           <TabsList className="w-full justify-start overflow-x-auto flex-nowrap h-auto p-1 bg-transparent border-0 rounded-none">
-            <TabsTrigger value="customer" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-              <MenuIcon className="h-4 w-4" />
-              Customer Menu
-            </TabsTrigger>
-            <TabsTrigger value="dashboard" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-              <LayoutDashboard className="h-4 w-4" />
-              Dashboard
-            </TabsTrigger>
-            <TabsTrigger value="customers" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-              <Users className="h-4 w-4" />
-              Customers
-            </TabsTrigger>
-            <TabsTrigger value="menu" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-              <UtensilsCrossed className="h-4 w-4" />
-              Menu Management
-            </TabsTrigger>
-            <TabsTrigger value="orders" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-              <ShoppingCart className="h-4 w-4" />
-              Orders
-            </TabsTrigger>
-            <TabsTrigger value="kitchen" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-              <ChefHat className="h-4 w-4" />
-              Kitchen
-            </TabsTrigger>
-            <TabsTrigger value="tables" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-              <Users className="h-4 w-4" />
-              Tables
-            </TabsTrigger>
-            <TabsTrigger value="inventory" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-              <Package className="h-4 w-4" />
-              Inventory
-            </TabsTrigger>
-            <TabsTrigger value="staff" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-              <UserCog className="h-4 w-4" />
-              Staff
-            </TabsTrigger>
-            <TabsTrigger value="billing" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-              <CreditCard className="h-4 w-4" />
-              Billing
-            </TabsTrigger>
-            <TabsTrigger value="delivery" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-              <Truck className="h-4 w-4" />
-              Delivery
-            </TabsTrigger>
-            <TabsTrigger value="offers" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-              <Tag className="h-4 w-4" />
-              Offers & Loyalty
-            </TabsTrigger>
-            <TabsTrigger value="reports" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-              <BarChart3 className="h-4 w-4" />
-              Reports
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-              <BellRing className="h-4 w-4" />
-              Notifications
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-              <Settings className="h-4 w-4" />
-              Settings
-            </TabsTrigger>
+            {hasPermission('dashboard') && (
+              <TabsTrigger value="dashboard" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                <LayoutDashboard className="h-4 w-4" />
+                Dashboard
+              </TabsTrigger>
+            )}
+            {hasPermission('menu') && (
+              <TabsTrigger value="menu" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                <UtensilsCrossed className="h-4 w-4" />
+                Menu Management
+              </TabsTrigger>
+            )}
+            {hasPermission('orders') && (
+              <TabsTrigger value="orders" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                <ShoppingCart className="h-4 w-4" />
+                Orders
+              </TabsTrigger>
+            )}
+            {hasPermission('kitchen') && (
+              <TabsTrigger value="kitchen" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                <ChefHat className="h-4 w-4" />
+                Kitchen
+              </TabsTrigger>
+            )}
+            {hasPermission('tables') && (
+              <TabsTrigger value="tables" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                <Users className="h-4 w-4" />
+                Tables
+              </TabsTrigger>
+            )}
+            {hasPermission('inventory') && (
+              <TabsTrigger value="inventory" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                <Package className="h-4 w-4" />
+                Inventory
+              </TabsTrigger>
+            )}
+            {hasPermission('staff') && (
+              <TabsTrigger value="staff" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                <UserCog className="h-4 w-4" />
+                Staff
+              </TabsTrigger>
+            )}
+            {hasPermission('billing') && (
+              <TabsTrigger value="billing" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                <CreditCard className="h-4 w-4" />
+                Billing
+              </TabsTrigger>
+            )}
+            {hasPermission('delivery') && (
+              <TabsTrigger value="delivery" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                <Truck className="h-4 w-4" />
+                Delivery
+              </TabsTrigger>
+            )}
+            {hasPermission('offers') && (
+              <TabsTrigger value="offers" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                <Tag className="h-4 w-4" />
+                Offers & Loyalty
+              </TabsTrigger>
+            )}
+            {hasPermission('reports') && (
+              <TabsTrigger value="reports" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                <BarChart3 className="h-4 w-4" />
+                Reports
+              </TabsTrigger>
+            )}
+            {hasPermission('notifications') && (
+              <TabsTrigger value="notifications" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                <BellRing className="h-4 w-4" />
+                Notifications
+              </TabsTrigger>
+            )}
+            {hasPermission('settings') && (
+              <TabsTrigger value="settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                <Settings className="h-4 w-4" />
+                Settings
+              </TabsTrigger>
+            )}
           </TabsList>
         </div>
 
@@ -260,16 +317,8 @@ function AppContent() {
           <WelcomeBanner />
         </div>
 
-        <TabsContent value="customer" className="mt-0">
-          <CustomerView />
-        </TabsContent>
-
         <TabsContent value="dashboard" className="mt-0">
           <AdminDashboard />
-        </TabsContent>
-
-        <TabsContent value="customers" className="mt-0">
-          <CustomerManagement />
         </TabsContent>
 
         <TabsContent value="menu" className="mt-0">
@@ -335,8 +384,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <SystemConfigProvider>
-      <AppContent />
-    </SystemConfigProvider>
+    <AuthProvider>
+      <SystemConfigProvider>
+        <AppContent />
+      </SystemConfigProvider>
+    </AuthProvider>
   );
 }

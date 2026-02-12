@@ -124,6 +124,7 @@ export function CustomerView() {
           name: item.name,
           quantity: item.quantity,
           price: item.price,
+          menuItemId: item.id, // Include menu item ID for inventory deduction
         })),
         total: getTotalPrice(),
         status: 'placed',

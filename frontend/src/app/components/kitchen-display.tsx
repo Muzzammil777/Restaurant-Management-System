@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
 import { Clock, ChefHat, AlertCircle, Package } from 'lucide-react';
-import { ordersApi } from '@/utils/api';
+import { ordersApi, recipesApi } from '@/utils/api';
 import { toast } from 'sonner';
 
 interface Order {
@@ -50,14 +50,37 @@ export function KitchenDisplay() {
       await ordersApi.updateStatus(cleanId, newStatus);
       toast.success('Order updated!');
       
-      // Trigger inventory deduction when order is accepted
+      // Trigger inventory deduction when order is accepted (starts preparing)
       if (newStatus === 'preparing') {
         const order = orders.find(o => o.id === orderId);
-        if (order) {
-          window.dispatchEvent(new CustomEvent('kitchen:order-accepted', { 
-            detail: { items: order.items } 
-          }));
-          toast.info("Inventory updated automatically");
+        if (order && order.items) {
+          try {
+            // Call backend API to deduct inventory
+            const result = await recipesApi.deductForOrder({
+              orderId: cleanId,
+              items: order.items.map(item => ({
+                name: item.name,
+                quantity: item.quantity,
+                menuItemId: (item as any).menuItemId
+              }))
+            });
+            
+            if (result.deducted && result.deducted.length > 0) {
+              toast.info("Inventory updated", {
+                description: `Deducted ${result.deducted.length} ingredient(s)`
+              });
+            }
+            
+            if (result.errors && result.errors.length > 0) {
+              console.warn('Inventory deduction warnings:', result.errors);
+            }
+          } catch (deductError) {
+            console.error('Inventory deduction error:', deductError);
+            // Don't fail the order update, just log the warning
+            toast.warning("Inventory sync pending", {
+              description: "Order accepted. Inventory will sync on next refresh."
+            });
+          }
         }
       }
 

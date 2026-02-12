@@ -5,10 +5,11 @@ Offers & Loyalty Routes
 - Loyalty configuration
 """
 
-from fastapi import APIRouter, HTTPException, Query
-from typing import Optional, List
+from fastapi import APIRouter, HTTPException, Request
+from typing import Optional
 from datetime import datetime
 from bson import ObjectId
+from bson.errors import InvalidId
 from ..db import get_db
 from ..audit import log_audit
 
@@ -21,6 +22,26 @@ def serialize_doc(doc):
         return None
     doc["_id"] = str(doc["_id"])
     return doc
+
+
+async def require_offers_permission(request: Request):
+    """Validate staff has offers permission. Returns staff doc or raises 403."""
+    db = get_db()
+    staff_id = request.headers.get("x-user-id")
+    if not staff_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    try:
+        staff_key = ObjectId(staff_id)
+    except (InvalidId, TypeError):
+        staff_key = staff_id
+    staff = await db.staff.find_one({"_id": staff_key})
+    if not staff:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    role_id = staff.get("role")
+    role = await db.roles.find_one({"_id": role_id}) if role_id else None
+    if not (role and role.get("permissions", {}).get("offers") is True):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return staff
 
 
 # ============ COUPONS ============
@@ -132,9 +153,10 @@ async def get_coupon(coupon_id: str):
 
 
 @router.post("/coupons")
-async def create_coupon(data: dict):
+async def create_coupon(data: dict, request: Request):
     """Create new coupon"""
     db = get_db()
+    await require_offers_permission(request)
     
     # Check for duplicate code
     if data.get("code"):
@@ -156,9 +178,10 @@ async def create_coupon(data: dict):
 
 
 @router.put("/coupons/{coupon_id}")
-async def update_coupon(coupon_id: str, data: dict):
+async def update_coupon(coupon_id: str, data: dict, request: Request):
     """Update coupon"""
     db = get_db()
+    await require_offers_permission(request)
     
     data["updatedAt"] = datetime.utcnow()
     data.pop("_id", None)
@@ -197,9 +220,10 @@ async def use_coupon(coupon_id: str):
 
 
 @router.delete("/coupons/{coupon_id}")
-async def delete_coupon(coupon_id: str):
+async def delete_coupon(coupon_id: str, request: Request):
     """Delete coupon"""
     db = get_db()
+    await require_offers_permission(request)
     
     result = await db.coupons.delete_one({"_id": ObjectId(coupon_id)})
     if result.deleted_count == 0:
@@ -231,9 +255,10 @@ async def get_membership(plan_id: str):
 
 
 @router.post("/memberships")
-async def create_membership(data: dict):
+async def create_membership(data: dict, request: Request):
     """Create membership plan"""
     db = get_db()
+    await require_offers_permission(request)
     
     data["createdAt"] = datetime.utcnow()
     data["status"] = data.get("status", "active")
@@ -247,9 +272,10 @@ async def create_membership(data: dict):
 
 
 @router.put("/memberships/{plan_id}")
-async def update_membership(plan_id: str, data: dict):
+async def update_membership(plan_id: str, data: dict, request: Request):
     """Update membership plan"""
     db = get_db()
+    await require_offers_permission(request)
     
     data["updatedAt"] = datetime.utcnow()
     data.pop("_id", None)
@@ -267,9 +293,10 @@ async def update_membership(plan_id: str, data: dict):
 
 
 @router.delete("/memberships/{plan_id}")
-async def delete_membership(plan_id: str):
+async def delete_membership(plan_id: str, request: Request):
     """Delete membership plan"""
     db = get_db()
+    await require_offers_permission(request)
     
     result = await db.membership_plans.delete_one({"_id": ObjectId(plan_id)})
     if result.deleted_count == 0:
@@ -302,9 +329,10 @@ async def get_loyalty_config():
 
 
 @router.post("/loyalty-config")
-async def update_loyalty_config(data: dict):
+async def update_loyalty_config(data: dict, request: Request):
     """Update loyalty configuration"""
     db = get_db()
+    await require_offers_permission(request)
     
     await db.settings.update_one(
         {"key": "loyalty_config"},

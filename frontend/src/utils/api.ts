@@ -1009,6 +1009,53 @@ export const analyticsApi = {
 };
 
 
+// ============ RECIPES API ============
+export const recipesApi = {
+  // List all recipes
+  list: () => fetchApi<any[]>('/recipes'),
+
+  // Get recipe for a menu item
+  get: (menuItemId: string) => fetchApi<any>(`/recipes/${menuItemId}`),
+
+  // Create or update recipe
+  save: (data: {
+    menuItemId: string;
+    menuItemName: string;
+    ingredients: Array<{
+      ingredientId: string;
+      name: string;
+      amount: number;
+      unit: string;
+    }>;
+  }) => fetchApi<any>('/recipes', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  // Delete recipe
+  delete: (id: string) => fetchApi<{ success: boolean }>(`/recipes/${id}`, {
+    method: 'DELETE',
+  }),
+
+  // Deduct inventory for an order
+  deductForOrder: (data: {
+    orderId: string;
+    items: Array<{
+      name: string;
+      quantity: number;
+      menuItemId?: string;
+    }>;
+  }) => fetchApi<{ success: boolean; deducted: any[]; errors: string[] | null }>('/recipes/deduct-for-order', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  // Get ingredients needed for a menu item
+  getIngredientsForItem: (menuItemName: string) => 
+    fetchApi<any>(`/recipes/ingredients-for-item/${encodeURIComponent(menuItemName)}`),
+};
+
+
 // Export all APIs
 export default {
   staff: staffApi,
@@ -1031,4 +1078,5 @@ export default {
   notifications: notificationsApi,
   billing: billingApi,
   analytics: analyticsApi,
+  recipes: recipesApi,
 };
