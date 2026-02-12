@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 interface Customization {
   id: string;
   name: string;
-  type: 'addon' | 'spicelevel' | 'other';
+  type?: 'addon' | 'spicelevel' | 'other';
   options: string[];
   selectedOptions?: string[]; // For tracking selections
 }
