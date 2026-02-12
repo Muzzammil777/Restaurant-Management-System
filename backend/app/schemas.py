@@ -11,6 +11,7 @@ class StaffRole(str, Enum):
     chef = "chef"
     waiter = "waiter"
     cashier = "cashier"
+    delivery = "delivery"
     staff = "staff"
 
 

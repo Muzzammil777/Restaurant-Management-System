@@ -88,7 +88,7 @@ async def seed_database(secret: str = ''):
         init_db()
         db = get_db()
     
-    results = {"staff": 0}
+    results = {"staff": 0, "errors": []}
     
     # Sample Staff
     staff_data = [
@@ -100,20 +100,26 @@ async def seed_database(secret: str = ''):
         {"name": "Delivery User", "email": "delivery@restaurant.com", "phone": "+91 98765 00006", "role": "delivery", "password": "delivery123"},
     ]
     
-    staff_coll = db.get_collection('staff')
-    for staff in staff_data:
-        existing = await staff_coll.find_one({"email": staff["email"].lower()})
-        if not existing:
-            await staff_coll.insert_one({
-                "name": staff["name"],
-                "email": staff["email"].lower(),
-                "phone": staff["phone"],
-                "role": staff["role"],
-                "password_hash": bcrypt.hash(staff["password"]),
-                "active": True,
-                "createdAt": datetime.utcnow(),
-            })
-            results["staff"] += 1
+    try:
+        staff_coll = db.get_collection('staff')
+        for staff in staff_data:
+            try:
+                existing = await staff_coll.find_one({"email": staff["email"].lower()})
+                if not existing:
+                    await staff_coll.insert_one({
+                        "name": staff["name"],
+                        "email": staff["email"].lower(),
+                        "phone": staff["phone"],
+                        "role": staff["role"],
+                        "password_hash": bcrypt.hash(staff["password"]),
+                        "active": True,
+                        "createdAt": datetime.utcnow(),
+                    })
+                    results["staff"] += 1
+            except Exception as e:
+                results["errors"].append(f"{staff['email']}: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     
     return {"success": True, "message": "Database seeded", "created": results}
 
