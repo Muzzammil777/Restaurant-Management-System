@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { AdminDashboard } from '@/app/components/admin-dashboard';
 import { MenuManagement } from '@/app/components/menu-management';
 import { OrderManagement } from '@/app/components/order-management';
-import { KitchenDisplay } from '@/app/components/kitchen-display';
+import { KitchenDisplayComprehensive } from '@/app/components/kitchen-display-comprehensive';
 import { TableManagement } from '@/app/components/table-management';
 import { InventoryManagement } from '@/app/components/inventory-management';
 import { StaffManagement } from '@/app/components/staff-management';
@@ -330,7 +330,7 @@ function AppContent() {
         </TabsContent>
 
         <TabsContent value="kitchen" className="mt-0">
-          <KitchenDisplay />
+          <KitchenDisplayComprehensive />
         </TabsContent>
 
         <TabsContent value="tables" className="mt-0">
