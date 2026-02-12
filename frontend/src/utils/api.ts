@@ -51,6 +51,17 @@ async function fetchApi<T>(
 }
 
 
+// ============ AUTH API ============
+export const authApi = {
+  // Login with email and password
+  login: (email: string, password: string) => 
+    fetchApi<{ success: boolean; user: { id: string; email: string; name: string; role: string; phone?: string; shift?: string; department?: string } }>('/staff/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+};
+
+
 // ============ STAFF API ============
 export const staffApi = {
   // List all staff with optional filters

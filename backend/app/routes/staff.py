@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, Query
 from ..db import get_db
 from ..schemas import (
     StaffIn, StaffUpdate, ShiftAssignment, AttendanceIn, 
-    PerformanceLogIn, AttendanceStatus, ShiftType
+    PerformanceLogIn, AttendanceStatus, ShiftType, LoginIn
 )
 from ..utils import hash_password, verify_password
 from ..audit import log_audit
@@ -40,6 +40,51 @@ def to_object_id(id_str: str):
         return ObjectId(id_str)
     except Exception:
         return id_str
+
+
+# ============ AUTHENTICATION ============
+@router.post('/login', tags=['auth'])
+async def login(payload: LoginIn, request: Request):
+    """Authenticate staff member and return user data"""
+    db = get_db()
+    coll = db.get_collection('staff')
+    
+    # Find user by email
+    user = await coll.find_one({'email': payload.email.lower()})
+    if not user:
+        raise HTTPException(status_code=401, detail='Invalid email or password')
+    
+    # Check if user is active
+    if not user.get('active', True):
+        raise HTTPException(status_code=401, detail='Account is deactivated. Contact admin.')
+    
+    # Verify password
+    if not verify_password(payload.password, user.get('password_hash', '')):
+        raise HTTPException(status_code=401, detail='Invalid email or password')
+    
+    # Log the login
+    await log_audit(
+        action='login',
+        resource='staff',
+        resourceId=str(user['_id']),
+        userId=str(user['_id']),
+        userName=user.get('name'),
+        details={'email': payload.email},
+        ip=request.client.host if request.client else None
+    )
+    
+    # Return user data (without password)
+    user_data = {
+        'id': str(user['_id']),
+        'email': user['email'],
+        'name': user.get('name', ''),
+        'role': user.get('role', 'staff'),
+        'phone': user.get('phone'),
+        'shift': user.get('shift'),
+        'department': user.get('department'),
+    }
+    
+    return {'success': True, 'user': user_data}
 
 
 # ============ STAFF CRUD ============

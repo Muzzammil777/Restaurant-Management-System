@@ -1,17 +1,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { authApi } from './api';
 
 // Define user roles
-export type UserRole = 'admin' | 'manager' | 'chef' | 'waiter' | 'cashier' | 'delivery';
-
-// Sample users with credentials
-export const SAMPLE_USERS = [
-  { id: 'admin001', email: 'admin@restaurant.com', password: 'admin123', name: 'Admin User', role: 'admin' as UserRole },
-  { id: 'mgr001', email: 'manager@restaurant.com', password: 'manager123', name: 'Restaurant Manager', role: 'manager' as UserRole },
-  { id: 'chef001', email: 'chef@restaurant.com', password: 'chef123', name: 'Head Chef', role: 'chef' as UserRole },
-  { id: 'waiter001', email: 'waiter@restaurant.com', password: 'waiter123', name: 'John Waiter', role: 'waiter' as UserRole },
-  { id: 'cashier001', email: 'cashier@restaurant.com', password: 'cashier123', name: 'Cash Handler', role: 'cashier' as UserRole },
-  { id: 'delivery001', email: 'delivery@restaurant.com', password: 'delivery123', name: 'Delivery Agent', role: 'delivery' as UserRole },
-];
+export type UserRole = 'admin' | 'manager' | 'chef' | 'waiter' | 'cashier' | 'delivery' | 'staff';
 
 // Role permissions - which tabs each role can access
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
@@ -21,6 +12,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   waiter: ['orders', 'tables', 'menu'],
   cashier: ['orders', 'billing', 'tables'],
   delivery: ['delivery', 'orders'],
+  staff: ['orders', 'menu'], // Default permissions for generic staff
 };
 
 // Get default tab for each role
@@ -31,6 +23,7 @@ export const DEFAULT_TAB: Record<UserRole, string> = {
   waiter: 'orders',
   cashier: 'billing',
   delivery: 'delivery',
+  staff: 'orders',
 };
 
 export interface User {
@@ -66,24 +59,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    // Find matching user
-    const matchedUser = SAMPLE_USERS.find(
-      u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
-
-    if (matchedUser) {
-      const userData: User = {
-        id: matchedUser.id,
-        email: matchedUser.email,
-        name: matchedUser.name,
-        role: matchedUser.role,
-      };
-      setUser(userData);
-      localStorage.setItem('rms_current_user', JSON.stringify(userData));
-      return { success: true };
+    try {
+      const result = await authApi.login(email, password);
+      
+      if (result.success && result.user) {
+        const userData: User = {
+          id: result.user.id,
+          email: result.user.email,
+          name: result.user.name,
+          role: result.user.role as UserRole,
+        };
+        setUser(userData);
+        localStorage.setItem('rms_current_user', JSON.stringify(userData));
+        return { success: true };
+      }
+      
+      return { success: false, error: 'Login failed' };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Login failed. Please try again.';
+      return { success: false, error: errorMessage };
     }
-
-    return { success: false, error: 'Invalid email or password' };
   };
 
   const logout = () => {

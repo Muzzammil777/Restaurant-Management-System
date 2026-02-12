@@ -62,6 +62,11 @@ class SystemConfigIn(BaseModel):
 
 
 # ============ STAFF MANAGEMENT ============
+class LoginIn(BaseModel):
+    email: EmailStr
+    password: str
+
+
 class StaffIn(BaseModel):
     name: str
     email: EmailStr

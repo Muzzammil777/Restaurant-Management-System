@@ -1,31 +1,21 @@
 import { useState } from 'react';
-import { useAuth, SAMPLE_USERS, UserRole } from '@/utils/auth-context';
+import { useAuth, UserRole } from '@/utils/auth-context';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Alert, AlertDescription } from '@/app/components/ui/alert';
-import { Badge } from '@/app/components/ui/badge';
-import { Separator } from '@/app/components/ui/separator';
-import { UtensilsCrossed, LogIn, Eye, EyeOff, ChefHat, UserCog, CreditCard, Truck, Users, Shield } from 'lucide-react';
+import { UtensilsCrossed, LogIn, Eye, EyeOff, ChefHat, UserCog, CreditCard, Truck, Users, Shield, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ROLE_ICONS: Record<UserRole, React.ReactNode> = {
-  admin: <Shield className="h-4 w-4" />,
-  manager: <UserCog className="h-4 w-4" />,
-  chef: <ChefHat className="h-4 w-4" />,
-  waiter: <Users className="h-4 w-4" />,
-  cashier: <CreditCard className="h-4 w-4" />,
-  delivery: <Truck className="h-4 w-4" />,
-};
-
-const ROLE_COLORS: Record<UserRole, string> = {
-  admin: 'bg-purple-100 text-purple-700 border-purple-200',
-  manager: 'bg-blue-100 text-blue-700 border-blue-200',
-  chef: 'bg-orange-100 text-orange-700 border-orange-200',
-  waiter: 'bg-green-100 text-green-700 border-green-200',
-  cashier: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  delivery: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+  admin: <Shield className="h-5 w-5" />,
+  manager: <UserCog className="h-5 w-5" />,
+  chef: <ChefHat className="h-5 w-5" />,
+  waiter: <Users className="h-5 w-5" />,
+  cashier: <CreditCard className="h-5 w-5" />,
+  delivery: <Truck className="h-5 w-5" />,
+  staff: <Users className="h-5 w-5" />,
 };
 
 export function LoginPage() {
@@ -55,40 +45,20 @@ export function LoginPage() {
     }
   };
 
-  const handleQuickLogin = async (userEmail: string, userPassword: string) => {
-    setEmail(userEmail);
-    setPassword(userPassword);
-    setError('');
-    setLoading(true);
-
-    try {
-      const result = await login(userEmail, userPassword);
-      if (result.success) {
-        toast.success('Login successful!');
-      } else {
-        setError(result.error || 'Login failed');
-      }
-    } catch (err) {
-      setError('An unexpected error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary/10 flex items-center justify-center p-4">
-      <div className="w-full max-w-5xl grid md:grid-cols-2 gap-8">
+      <div className="w-full max-w-md">
         {/* Login Form */}
         <Card className="shadow-xl border-0">
-          <CardHeader className="space-y-4 pb-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-primary rounded-xl">
-                <UtensilsCrossed className="h-8 w-8 text-primary-foreground" />
+          <CardHeader className="space-y-4 pb-6 text-center">
+            <div className="flex justify-center">
+              <div className="p-4 bg-primary rounded-2xl">
+                <UtensilsCrossed className="h-10 w-10 text-primary-foreground" />
               </div>
-              <div>
-                <CardTitle className="text-2xl">Restaurant Management</CardTitle>
-                <CardDescription>Sign in to access your dashboard</CardDescription>
-              </div>
+            </div>
+            <div>
+              <CardTitle className="text-2xl">Restaurant Management</CardTitle>
+              <CardDescription className="mt-2">Sign in with your staff credentials</CardDescription>
             </div>
           </CardHeader>
           <CardContent>
@@ -109,6 +79,7 @@ export function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   className="h-11"
+                  autoComplete="email"
                 />
               </div>
 
@@ -123,6 +94,7 @@ export function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     className="h-11 pr-10"
+                    autoComplete="current-password"
                   />
                   <Button
                     type="button"
@@ -151,65 +123,29 @@ export function LoginPage() {
               </Button>
             </form>
 
+            <div className="mt-8 pt-6 border-t">
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4">
+                <Lock className="h-4 w-4" />
+                <span>Role-based access control</span>
+              </div>
+              <div className="flex justify-center gap-4 flex-wrap">
+                {(['admin', 'manager', 'chef', 'waiter', 'cashier', 'delivery'] as UserRole[]).map((role) => (
+                  <div key={role} className="flex flex-col items-center gap-1 text-muted-foreground">
+                    <div className="p-2 rounded-lg bg-muted">
+                      {ROLE_ICONS[role]}
+                    </div>
+                    <span className="text-xs capitalize">{role}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="mt-6 text-center text-sm text-muted-foreground">
-              <p>Powered by Movicloud Labs</p>
+              <p>Contact admin if you don't have an account</p>
+              <p className="mt-2 text-xs">Powered by Movicloud Labs</p>
             </div>
           </CardContent>
         </Card>
-
-        {/* Quick Login Cards */}
-        <div className="space-y-4">
-          <div className="text-center md:text-left">
-            <h2 className="text-xl font-semibold text-foreground">Demo Accounts</h2>
-            <p className="text-sm text-muted-foreground">Click any role to quick login</p>
-          </div>
-
-          <div className="grid gap-3">
-            {SAMPLE_USERS.map((user) => (
-              <Card
-                key={user.id}
-                className="cursor-pointer hover:shadow-md transition-all hover:border-primary/50 group"
-                onClick={() => handleQuickLogin(user.email, user.password)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${ROLE_COLORS[user.role]}`}>
-                        {ROLE_ICONS[user.role]}
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">{user.name}</p>
-                        <p className="text-xs text-muted-foreground">{user.email}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="capitalize text-xs">
-                        {user.role}
-                      </Badge>
-                      <LogIn className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          <Separator className="my-4" />
-
-          <Card className="bg-muted/50 border-dashed">
-            <CardContent className="p-4">
-              <h3 className="font-medium text-sm mb-2">Credentials Reference</h3>
-              <div className="space-y-1 text-xs text-muted-foreground">
-                <p><span className="font-mono bg-muted px-1 rounded">admin@restaurant.com</span> / <span className="font-mono bg-muted px-1 rounded">admin123</span></p>
-                <p><span className="font-mono bg-muted px-1 rounded">manager@restaurant.com</span> / <span className="font-mono bg-muted px-1 rounded">manager123</span></p>
-                <p><span className="font-mono bg-muted px-1 rounded">chef@restaurant.com</span> / <span className="font-mono bg-muted px-1 rounded">chef123</span></p>
-                <p><span className="font-mono bg-muted px-1 rounded">waiter@restaurant.com</span> / <span className="font-mono bg-muted px-1 rounded">waiter123</span></p>
-                <p><span className="font-mono bg-muted px-1 rounded">cashier@restaurant.com</span> / <span className="font-mono bg-muted px-1 rounded">cashier123</span></p>
-                <p><span className="font-mono bg-muted px-1 rounded">delivery@restaurant.com</span> / <span className="font-mono bg-muted px-1 rounded">delivery123</span></p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   );
