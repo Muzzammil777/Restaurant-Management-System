@@ -2,14 +2,25 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
-import { LoadingKitchen } from '@/app/components/ui/loading-spinner';
 import { Clock, ChefHat, AlertCircle, Package } from 'lucide-react';
-import { API_BASE_URL } from '@/utils/supabase/info';
+import { ordersApi, recipesApi } from '@/utils/api';
 import { toast } from 'sonner';
-import { mockApi, type MockOrder } from '@/app/services/mock-api';
+
+interface Order {
+  id: string;
+  tableNumber?: number;
+  items: Array<{
+    name: string;
+    quantity: number;
+    customizations?: string[];
+  }>;
+  status: string;
+  createdAt: string;
+  type: string;
+}
 
 export function KitchenDisplay() {
-  const [orders, setOrders] = useState<MockOrder[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,13 +31,11 @@ export function KitchenDisplay() {
 
   const fetchOrders = async () => {
     try {
-      // Use mock API
-      const result = await mockApi.getOrders();
-      if (result.success) {
-        setOrders(result.data.filter((order: MockOrder) => 
-          ['placed', 'preparing', 'ready'].includes(order.status))
-        );
-      }
+      const result = await ordersApi.list();
+      const data = result.data || [];
+      setOrders(data.filter((order: Order) => 
+        ['placed', 'preparing', 'ready'].includes(order.status))
+      );
     } catch (error) {
       console.error('Error fetching orders:', error);
       setOrders([]); // Set empty array on error
@@ -37,24 +46,45 @@ export function KitchenDisplay() {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      // Use mock API
-      const result = await mockApi.updateOrderStatus(orderId, newStatus as any);
-      if (result.success) {
-        toast.success('Order updated!');
-        
-        // Trigger inventory deduction when order is accepted
-        if (newStatus === 'preparing') {
-          const order = orders.find(o => o.id === orderId);
-          if (order) {
-            window.dispatchEvent(new CustomEvent('kitchen:order-accepted', { 
-              detail: { items: order.items } 
-            }));
-            toast.info("Inventory updated automatically");
+      const cleanId = orderId.replace('order:', '');
+      await ordersApi.updateStatus(cleanId, newStatus);
+      toast.success('Order updated!');
+      
+      // Trigger inventory deduction when order is accepted (starts preparing)
+      if (newStatus === 'preparing') {
+        const order = orders.find(o => o.id === orderId);
+        if (order && order.items) {
+          try {
+            // Call backend API to deduct inventory
+            const result = await recipesApi.deductForOrder({
+              orderId: cleanId,
+              items: order.items.map(item => ({
+                name: item.name,
+                quantity: item.quantity,
+                menuItemId: (item as any).menuItemId
+              }))
+            });
+            
+            if (result.deducted && result.deducted.length > 0) {
+              toast.info("Inventory updated", {
+                description: `Deducted ${result.deducted.length} ingredient(s)`
+              });
+            }
+            
+            if (result.errors && result.errors.length > 0) {
+              console.warn('Inventory deduction warnings:', result.errors);
+            }
+          } catch (deductError) {
+            console.error('Inventory deduction error:', deductError);
+            // Don't fail the order update, just log the warning
+            toast.warning("Inventory sync pending", {
+              description: "Order accepted. Inventory will sync on next refresh."
+            });
           }
         }
-
-        fetchOrders();
       }
+
+      fetchOrders();
     } catch (error) {
       console.error('Error updating order:', error);
       toast.error('Failed to update order');
@@ -77,7 +107,7 @@ export function KitchenDisplay() {
   };
 
   if (loading) {
-    return <LoadingKitchen />;
+    return <div className="flex items-center justify-center h-full">Loading kitchen display...</div>;
   }
 
   return (
@@ -127,7 +157,7 @@ export function KitchenDisplay() {
                         </CardTitle>
                       </div>
                       <CardDescription>
-                        Order #{order.id.split('-')[1]?.slice(0, 6).toUpperCase()}
+                        Order #{order.id?.split('-')[1]?.slice(0, 6).toUpperCase() || 'UNKNOWN'}
                       </CardDescription>
                     </div>
                     <div className="flex flex-col items-end gap-2">
@@ -148,10 +178,12 @@ export function KitchenDisplay() {
                           <span className="font-semibold text-lg">{item.quantity}x</span>
                           <span className="font-medium flex-1 ml-2">{item.name}</span>
                         </div>
-                        {item.specialInstructions && (
-                          <p className="text-sm text-muted-foreground ml-8 italic">
-                            {item.specialInstructions}
-                          </p>
+                        {item.customizations && item.customizations.length > 0 && (
+                          <ul className="text-sm text-muted-foreground ml-8 list-disc">
+                            {item.customizations.map((custom, i) => (
+                              <li key={i}>{custom}</li>
+                            ))}
+                          </ul>
                         )}
                       </div>
                     ))}

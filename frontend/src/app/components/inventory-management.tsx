@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   Package, 
   AlertTriangle, 
@@ -19,7 +19,8 @@ import {
   History,
   TrendingDown,
   AlertOctagon,
-  Download
+  Download,
+  Loader2
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -50,6 +51,7 @@ import { Separator } from "@/app/components/ui/separator";
 import { Label } from "@/app/components/ui/label";
 import { cn } from '@/app/components/ui/utils';
 import { toast } from 'sonner';
+import { inventoryApi } from '@/utils/api';
 
 // --- Types ---
 
@@ -93,47 +95,95 @@ interface PurchaseRecord {
   date: string;
 }
 
-// --- Mock Data ---
-
-const INITIAL_INGREDIENTS: Ingredient[] = [
-  { id: '1', name: 'Basmati Rice', category: 'Grains', stockLevel: 85, unit: 'kg', minThreshold: 20, costPerUnit: 90, supplierId: 's1', status: 'Healthy', usageRate: 'High' },
-  { id: '2', name: 'Tomatoes', category: 'Produce', stockLevel: 12, unit: 'kg', minThreshold: 15, costPerUnit: 40, supplierId: 's2', status: 'Low', usageRate: 'High' },
-  { id: '3', name: 'Olive Oil', category: 'Oils', stockLevel: 4, unit: 'L', minThreshold: 5, costPerUnit: 850, supplierId: 's3', status: 'Critical', usageRate: 'Medium' },
-  { id: '4', name: 'Mozzarella', category: 'Dairy', stockLevel: 25, unit: 'kg', minThreshold: 10, costPerUnit: 420, supplierId: 's4', status: 'Healthy', usageRate: 'High' },
-  { id: '5', name: 'Chicken Breast', category: 'Meat', stockLevel: 0, unit: 'kg', minThreshold: 20, costPerUnit: 280, supplierId: 's5', status: 'Out', usageRate: 'High' },
-  { id: '6', name: 'Saffron', category: 'Spices', stockLevel: 0.5, unit: 'kg', minThreshold: 0.1, costPerUnit: 150000, supplierId: 's6', status: 'Healthy', usageRate: 'Low' },
-  { id: '7', name: 'Potatoes', category: 'Produce', stockLevel: 45, unit: 'kg', minThreshold: 30, costPerUnit: 25, supplierId: 's2', status: 'Healthy', usageRate: 'High' },
-  { id: '8', name: 'Onions', category: 'Produce', stockLevel: 28, unit: 'kg', minThreshold: 30, costPerUnit: 30, supplierId: 's2', status: 'Low', usageRate: 'High' },
-];
-
-const INITIAL_SUPPLIERS: Supplier[] = [
-  { id: 's1', name: 'Grain Masters', contact: '+91 98765 43210', email: 'orders@grainmasters.com', status: 'Active', suppliedItems: ['Rice', 'Flour'] },
-  { id: 's2', name: 'Fresh Fields', contact: '+91 98765 12345', email: 'sales@freshfields.com', status: 'Active', suppliedItems: ['Vegetables'] },
-  { id: 's3', name: 'Global Imports', contact: '+91 99887 76655', email: 'imports@global.com', status: 'Active', suppliedItems: ['Oils', 'Exotic Spices'] },
-  { id: 's4', name: 'Dairy Best', contact: '+91 91234 56789', email: 'supply@dairybest.com', status: 'Active', suppliedItems: ['Cheese', 'Milk'] },
-  { id: 's5', name: 'Poultry Plus', contact: '+91 88990 01122', email: 'orders@poultryplus.com', status: 'Disabled', suppliedItems: ['Chicken', 'Eggs'] },
-];
-
-const DISHES = [
-  { name: 'Chicken Biryani', ingredients: [{ id: '1', amount: 0.2 }, { id: '5', amount: 0.25 }, { id: '8', amount: 0.1 }] },
-  { name: 'Margherita Pizza', ingredients: [{ id: '4', amount: 0.15 }, { id: '2', amount: 0.1 }, { id: '3', amount: 0.02 }] },
-  { name: 'Greek Salad', ingredients: [{ id: '2', amount: 0.2 }, { id: '3', amount: 0.05 }, { id: '8', amount: 0.05 }] },
-];
+// Note: Recipes are now managed via backend API at /api/recipes
+// When setting up, create recipes that map menu items to ingredients
 
 export function InventoryManagement({ triggerStockManagement }: { triggerStockManagement?: boolean }) {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [ingredients, setIngredients] = useState<Ingredient[]>(INITIAL_INGREDIENTS);
-  const [suppliers, setSuppliers] = useState<Supplier[]>(INITIAL_SUPPLIERS);
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [deductionLogs, setDeductionLogs] = useState<DeductionLog[]>([]);
   const [purchaseRecords, setPurchaseRecords] = useState<PurchaseRecord[]>([]);
   const [isSimulating, setIsSimulating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
   
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
   const logEndRef = useRef<HTMLDivElement>(null);
+
+  // Fetch data from API
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [ingredientsRes, suppliersRes, deductionsRes, purchasesRes] = await Promise.all([
+        inventoryApi.list().catch(() => []),
+        inventoryApi.listSuppliers().catch(() => []),
+        inventoryApi.listDeductions().catch(() => []),
+        inventoryApi.listPurchases().catch(() => [])
+      ]);
+      
+      // Handle different response formats
+      const ingredientsData = Array.isArray(ingredientsRes) ? ingredientsRes : (ingredientsRes as any)?.data || [];
+      setIngredients(ingredientsData.map((ing: any) => ({
+        id: ing._id || ing.id,
+        name: ing.name,
+        category: ing.category || 'Other',
+        stockLevel: ing.stockLevel || 0,
+        unit: ing.unit || 'units',
+        minThreshold: ing.minThreshold || 10,
+        costPerUnit: ing.costPerUnit || 0,
+        supplierId: ing.supplierId || '',
+        status: ing.status || 'Healthy',
+        usageRate: ing.usageRate || 'Medium',
+        lastDeduction: ing.lastDeduction
+      })));
+      
+      setSuppliers((suppliersRes || []).map((sup: any) => ({
+        id: sup._id || sup.id,
+        name: sup.name,
+        contact: sup.contact || '',
+        email: sup.email || '',
+        status: sup.status || 'Active',
+        suppliedItems: sup.suppliedItems || []
+      })));
+      
+      setDeductionLogs((deductionsRes || []).map((log: any) => ({
+        id: log._id || log.id,
+        orderId: log.orderId,
+        dishName: log.items?.[0]?.name || 'Order',
+        ingredients: log.ingredients || [],
+        timestamp: log.timestamp
+      })));
+      
+      setPurchaseRecords((purchasesRes || []).map((rec: any) => ({
+        id: rec._id || rec.id,
+        supplierName: rec.supplierName,
+        ingredientName: rec.ingredientName,
+        quantity: rec.quantity,
+        cost: rec.cost,
+        date: rec.date || rec.createdAt
+      })));
+    } catch (error) {
+      console.error('Error fetching inventory data:', error);
+      toast.error('Failed to load inventory data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
 
   // Handle external trigger
   useEffect(() => {
@@ -164,72 +214,56 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
 
   const uniqueCategories = useMemo(() => Array.from(new Set(ingredients.map(i => i.category))), [ingredients]);
 
-  // Simulation Logic
+  // Real-time sync - when simulating, just refresh data more frequently
   useEffect(() => {
     let interval: any;
     if (isSimulating) {
+      // In simulation mode, refresh every 5 seconds to show live updates from orders
       interval = setInterval(() => {
-        const randomDish = DISHES[Math.floor(Math.random() * DISHES.length)];
-        const orderId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
-        const timestamp = new Date().toISOString();
-        
-        const usedIngredients: { name: string; amount: number; unit: string }[] = [];
-
-        setIngredients(prev => prev.map(ing => {
-          const required = randomDish.ingredients.find(r => r.id === ing.id);
-          if (required && ing.stockLevel > 0) {
-            const deduct = required.amount;
-            const newLevel = Math.max(0, ing.stockLevel - deduct);
-            usedIngredients.push({ name: ing.name, amount: deduct, unit: ing.unit });
-            
-            // Determine new status
-            let newStatus: Ingredient['status'] = 'Healthy';
-            if (newLevel === 0) newStatus = 'Out';
-            else if (newLevel <= ing.minThreshold / 2) newStatus = 'Critical';
-            else if (newLevel <= ing.minThreshold) newStatus = 'Low';
-
-            return { ...ing, stockLevel: newLevel, status: newStatus, lastDeduction: timestamp };
-          }
-          return ing;
-        }));
-
-        if (usedIngredients.length > 0) {
-          const newLog: DeductionLog = {
-            id: Date.now().toString(),
-            orderId,
-            dishName: randomDish.name,
-            ingredients: usedIngredients,
-            timestamp
-          };
-          setDeductionLogs(prev => [newLog, ...prev].slice(0, 50));
-          toast.info(`Order ${orderId} Confirmed`, { description: `Stock automatically deducted for ${randomDish.name}` });
-        }
-
-      }, 3500);
+        fetchData();
+        toast.info("Syncing with orders...", { duration: 1000 });
+      }, 5000);
     }
     return () => clearInterval(interval);
-  }, [isSimulating]);
+  }, [isSimulating, fetchData]);
 
   // Actions
-  const handleAddPurchase = (data: any) => {
-    const newRecord: PurchaseRecord = {
-      id: Date.now().toString(),
-      ...data,
-      date: new Date().toISOString()
-    };
-    setPurchaseRecords(prev => [newRecord, ...prev]);
-    toast.success("Purchase Recorded", { description: "Record added to audit log. Live stock remains unchanged." });
+  const handleAddPurchase = async (data: any) => {
+    try {
+      // Find ingredient ID by name
+      const ingredient = ingredients.find(i => i.name === data.ingredientName);
+      
+      await inventoryApi.createPurchase({
+        ingredientId: ingredient?.id,
+        ingredientName: data.ingredientName,
+        supplierName: data.supplierName,
+        quantity: Number(data.quantity),
+        cost: Number(data.cost),
+        date: new Date().toISOString()
+      });
+      
+      toast.success("Purchase Recorded", { description: "Stock updated and audit log created." });
+      fetchData(); // Refresh to show updated stock
+    } catch (error) {
+      console.error('Error adding purchase:', error);
+      toast.error("Failed to record purchase");
+    }
   };
 
-  const handleToggleSupplier = (id: string) => {
-    setSuppliers(prev => prev.map(s => {
-      if (s.id === id) {
-        const newStatus = s.status === 'Active' ? 'Disabled' : 'Active';
-        toast.success(`Supplier ${newStatus}`, { description: `${s.name} has been ${newStatus.toLowerCase()}.` });
-        return { ...s, status: newStatus };
-      }
-      return s;
-    }));
+  const handleToggleSupplier = async (id: string) => {
+    try {
+      const supplier = suppliers.find(s => s.id === id);
+      if (!supplier) return;
+      
+      const newStatus = supplier.status === 'Active' ? 'Disabled' : 'Active';
+      await inventoryApi.updateSupplier(id, { status: newStatus });
+      
+      toast.success(`Supplier ${newStatus}`, { description: `${supplier.name} has been ${newStatus.toLowerCase()}.` });
+      fetchData();
+    } catch (error) {
+      console.error('Error toggling supplier:', error);
+      toast.error("Failed to update supplier");
+    }
   };
 
   const getRowColor = (status: Ingredient['status']) => {
@@ -251,18 +285,26 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
              <h1 className="text-3xl font-bold tracking-tight text-gray-900">Inventory Management</h1>
              <p className="text-muted-foreground flex items-center gap-2 mt-1">
                <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-               System is running in strict Order-Driven mode.
+               {loading ? 'Loading inventory data...' : 'Connected to backend • Order-Driven mode active'}
              </p>
            </div>
            
            <div className="flex items-center gap-3">
+             <Button variant="outline" onClick={fetchData} disabled={loading}>
+               {loading ? (
+                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+               ) : (
+                 <RefreshCcw className="mr-2 h-4 w-4" />
+               )}
+               Refresh
+             </Button>
              {isSimulating ? (
                <Button variant="destructive" onClick={() => setIsSimulating(false)} className="shadow-lg shadow-red-200">
-                 <Pause className="mr-2 h-4 w-4" /> Stop Live Orders
+                 <Pause className="mr-2 h-4 w-4" /> Stop Live Sync
                </Button>
              ) : (
                <Button onClick={() => setIsSimulating(true)} className="bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200 text-white">
-                 <Play className="mr-2 h-4 w-4" /> Simulate Live Orders
+                 <Play className="mr-2 h-4 w-4" /> Start Live Sync
                </Button>
              )}
              <AddPurchaseDialog ingredients={ingredients} suppliers={suppliers} onSave={handleAddPurchase} />
