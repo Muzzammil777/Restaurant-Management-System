@@ -9,7 +9,7 @@ load_dotenv(BASE_DIR / '.env')
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .db import init_db
+from .db import init_db, get_db
 
 # Import all route modules
 from .routes import settings as settings_router
@@ -74,17 +74,21 @@ app.include_router(analytics_router.router, prefix='/api/analytics')
 @app.post('/api/seed')
 async def seed_database(secret: str = ''):
     """Seed the database with sample data. Requires SEED_SECRET env var."""
-    expected_secret = os.getenv('SEED_SECRET', 'seed123')
-    if secret != expected_secret:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=403, detail='Invalid secret')
-    
-    from .db import get_db
+    from fastapi import HTTPException
     from datetime import datetime
     from passlib.hash import bcrypt
     
-    db = get_db()
-    results = {"staff": 0, "ingredients": 0, "suppliers": 0, "menu_items": 0}
+    expected_secret = os.getenv('SEED_SECRET', 'seed123')
+    if secret != expected_secret:
+        raise HTTPException(status_code=403, detail='Invalid secret')
+    
+    try:
+        db = get_db()
+    except RuntimeError:
+        init_db()
+        db = get_db()
+    
+    results = {"staff": 0}
     
     # Sample Staff
     staff_data = [
@@ -96,10 +100,11 @@ async def seed_database(secret: str = ''):
         {"name": "Delivery User", "email": "delivery@restaurant.com", "phone": "+91 98765 00006", "role": "delivery", "password": "delivery123"},
     ]
     
+    staff_coll = db.get_collection('staff')
     for staff in staff_data:
-        existing = await db.staff.find_one({"email": staff["email"].lower()})
+        existing = await staff_coll.find_one({"email": staff["email"].lower()})
         if not existing:
-            await db.staff.insert_one({
+            await staff_coll.insert_one({
                 "name": staff["name"],
                 "email": staff["email"].lower(),
                 "phone": staff["phone"],
