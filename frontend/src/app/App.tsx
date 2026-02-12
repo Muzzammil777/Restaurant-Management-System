@@ -83,16 +83,6 @@ function AppContent() {
     }
   }, [user]);
 
-  // If not authenticated, show login page
-  if (!isAuthenticated) {
-    return (
-      <>
-        <Toaster position="top-right" />
-        <LoginPage />
-      </>
-    );
-  }
-
   // Listen for stock management navigation event from Kitchen
   useEffect(() => {
     const handleStockManagementRequest = () => {
@@ -114,6 +104,16 @@ function AppContent() {
       window.removeEventListener('new-admin-notification' as any, handleNewNotification);
     };
   }, []);
+
+  // If not authenticated, show login page
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Toaster position="top-right" />
+        <LoginPage />
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
