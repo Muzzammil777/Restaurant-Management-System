@@ -66,12 +66,12 @@ function getStationForItem(itemName: string): Station {
 
 function getStationColor(station: Station): string {
   switch (station) {
-    case 'FRY': return 'bg-orange-900 text-orange-200 border-orange-600';
-    case 'CURRY': return 'bg-yellow-900 text-yellow-200 border-yellow-600';
-    case 'RICE': return 'bg-amber-900 text-amber-200 border-amber-600';
-    case 'GRILL': return 'bg-red-900 text-red-200 border-red-600';
-    case 'PREP': return 'bg-green-900 text-green-200 border-green-600';
-    case 'DESSERT': return 'bg-purple-900 text-purple-200 border-purple-600';
+    case 'FRY': return 'bg-orange-50 text-orange-700 border-orange-300';
+    case 'CURRY': return 'bg-yellow-50 text-yellow-800 border-yellow-300';
+    case 'RICE': return 'bg-amber-50 text-amber-800 border-amber-300';
+    case 'GRILL': return 'bg-red-50 text-red-700 border-red-300';
+    case 'PREP': return 'bg-green-50 text-green-700 border-green-300';
+    case 'DESSERT': return 'bg-purple-50 text-purple-700 border-purple-300';
   }
 }
 
@@ -119,32 +119,32 @@ function ProductionTicket({ order, activeTerminal, onItemToggle, onMarkReady }: 
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       className={cn(
-        'bg-stone-800 border-2 rounded-lg overflow-hidden',
-        isUrgent ? 'border-red-500 animate-pulse' : 'border-stone-600'
+        'bg-white border-2 rounded-xl overflow-hidden shadow-sm',
+        isUrgent ? 'border-red-300' : 'border-gray-200'
       )}
     >
       {/* Header */}
-      <div className="bg-stone-900 p-4 border-b border-stone-700">
+      <div className="bg-[#F7F3EE] p-4 border-b border-gray-200">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-2xl font-bold text-white">{order.displayId}</h3>
+          <h3 className="text-2xl font-bold text-[#000000]">{order.displayId}</h3>
           <div className="flex items-center gap-2">
             {isUrgent && (
-              <Badge className="bg-red-900 text-red-100 border-red-600">
+              <Badge className="bg-red-50 text-red-700 border-red-300">
                 <AlertTriangle className="w-3 h-3 mr-1" />
                 Urgent
               </Badge>
             )}
-            <div className="flex items-center gap-1 text-gray-400">
+            <div className="flex items-center gap-1 text-muted-foreground">
               <Clock className="w-4 h-4" />
               <span className="text-sm">{ageMinutes}m</span>
             </div>
           </div>
         </div>
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-400">
+          <span className="text-muted-foreground">
             {order.tableNumber || 'Takeaway'} • {order.customerName}
           </span>
-          <span className="text-amber-400 font-medium">
+          <span className="text-[#8B5A2B] font-semibold">
             {visibleItems.length} items
           </span>
         </div>
@@ -162,7 +162,7 @@ function ProductionTicket({ order, activeTerminal, onItemToggle, onMarkReady }: 
                 <div
                   key={item.id}
                   className={cn(
-                    'flex items-center gap-3 p-2 rounded bg-stone-700/50 border border-stone-600',
+                    'flex items-center gap-3 p-2 rounded bg-gray-50 border border-gray-200',
                     item.completed && 'opacity-40 line-through'
                   )}
                 >
@@ -171,13 +171,13 @@ function ProductionTicket({ order, activeTerminal, onItemToggle, onMarkReady }: 
                     onCheckedChange={(checked) => 
                       onItemToggle(order.id, item.id, checked as boolean)
                     }
-                    className="border-gray-400"
+                    className="border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                   />
-                  <span className="text-white font-medium">
+                  <span className="text-[#000000] font-medium">
                     {item.quantity}x {item.name}
                   </span>
                   {item.specialInstructions && (
-                    <Badge variant="outline" className="text-xs border-amber-500 text-amber-400">
+                    <Badge variant="outline" className="text-xs border-amber-300 text-amber-700 bg-amber-50">
                       {item.specialInstructions}
                     </Badge>
                   )}
@@ -191,9 +191,9 @@ function ProductionTicket({ order, activeTerminal, onItemToggle, onMarkReady }: 
       {/* Notes */}
       {order.customerNotes && (
         <div className="px-4 pb-3">
-          <div className="bg-amber-900/30 border border-amber-700 rounded-lg p-3">
-            <p className="text-xs text-amber-200">
-              <strong className="text-amber-400">Special Note:</strong> {order.customerNotes}
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <p className="text-xs text-amber-900">
+              <strong className="text-amber-700">Special Note:</strong> {order.customerNotes}
             </p>
           </div>
         </div>
@@ -201,13 +201,13 @@ function ProductionTicket({ order, activeTerminal, onItemToggle, onMarkReady }: 
 
       {/* Action */}
       {activeTerminal === 'HEAD_CHEF' && (
-        <div className="p-4 bg-stone-900 border-t border-stone-700">
+        <div className="p-4 bg-white border-t border-gray-200">
           <Button
             className={cn(
               'w-full text-lg font-bold',
               allItemsCompleted
-                ? 'bg-green-700 hover:bg-green-600 text-white'
-                : 'bg-stone-600 text-stone-400 cursor-not-allowed'
+                ? 'bg-green-600 hover:bg-green-700 text-white'
+                : 'bg-gray-200 text-gray-500 cursor-not-allowed'
             )}
             disabled={!allItemsCompleted}
             onClick={() => onMarkReady(order.id)}
@@ -269,8 +269,8 @@ function BatchView({ orders, activeTerminal }: { orders: MockOrder[]; activeTerm
   return (
     <div className="space-y-6 p-4">
       <div className="text-center mb-6">
-        <h2 className="text-3xl font-bold text-white mb-2">Batch Production View</h2>
-        <p className="text-gray-400">Aggregated items across all active orders</p>
+        <h2 className="text-3xl font-bold text-[#000000] mb-2">Batch Production View</h2>
+        <p className="text-muted-foreground">Aggregated items across all active orders</p>
       </div>
 
       {Object.entries(itemsByStation).map(([station, items]) => (
@@ -280,22 +280,22 @@ function BatchView({ orders, activeTerminal }: { orders: MockOrder[]; activeTerm
               <ChefHat className="w-5 h-5 mr-2" />
               {station} STATION
             </Badge>
-            <span className="text-gray-400">
+            <span className="text-muted-foreground">
               {items.reduce((sum, item) => sum + item.totalQuantity, 0)} total items
             </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {items.map((item) => (
-              <Card key={item.name} className="bg-stone-800 border-stone-600">
+              <Card key={item.name} className="bg-white border-gray-200 shadow-sm">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-bold text-white text-lg">{item.name}</h4>
+                    <h4 className="font-bold text-[#000000] text-lg">{item.name}</h4>
                     <div className="text-right">
-                      <div className="text-3xl font-bold text-amber-400">
+                      <div className="text-3xl font-bold text-[#8B5A2B]">
                         {item.totalQuantity}
                       </div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-muted-foreground">
                         {item.orderCount} orders
                       </div>
                     </div>
@@ -308,7 +308,7 @@ function BatchView({ orders, activeTerminal }: { orders: MockOrder[]; activeTerm
       ))}
 
       {sortedItems.length === 0 && (
-        <div className="text-center py-20 text-gray-500">
+        <div className="text-center py-20 text-muted-foreground">
           <Coffee className="w-20 h-20 mx-auto mb-4 opacity-30" />
           <p className="text-xl">No items to prepare</p>
         </div>
@@ -407,16 +407,16 @@ export function KitchenDisplayComprehensive() {
   const activeTerminalMeta = TERMINAL_STATIONS.find((s) => s.id === activeTerminal);
 
   return (
-    <div className="min-h-screen bg-stone-900">
+    <div className="min-h-screen p-6 space-y-6" style={{ background: 'linear-gradient(135deg, #FDFCFB 0%, #F7F3EE 100%)' }}>
       {/* Header */}
-      <div className="bg-stone-950 border-b border-stone-800 p-6 sticky top-0 z-10">
+      <div className="bg-white border border-gray-200 p-6 rounded-xl shadow-sm sticky top-0 z-10">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-white flex items-center gap-3">
-              <ChefHat className="w-10 h-10 text-amber-500" />
+            <h1 className="text-4xl font-bold text-[#000000] flex items-center gap-3">
+              <ChefHat className="w-10 h-10 text-[#8B5A2B]" />
               Kitchen Display System
             </h1>
-            <p className="text-gray-400 mt-2">
+            <p className="text-muted-foreground mt-2">
               {activeTerminalMeta?.name} • Production tracking and order management
             </p>
           </div>
@@ -424,19 +424,19 @@ export function KitchenDisplayComprehensive() {
             <Badge className={cn(
               'text-lg px-4 py-2 border',
               activeTerminal === 'HEAD_CHEF'
-                ? 'bg-amber-900 text-amber-100 border-amber-500'
-                : 'bg-stone-800 text-stone-100 border-stone-600'
+                ? 'bg-amber-50 text-amber-700 border-amber-300'
+                : 'bg-gray-50 text-gray-700 border-gray-300'
             )}>
               {activeTerminal === 'HEAD_CHEF' ? <Crown className="w-5 h-5 mr-2" /> : <ChefHat className="w-5 h-5 mr-2" />}
               {activeTerminalMeta?.name}
             </Badge>
-            <Badge className="text-lg px-4 py-2 bg-amber-900 text-amber-100 border-amber-600">
+            <Badge className="text-lg px-4 py-2 bg-[#F7F3EE] text-[#8B5A2B] border-[#C4A484]">
               <Flame className="w-5 h-5 mr-2" />
               {visibleOrders.length} Active Orders
             </Badge>
             <Button
               variant="outline"
-              className="border-stone-600 text-stone-200 hover:bg-stone-800"
+              className="border-gray-300 text-gray-700 hover:bg-gray-100"
               onClick={() => setActiveTerminal(null)}
             >
               <LogOut className="w-4 h-4 mr-2" />
@@ -447,13 +447,13 @@ export function KitchenDisplayComprehensive() {
       </div>
 
       {/* View Tabs */}
-      <Tabs value={view} onValueChange={(v) => setView(v as 'tickets' | 'batch')} className="p-6">
-        <TabsList className="bg-stone-800 border border-stone-700">
-          <TabsTrigger value="tickets" className="data-[state=active]:bg-amber-700 data-[state=active]:text-white">
+      <Tabs value={view} onValueChange={(v) => setView(v as 'tickets' | 'batch')} className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+        <TabsList className="bg-transparent border-0 p-1">
+          <TabsTrigger value="tickets" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
             <Package className="w-4 h-4 mr-2" />
             Production Board
           </TabsTrigger>
-          <TabsTrigger value="batch" className="data-[state=active]:bg-amber-700 data-[state=active]:text-white">
+          <TabsTrigger value="batch" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
             <Users className="w-4 h-4 mr-2" />
             Batch View
           </TabsTrigger>
@@ -477,10 +477,10 @@ export function KitchenDisplayComprehensive() {
             </div>
             
             {visibleOrders.length === 0 && (
-              <div className="text-center py-20 text-gray-500">
+              <div className="text-center py-20 text-muted-foreground">
                 <Coffee className="w-20 h-20 mx-auto mb-4 opacity-30" />
                 <p className="text-2xl font-bold">No orders in production</p>
-                <p className="text-gray-600 mt-2">All caught up!</p>
+                <p className="mt-2">All caught up!</p>
               </div>
             )}
           </ScrollArea>
