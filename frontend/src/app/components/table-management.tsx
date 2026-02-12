@@ -518,8 +518,13 @@ export function TableManagement() {
       
       if (response.ok) {
         const result = await response.json();
-        if (result.success) {
-          const waiterStaff = result.data
+        const rawStaff = Array.isArray(result?.data)
+          ? result.data
+          : Array.isArray(result)
+            ? result
+            : [];
+        if (result?.success || Array.isArray(result)) {
+          const waiterStaff = rawStaff
             .filter((staff: any) => staff.role === 'waiter')
             .map((staff: any) => ({
               id: staff.id,

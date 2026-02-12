@@ -80,6 +80,20 @@ export function OrderManagement() {
   const [undoCountdown, setUndoCountdown] = useState<number>(0);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const normalizeOrder = (rawOrder: any): Order => {
+    const rawItems = Array.isArray(rawOrder?.items) ? rawOrder.items : [];
+    return {
+      ...rawOrder,
+      items: rawItems.map((item: any) => ({
+        name: item?.name || 'Unknown Item',
+        quantity: Number(item?.quantity) || 0,
+        price: Number(item?.price) || 0,
+      })),
+      total: Number(rawOrder?.total) || 0,
+      createdAt: rawOrder?.createdAt || new Date().toISOString(),
+    };
+  };
+
   useEffect(() => {
     fetchOrders();
     fetchMenuItems();
@@ -107,7 +121,12 @@ export function OrderManagement() {
   const fetchOrders = async () => {
     try {
       const result = await ordersApi.list();
-      setOrders(result.data || []);
+      const rawOrders = Array.isArray(result?.data)
+        ? result.data
+        : Array.isArray(result as any)
+          ? (result as any)
+          : [];
+      setOrders(rawOrders.map(normalizeOrder));
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to fetch orders. Please check your connection.');
@@ -522,7 +541,8 @@ export function OrderManagement() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {sortedOrders.map((order) => {
-            const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
+            const orderItems = Array.isArray(order.items) ? order.items : [];
+            const totalItems = orderItems.reduce((sum, item) => sum + item.quantity, 0);
             const ageInMinutes = getOrderAge(order);
             const delayLevel = getDelayLevel(ageInMinutes, order.status);
             const priority = getOrderPriority(order);
@@ -659,7 +679,7 @@ export function OrderManagement() {
                       ORDER ITEMS ({totalItems} {totalItems === 1 ? 'item' : 'items'})
                     </p>
                     <ul className="text-sm space-y-1.5">
-                      {order.items.map((item, idx) => (
+                      {orderItems.map((item, idx) => (
                         <li key={idx} className="flex justify-between">
                           <span className="text-muted-foreground">
                             {item.quantity}x {item.name}
@@ -803,7 +823,7 @@ export function OrderManagement() {
                             <div>
                               <p className="text-sm font-medium mb-2">Items</p>
                               <ul className="space-y-2">
-                                {order.items.map((item, idx) => (
+                                {(Array.isArray(order.items) ? order.items : []).map((item, idx) => (
                                   <li key={idx} className="flex justify-between text-sm">
                                     <span>{item.quantity}x {item.name}</span>
                                     <span className="flex items-center gap-0.5">

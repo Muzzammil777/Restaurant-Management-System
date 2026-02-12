@@ -98,7 +98,7 @@ export function OrderManagement() {
         const transformedOrders = mockResult.data.map((mockOrder: any) => ({
           ...mockOrder,
           total: mockOrder.totalAmount || mockOrder.total || 0,
-          items: (mockOrder.items || []).map((item: any) => ({
+          items: (Array.isArray(mockOrder.items) ? mockOrder.items : []).map((item: any) => ({
             ...item,
             price: item.price || 0,
             quantity: item.quantity || 0,
@@ -761,7 +761,8 @@ export function OrderManagement() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {sortedOrders.map((order, index) => {
-            const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
+            const orderItems = Array.isArray(order.items) ? order.items : [];
+            const totalItems = orderItems.reduce((sum, item) => sum + item.quantity, 0);
             const ageInMinutes = getOrderAge(order);
             const delayLevel = getDelayLevel(ageInMinutes, order.status);
             const priority = getOrderPriority(order);
@@ -982,7 +983,7 @@ export function OrderManagement() {
                         Order Items ({totalItems})
                       </p>
                       <ul className="text-sm space-y-2">
-                        {order.items.map((item, idx) => (
+                        {(Array.isArray(order.items) ? order.items : []).map((item, idx) => (
                           <motion.li 
                             key={idx} 
                             initial={{ opacity: 0, x: -20 }}
@@ -1124,7 +1125,7 @@ export function OrderManagement() {
                               <div className="bg-[#F7F3EE] p-3 rounded-lg">
                                 <p className="text-xs font-semibold text-muted-foreground mb-2">ORDER ITEMS</p>
                                 <ul className="space-y-2">
-                                  {order.items.map((item, idx) => (
+                                  {(Array.isArray(order.items) ? order.items : []).map((item, idx) => (
                                     <li key={idx} className="flex justify-between text-sm bg-white p-2 rounded">
                                       <span className="font-medium">{item.quantity}x {item.name}</span>
                                       <span className="flex items-center gap-0.5 font-semibold">
