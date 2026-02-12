@@ -70,6 +70,49 @@ app.include_router(billing_router.router, prefix='/api/billing')
 app.include_router(analytics_router.router, prefix='/api/analytics')
 
 
+# Database Seed Endpoint
+@app.post('/api/seed')
+async def seed_database(secret: str = ''):
+    """Seed the database with sample data. Requires SEED_SECRET env var."""
+    expected_secret = os.getenv('SEED_SECRET', 'seed123')
+    if secret != expected_secret:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail='Invalid secret')
+    
+    from .db import get_db
+    from datetime import datetime
+    from passlib.hash import bcrypt
+    
+    db = get_db()
+    results = {"staff": 0, "ingredients": 0, "suppliers": 0, "menu_items": 0}
+    
+    # Sample Staff
+    staff_data = [
+        {"name": "Admin User", "email": "admin@restaurant.com", "phone": "+91 98765 00001", "role": "admin", "password": "admin123"},
+        {"name": "Manager User", "email": "manager@restaurant.com", "phone": "+91 98765 00002", "role": "manager", "password": "manager123"},
+        {"name": "Chef User", "email": "chef@restaurant.com", "phone": "+91 98765 00003", "role": "chef", "password": "chef123"},
+        {"name": "Waiter User", "email": "waiter@restaurant.com", "phone": "+91 98765 00004", "role": "waiter", "password": "waiter123"},
+        {"name": "Cashier User", "email": "cashier@restaurant.com", "phone": "+91 98765 00005", "role": "cashier", "password": "cashier123"},
+        {"name": "Delivery User", "email": "delivery@restaurant.com", "phone": "+91 98765 00006", "role": "delivery", "password": "delivery123"},
+    ]
+    
+    for staff in staff_data:
+        existing = await db.staff.find_one({"email": staff["email"].lower()})
+        if not existing:
+            await db.staff.insert_one({
+                "name": staff["name"],
+                "email": staff["email"].lower(),
+                "phone": staff["phone"],
+                "role": staff["role"],
+                "password_hash": bcrypt.hash(staff["password"]),
+                "active": True,
+                "createdAt": datetime.utcnow(),
+            })
+            results["staff"] += 1
+    
+    return {"success": True, "message": "Database seeded", "created": results}
+
+
 if __name__ == '__main__':
     import uvicorn
     host = os.getenv('FASTAPI_HOST', '0.0.0.0')
