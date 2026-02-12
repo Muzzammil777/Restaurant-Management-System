@@ -13,7 +13,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime
-from passlib.hash import bcrypt
+from passlib.hash import pbkdf2_sha256
 
 # Load environment
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -86,7 +86,7 @@ async def seed_database():
                 "email": staff["email"].lower(),
                 "phone": staff["phone"],
                 "role": staff["role"],
-                "password_hash": bcrypt.hash(staff["password"]),
+                "password_hash": pbkdf2_sha256.hash(staff["password"]),
                 "active": True,
                 "createdAt": datetime.utcnow(),
             }

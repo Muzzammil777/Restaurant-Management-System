@@ -76,7 +76,7 @@ async def seed_database(secret: str = ''):
     """Seed the database with sample data. Requires SEED_SECRET env var."""
     from fastapi import HTTPException
     from datetime import datetime
-    from passlib.hash import bcrypt
+    from passlib.hash import pbkdf2_sha256
     
     expected_secret = os.getenv('SEED_SECRET', 'seed123')
     if secret != expected_secret:
@@ -111,7 +111,7 @@ async def seed_database(secret: str = ''):
                         "email": staff["email"].lower(),
                         "phone": staff["phone"],
                         "role": staff["role"],
-                        "password_hash": bcrypt.hash(staff["password"]),
+                        "password_hash": pbkdf2_sha256.hash(staff["password"]),
                         "active": True,
                         "createdAt": datetime.utcnow(),
                     })
