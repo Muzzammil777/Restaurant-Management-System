@@ -136,41 +136,49 @@ export function StaffReports() {
             <CardTitle className="text-base font-bold text-gray-800">Overtime Expenditure by Department</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={expenditureData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#F0F0F0" />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fill: '#9CA3AF', fontSize: 12}}
-                    dy={10}
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fill: '#9CA3AF', fontSize: 12}}
-                  />
-                  <Tooltip 
-                    cursor={{fill: '#FDFCFB'}}
-                    contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}}
-                  />
-                  <Bar dataKey="regular" stackId="a" fill="#E5DDD3" radius={[0, 0, 0, 0]} barSize={80} name="REGULAR SALARY" />
-                  <Bar dataKey="overtime" stackId="a" fill="#8B5A2B" radius={[4, 4, 0, 0]} barSize={80} name="MANDATORY OVERTIME" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex items-center gap-6 mt-6 ml-4">
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-sm bg-[#E5DDD3]" />
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Regular Salary</span>
+            {loading ? (
+              <div className="h-[300px] flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
               </div>
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-sm bg-[#8B5A2B]" />
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mandatory Overtime</span>
-              </div>
-            </div>
+            ) : (
+              <>
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={expenditureData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#F0F0F0" />
+                      <XAxis 
+                        dataKey="name" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{fill: '#9CA3AF', fontSize: 12}}
+                        dy={10}
+                      />
+                      <YAxis 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{fill: '#9CA3AF', fontSize: 12}}
+                      />
+                      <Tooltip 
+                        cursor={{fill: '#FDFCFB'}}
+                        contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}}
+                      />
+                      <Bar dataKey="regular" stackId="a" fill="#E5DDD3" radius={[0, 0, 0, 0]} barSize={80} name="REGULAR SALARY" />
+                      <Bar dataKey="overtime" stackId="a" fill="#8B5A2B" radius={[4, 4, 0, 0]} barSize={80} name="MANDATORY OVERTIME" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex items-center gap-6 mt-6 ml-4">
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded-sm bg-[#E5DDD3]" />
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Regular Salary</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded-sm bg-[#8B5A2B]" />
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mandatory Overtime</span>
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
