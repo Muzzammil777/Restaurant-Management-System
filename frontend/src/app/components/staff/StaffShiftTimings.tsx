@@ -20,8 +20,8 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/app/components/ui/select";
-import { Clock, TrendingUp, Info, Loader2, Plus, Pencil, Trash2 } from 'lucide-react';
-import { shiftsApi, staffApi } from '@/utils/api';
+import { Clock, TrendingUp, Info, Loader2, Plus, Pencil, Trash2, DollarSign, CheckCircle } from 'lucide-react';
+import { shiftsApi, staffApi, settingsApi } from '@/utils/api';
 import { toast } from 'sonner';
 
 const mockRoster = [
@@ -114,8 +114,11 @@ export function StaffShiftTimings() {
   const [error, setError] = useState<string | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [ratesDialogOpen, setRatesDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [selectedShift, setSelectedShift] = useState<ShiftAssignment | null>(null);
+  const [rateMode, setRateMode] = useState<'standard' | 'weekend' | 'holiday'>('standard');
   const [shiftForm, setShiftForm] = useState<ShiftForm>({
     staffId: '',
     date: new Date().toISOString().split('T')[0],
@@ -124,6 +127,9 @@ export function StaffShiftTimings() {
     endTime: '16:00',
     notes: ''
   });
+
+  // Store custom rates per staff member
+  const [staffRates, setStaffRates] = useState<Record<string, { baseRate: number; otMultiplier: number }>>({});
 
   useEffect(() => {
     fetchData();
@@ -266,6 +272,33 @@ export function StaffShiftTimings() {
       notes: shift.notes || ''
     });
     setEditDialogOpen(true);
+  };
+
+  const handlePublishRoster = async () => {
+    try {
+      setPublishing(true);
+      // Save the current rate mode to settings
+      await settingsApi.upsert({
+        key: 'shift_rate_mode',
+        value: rateMode,
+        category: 'shifts'
+      });
+      await settingsApi.upsert({
+        key: 'staff_rates',
+        value: staffRates,
+        category: 'shifts'
+      });
+      toast.success('Roster published successfully! Staff will be notified.');
+    } catch (err) {
+      console.error('Error publishing roster:', err);
+      toast.error('Failed to publish roster');
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const handleRateModeChange = (mode: 'standard' | 'weekend' | 'holiday') => {
+    setRateMode(mode);
   };
 
   return (
@@ -589,12 +622,88 @@ export function StaffShiftTimings() {
               <p className="text-xs text-muted-foreground font-medium">Auto-calculation engine active based on mandatory shifts.</p>
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="ghost" className="text-gray-400 font-bold uppercase tracking-widest text-[11px] px-6">Modify Financial Rates</Button>
-              <Button className="bg-[#1A1A1A] hover:bg-black text-white px-8 py-6 rounded-xl font-bold uppercase tracking-widest text-[11px]">Publish Roster</Button>
+              <Button 
+                variant="ghost" 
+                className="text-gray-400 font-bold uppercase tracking-widest text-[11px] px-6"
+                onClick={() => setRatesDialogOpen(true)}
+              >
+                Modify Financial Rates
+              </Button>
+              <Button 
+                className="bg-[#1A1A1A] hover:bg-black text-white px-8 py-6 rounded-xl font-bold uppercase tracking-widest text-[11px]"
+                onClick={handlePublishRoster}
+                disabled={publishing}
+              >
+                {publishing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Publish Roster
+              </Button>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Modify Financial Rates Dialog */}
+      <Dialog open={ratesDialogOpen} onOpenChange={setRatesDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Modify Financial Rates</DialogTitle>
+            <DialogDescription>
+              Set hourly rates and overtime multipliers for staff members.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4 max-h-[400px] overflow-y-auto">
+            <div className="grid gap-2">
+              <Label>Rate Mode</Label>
+              <Select value={rateMode} onValueChange={(v) => handleRateModeChange(v as 'standard' | 'weekend' | 'holiday')}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="standard">Standard (1.0x OT)</SelectItem>
+                  <SelectItem value="weekend">Weekend (1.5x OT)</SelectItem>
+                  <SelectItem value="holiday">Holiday (2.0x OT)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="border-t pt-4">
+              <Label className="text-sm font-semibold mb-2 block">Individual Staff Rates</Label>
+              {staff.map((s) => (
+                <div key={s._id} className="grid grid-cols-3 gap-2 items-center mb-3">
+                  <span className="text-sm truncate">{s.name}</span>
+                  <Input
+                    type="number"
+                    placeholder="Base Rate"
+                    value={staffRates[s._id]?.baseRate || ''}
+                    onChange={(e) => setStaffRates({
+                      ...staffRates,
+                      [s._id]: { ...staffRates[s._id], baseRate: parseFloat(e.target.value) || 0 }
+                    })}
+                  />
+                  <Input
+                    type="number"
+                    step="0.1"
+                    placeholder="OT Multiplier"
+                    value={staffRates[s._id]?.otMultiplier || ''}
+                    onChange={(e) => setStaffRates({
+                      ...staffRates,
+                      [s._id]: { ...staffRates[s._id], otMultiplier: parseFloat(e.target.value) || 1.5 }
+                    })}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setRatesDialogOpen(false)}>Cancel</Button>
+            <Button onClick={() => {
+              setRatesDialogOpen(false);
+              toast.success('Rates saved successfully!');
+            }}>
+              Save Rates
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

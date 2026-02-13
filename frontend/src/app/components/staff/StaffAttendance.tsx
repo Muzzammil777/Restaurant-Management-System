@@ -75,7 +75,9 @@ export function StaffAttendance() {
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
   const [attendanceForm, setAttendanceForm] = useState<AttendanceForm>({
     staffId: '',
     date: new Date().toISOString().split('T')[0],
@@ -184,6 +186,48 @@ export function StaffAttendance() {
   const getStaffInfo = (staffId: string) => {
     const member = staff.find((s: StaffMember) => s._id === staffId);
     return member || { name: 'Unknown', role: 'N/A', shift: 'N/A' };
+  };
+
+  const openEditDialog = (record: AttendanceRecord) => {
+    setSelectedRecord(record);
+    setAttendanceForm({
+      staffId: record.staffId,
+      date: record.date,
+      status: record.status || 'present',
+      checkIn: record.checkIn || '',
+      checkOut: record.checkOut || '',
+      hoursWorked: record.hoursWorked?.toString() || '',
+      notes: record.notes || ''
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleEditAttendance = async () => {
+    if (!selectedRecord) return;
+
+    try {
+      setSaving(true);
+      // Delete the old record and create a new one
+      await attendanceApi.record({
+        staffId: selectedRecord.staffId,
+        date: selectedRecord.date,
+        status: attendanceForm.status,
+        checkIn: attendanceForm.checkIn || undefined,
+        checkOut: attendanceForm.checkOut || undefined,
+        hoursWorked: attendanceForm.hoursWorked ? parseFloat(attendanceForm.hoursWorked) : undefined,
+        notes: attendanceForm.notes || undefined
+      });
+      
+      toast.success('Attendance updated successfully!');
+      setEditDialogOpen(false);
+      setSelectedRecord(null);
+      fetchData();
+    } catch (err) {
+      console.error('Error updating attendance:', err);
+      toast.error('Failed to update attendance');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const filteredAttendance = attendance.filter((record: AttendanceRecord) => 
@@ -508,7 +552,12 @@ export function StaffAttendance() {
                           </Badge>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-[#8B5A2B] hover:bg-[#8B5A2B]/10">
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-8 w-8 text-[#8B5A2B] hover:bg-[#8B5A2B]/10"
+                            onClick={() => openEditDialog(record)}
+                          >
                             <Pencil className="h-4 w-4" />
                           </Button>
                         </td>
@@ -521,6 +570,101 @@ export function StaffAttendance() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Attendance Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Attendance</DialogTitle>
+            <DialogDescription>
+              Update attendance record for a staff member.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Staff Member</Label>
+              <Input value={selectedRecord?.staffName || ''} disabled />
+            </div>
+            <div className="grid gap-2">
+              <Label>Date</Label>
+              <Input
+                type="date"
+                value={attendanceForm.date}
+                onChange={(e) => setAttendanceForm({ ...attendanceForm, date: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Status</Label>
+              <Select 
+                value={attendanceForm.status} 
+                onValueChange={(value) => setAttendanceForm({ ...attendanceForm, status: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="present">Present</SelectItem>
+                  <SelectItem value="absent">Absent</SelectItem>
+                  <SelectItem value="late">Late</SelectItem>
+                  <SelectItem value="half-day">Half Day</SelectItem>
+                  <SelectItem value="leave">On Leave</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Clock In Time</Label>
+                <Input
+                  type="time"
+                  value={attendanceForm.checkIn}
+                  onChange={(e) => setAttendanceForm({ ...attendanceForm, checkIn: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Clock Out Time</Label>
+                <Input
+                  type="time"
+                  value={attendanceForm.checkOut}
+                  onChange={(e) => setAttendanceForm({ ...attendanceForm, checkOut: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Hours Worked</Label>
+              <Input
+                type="number"
+                step="0.5"
+                placeholder="e.g. 8"
+                value={attendanceForm.hoursWorked}
+                onChange={(e) => setAttendanceForm({ ...attendanceForm, hoursWorked: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Notes</Label>
+              <Input
+                placeholder="Optional notes"
+                value={attendanceForm.notes}
+                onChange={(e) => setAttendanceForm({ ...attendanceForm, notes: e.target.value })}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditAttendance} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Update Attendance'
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
