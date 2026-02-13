@@ -86,12 +86,13 @@ export const staffApi = {
   create: (data: {
     name: string;
     email: string;
-    password: string;
+    password?: string;
     role?: string;
     phone?: string;
     shift?: string;
     department?: string;
     salary?: number;
+    active?: boolean;
   }) => fetchApi<any>('/staff', {
     method: 'POST',
     body: JSON.stringify(data),

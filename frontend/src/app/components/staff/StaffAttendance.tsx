@@ -11,6 +11,15 @@ import {
   SelectValue 
 } from "@/app/components/ui/select";
 import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/app/components/ui/dialog";
+import { Label } from "@/app/components/ui/label";
+import { 
   Search, 
   FileDown, 
   Plus, 
@@ -24,6 +33,7 @@ import {
 } from 'lucide-react';
 import { motion } from "motion/react";
 import { attendanceApi, staffApi } from '@/utils/api';
+import { toast } from 'sonner';
 
 interface AttendanceRecord {
   _id: string;
@@ -46,6 +56,16 @@ interface StaffMember {
   department?: string;
 }
 
+interface AttendanceForm {
+  staffId: string;
+  date: string;
+  status: string;
+  checkIn: string;
+  checkOut: string;
+  hoursWorked: string;
+  notes: string;
+}
+
 export function StaffAttendance() {
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
@@ -54,6 +74,17 @@ export function StaffAttendance() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [manualEntryOpen, setManualEntryOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [attendanceForm, setAttendanceForm] = useState<AttendanceForm>({
+    staffId: '',
+    date: new Date().toISOString().split('T')[0],
+    status: 'present',
+    checkIn: '',
+    checkOut: '',
+    hoursWorked: '',
+    notes: ''
+  });
 
   // Calculate stats from attendance data
   const activeOnSite = attendance.filter((a: AttendanceRecord) => a.status === 'present' || a.status === 'late').length;
@@ -112,6 +143,44 @@ export function StaffAttendance() {
     }
   };
 
+  const handleManualEntry = async () => {
+    if (!attendanceForm.staffId || !attendanceForm.date) {
+      toast.error('Please select a staff member and date');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await attendanceApi.record({
+        staffId: attendanceForm.staffId,
+        date: attendanceForm.date,
+        status: attendanceForm.status,
+        checkIn: attendanceForm.checkIn || undefined,
+        checkOut: attendanceForm.checkOut || undefined,
+        hoursWorked: attendanceForm.hoursWorked ? parseFloat(attendanceForm.hoursWorked) : undefined,
+        notes: attendanceForm.notes || undefined
+      });
+      
+      toast.success('Attendance recorded successfully!');
+      setManualEntryOpen(false);
+      setAttendanceForm({
+        staffId: '',
+        date: new Date().toISOString().split('T')[0],
+        status: 'present',
+        checkIn: '',
+        checkOut: '',
+        hoursWorked: '',
+        notes: ''
+      });
+      fetchData();
+    } catch (err) {
+      console.error('Error recording attendance:', err);
+      toast.error('Failed to record attendance');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const getStaffInfo = (staffId: string) => {
     const member = staff.find((s: StaffMember) => s._id === staffId);
     return member || { name: 'Unknown', role: 'N/A', shift: 'N/A' };
@@ -137,10 +206,124 @@ export function StaffAttendance() {
             {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarIcon className="h-4 w-4 text-[#8B5A2B]" />}
             Export
           </Button>
-          <Button className="gap-2 bg-[#1A1A1A] hover:bg-black text-white px-6">
-            <Plus className="h-4 w-4" />
-            Manual Entry
-          </Button>
+          <Dialog open={manualEntryOpen} onOpenChange={setManualEntryOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2 bg-[#1A1A1A] hover:bg-black text-white px-6">
+                <Plus className="h-4 w-4" />
+                Manual Entry
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Manual Attendance Entry</DialogTitle>
+                <DialogDescription>
+                  Record attendance for a staff member manually.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="staff">Staff Member *</Label>
+                  <Select 
+                    value={attendanceForm.staffId} 
+                    onValueChange={(value) => setAttendanceForm({ ...attendanceForm, staffId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select staff member" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {staff.map((s) => (
+                        <SelectItem key={s._id} value={s._id}>
+                          {s.name} ({s.role})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="date">Date *</Label>
+                  <Input
+                    id="date"
+                    type="date"
+                    value={attendanceForm.date}
+                    onChange={(e) => setAttendanceForm({ ...attendanceForm, date: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select 
+                    value={attendanceForm.status} 
+                    onValueChange={(value) => setAttendanceForm({ ...attendanceForm, status: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="present">Present</SelectItem>
+                      <SelectItem value="absent">Absent</SelectItem>
+                      <SelectItem value="late">Late</SelectItem>
+                      <SelectItem value="half-day">Half Day</SelectItem>
+                      <SelectItem value="leave">On Leave</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="checkIn">Clock In Time</Label>
+                    <Input
+                      id="checkIn"
+                      type="time"
+                      value={attendanceForm.checkIn}
+                      onChange={(e) => setAttendanceForm({ ...attendanceForm, checkIn: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="checkOut">Clock Out Time</Label>
+                    <Input
+                      id="checkOut"
+                      type="time"
+                      value={attendanceForm.checkOut}
+                      onChange={(e) => setAttendanceForm({ ...attendanceForm, checkOut: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="hoursWorked">Hours Worked</Label>
+                  <Input
+                    id="hoursWorked"
+                    type="number"
+                    step="0.5"
+                    placeholder="e.g. 8"
+                    value={attendanceForm.hoursWorked}
+                    onChange={(e) => setAttendanceForm({ ...attendanceForm, hoursWorked: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="notes">Notes</Label>
+                  <Input
+                    id="notes"
+                    placeholder="Optional notes"
+                    value={attendanceForm.notes}
+                    onChange={(e) => setAttendanceForm({ ...attendanceForm, notes: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setManualEntryOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleManualEntry} disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Record Attendance'
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 

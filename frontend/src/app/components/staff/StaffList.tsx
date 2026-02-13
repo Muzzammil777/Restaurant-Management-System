@@ -11,9 +11,17 @@ import {
   SelectValue 
 } from "@/app/components/ui/select";
 import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/app/components/ui/dialog";
+import { Label } from "@/app/components/ui/label";
+import { 
   Search, 
   FileDown, 
-  Download, 
   Plus, 
   Pencil, 
   Eye, 
@@ -23,6 +31,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { staffApi } from '@/utils/api';
+import { toast } from 'sonner';
 
 interface StaffMember {
   _id: string;
@@ -37,6 +46,16 @@ interface StaffMember {
   hireDate?: string;
 }
 
+interface NewStaffForm {
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  shift: string;
+  department: string;
+  salary: string;
+}
+
 export function StaffList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -45,6 +64,17 @@ export function StaffList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [newStaff, setNewStaff] = useState<NewStaffForm>({
+    name: '',
+    email: '',
+    phone: '',
+    role: 'waiter',
+    shift: 'morning',
+    department: 'service',
+    salary: ''
+  });
 
   useEffect(() => {
     fetchStaff();
@@ -66,6 +96,45 @@ export function StaffList() {
       setError('Failed to load staff data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddStaff = async () => {
+    if (!newStaff.name || !newStaff.email) {
+      toast.error('Name and email are required');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await staffApi.create({
+        name: newStaff.name,
+        email: newStaff.email,
+        phone: newStaff.phone || undefined,
+        role: newStaff.role,
+        shift: newStaff.shift,
+        department: newStaff.department,
+        salary: newStaff.salary ? parseFloat(newStaff.salary) : undefined,
+        active: true
+      });
+      
+      toast.success('Staff member added successfully!');
+      setAddDialogOpen(false);
+      setNewStaff({
+        name: '',
+        email: '',
+        phone: '',
+        role: 'waiter',
+        shift: 'morning',
+        department: 'service',
+        salary: ''
+      });
+      fetchStaff();
+    } catch (err) {
+      console.error('Error adding staff:', err);
+      toast.error('Failed to add staff member');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -130,10 +199,135 @@ export function StaffList() {
             {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
             Export Records
           </Button>
-          <Button className="gap-2 bg-[#1A1A1A] hover:bg-black text-white px-6">
-            <Plus className="h-4 w-4" />
-            Add New Member
-          </Button>
+          <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2 bg-[#1A1A1A] hover:bg-black text-white px-6">
+                <Plus className="h-4 w-4" />
+                Add New Member
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Add New Staff Member</DialogTitle>
+                <DialogDescription>
+                  Enter the details of the new staff member below.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Full Name *</Label>
+                  <Input
+                    id="name"
+                    placeholder="Enter full name"
+                    value={newStaff.name}
+                    onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="email">Email Address *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter email address"
+                    value={newStaff.email}
+                    onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    placeholder="Enter phone number"
+                    value={newStaff.phone}
+                    onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="role">Role</Label>
+                    <Select 
+                      value={newStaff.role} 
+                      onValueChange={(value) => setNewStaff({ ...newStaff, role: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="chef">Chef</SelectItem>
+                        <SelectItem value="waiter">Waiter</SelectItem>
+                        <SelectItem value="cashier">Cashier</SelectItem>
+                        <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="bartender">Bartender</SelectItem>
+                        <SelectItem value="cleaner">Cleaner</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="shift">Shift</Label>
+                    <Select 
+                      value={newStaff.shift} 
+                      onValueChange={(value) => setNewStaff({ ...newStaff, shift: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select shift" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="morning">Morning (08:00 - 16:00)</SelectItem>
+                        <SelectItem value="evening">Evening (16:00 - 00:00)</SelectItem>
+                        <SelectItem value="night">Night (00:00 - 08:00)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="department">Department</Label>
+                    <Select 
+                      value={newStaff.department} 
+                      onValueChange={(value) => setNewStaff({ ...newStaff, department: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="kitchen">Kitchen</SelectItem>
+                        <SelectItem value="service">Service</SelectItem>
+                        <SelectItem value="cleaning">Cleaning</SelectItem>
+                        <SelectItem value="bar">Bar</SelectItem>
+                        <SelectItem value="management">Management</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="salary">Monthly Salary (₹)</Label>
+                    <Input
+                      id="salary"
+                      type="number"
+                      placeholder="Enter salary"
+                      value={newStaff.salary}
+                      onChange={(e) => setNewStaff({ ...newStaff, salary: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleAddStaff} disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    'Add Staff Member'
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
