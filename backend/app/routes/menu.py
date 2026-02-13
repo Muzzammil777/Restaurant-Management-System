@@ -13,7 +13,7 @@ from bson.errors import InvalidId
 
 from ..db import get_db
 from ..audit import log_audit
-from ..schemas import MenuItemIn, MenuItemUpdate
+from ..schemas import MenuItemIn, MenuItemUpdate, ComboMealIn, ComboMealUpdate
 
 router = APIRouter(tags=["Menu"])
 
@@ -36,7 +36,7 @@ def validate_object_id(id: str):
 
 # ================= MENU ITEMS =================
 
-@router.get("/")
+@router.get("")
 async def list_menu_items(
     category: Optional[str] = None,
     available: Optional[bool] = None,
@@ -73,41 +73,46 @@ async def list_combos():
 
 
 @router.post("/combos")
-async def create_combo(data: dict):
+async def create_combo(data: ComboMealIn):
     db = get_db()
 
+    combo_data = data.dict()
     now = datetime.utcnow()
-    data["createdAt"] = now
-    data["updatedAt"] = now
-    data["available"] = data.get("available", True)
+    combo_data["createdAt"] = now
+    combo_data["updatedAt"] = now
 
-    result = await db.combo_meals.insert_one(data)
+    result = await db.combo_meals.insert_one(combo_data)
     created = await db.combo_meals.find_one({"_id": result.inserted_id})
 
     await log_audit("create", "combo", str(result.inserted_id), {
-        "name": data.get("name")
+        "name": combo_data.get("name")
     })
 
     return serialize_doc(created)
 
 
 @router.put("/combos/{combo_id}")
-async def update_combo(combo_id: str, data: dict):
+async def update_combo(combo_id: str, data: ComboMealUpdate):
     db = get_db()
     obj_id = validate_object_id(combo_id)
 
-    data["updatedAt"] = datetime.utcnow()
-    data.pop("_id", None)
+    update_data = data.dict(exclude_unset=True)
+    update_data["updatedAt"] = datetime.utcnow()
 
     result = await db.combo_meals.update_one(
         {"_id": obj_id},
-        {"$set": data}
+        {"$set": update_data}
     )
 
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Combo not found")
 
     updated = await db.combo_meals.find_one({"_id": obj_id})
+    
+    await log_audit("update", "combo", combo_id, {
+        "name": update_data.get("name")
+    })
+    
     return serialize_doc(updated)
 
 
@@ -116,10 +121,15 @@ async def delete_combo(combo_id: str):
     db = get_db()
     obj_id = validate_object_id(combo_id)
 
-    result = await db.combo_meals.delete_one({"_id": obj_id})
-
-    if result.deleted_count == 0:
+    combo = await db.combo_meals.find_one({"_id": obj_id})
+    if not combo:
         raise HTTPException(status_code=404, detail="Combo not found")
+
+    await db.combo_meals.delete_one({"_id": obj_id})
+    
+    await log_audit("delete", "combo", combo_id, {
+        "name": combo.get("name")
+    })
 
     return {"success": True}
 
@@ -140,6 +150,10 @@ async def toggle_combo_availability(combo_id: str, available: bool):
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Combo not found")
 
+    await log_audit("toggle_availability", "combo", combo_id, {
+        "available": available
+    })
+
     return {"success": True, "available": available}
 
 
@@ -155,7 +169,7 @@ async def get_menu_item(item_id: str):
     return serialize_doc(item)
 
 
-@router.post("/")
+@router.post("")
 async def create_menu_item(data: MenuItemIn):
     db = get_db()
 

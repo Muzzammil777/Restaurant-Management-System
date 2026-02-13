@@ -496,7 +496,7 @@ export const menuApi = {
   }),
 
   // Combos
-listCombos: () => fetchApi<any[]>('/menu/combos'),
+  listCombos: () => fetchApi<any[]>('/menu/combos'),
   createCombo: (data: any) => fetchApi<any>('/menu/combos', {
     method: 'POST',
     body: JSON.stringify(data),

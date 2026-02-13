@@ -119,9 +119,8 @@ export function OrderManagement() {
   const fetchMenuItems = async () => {
     try {
       const result = await menuApi.list();
-      if (result.data) {
-        setMenuItems((result.data || []) as any);
-      }
+      const items = Array.isArray(result) ? result : (result as any)?.data || [];
+      setMenuItems(items as any);
     } catch (error) {
       console.error('Error fetching menu items:', error);
     }

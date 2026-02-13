@@ -54,7 +54,7 @@ export function CustomerView() {
   const fetchMenu = async () => {
     try {
       const result = await menuApi.list();
-      const data = result.data || result || [];
+      const data = Array.isArray(result) ? result : (result as any)?.data || [];
       // Add default prep times if not present
       const itemsWithPrepTime = data.map((item: MenuItem) => ({
         ...item,
