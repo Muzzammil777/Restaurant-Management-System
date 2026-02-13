@@ -2,7 +2,7 @@
 REM Start Restaurant Management System - Frontend & Backend
 
 echo ========================================
-echo Restaurant Management System
+echo Restaurant Management System - moviclou
 echo ========================================
 echo.
 
