@@ -24,13 +24,6 @@ import {
 } from 'lucide-react';
 import { staffApi } from '@/utils/api';
 
-const mockStaff = [
-  { id: '#ST-001', name: 'Alex Johnson', role: 'CHEF', shift: 'Morning (08:00 - 16:00)', status: 'Active', initials: 'AJ' },
-  { id: '#ST-002', name: 'Maria Garcia', role: 'WAITER', shift: 'Morning (08:00 - 16:00)', status: 'Active', initials: 'MG' },
-  { id: '#ST-003', name: 'James Smith', role: 'CASHIER', shift: 'Evening (16:00 - 00:00)', status: 'Off-duty', initials: 'JS' },
-  { id: '#ST-004', name: 'Linda Chen', role: 'CHEF', shift: 'Evening (16:00 - 00:00)', status: 'Active', initials: 'LC' },
-];
-
 interface StaffMember {
   _id: string;
   name: string;
@@ -51,6 +44,7 @@ export function StaffList() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     fetchStaff();
@@ -72,6 +66,31 @@ export function StaffList() {
       setError('Failed to load staff data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExportCsv = async () => {
+    try {
+      setExporting(true);
+      const params: { role?: string; active?: boolean; shift?: string } = {};
+      if (roleFilter !== 'all') params.role = roleFilter;
+      if (shiftFilter !== 'all') params.shift = shiftFilter;
+      
+      const result = await staffApi.exportCsv(params);
+      
+      // Create and download CSV file
+      const blob = new Blob([result.csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.filename || 'staff_export.csv';
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error exporting staff:', err);
+      setError('Failed to export staff data');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -102,12 +121,13 @@ export function StaffList() {
           <p className="text-muted-foreground">Manage and monitor your restaurant team members and schedules.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" className="gap-2 bg-white border-gray-200">
-            <FileDown className="h-4 w-4" />
-            Export as PDF
-          </Button>
-          <Button variant="outline" className="gap-2 bg-white border-gray-200">
-            <Download className="h-4 w-4" />
+          <Button 
+            variant="outline" 
+            className="gap-2 bg-white border-gray-200"
+            onClick={handleExportCsv}
+            disabled={exporting}
+          >
+            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
             Export Records
           </Button>
           <Button className="gap-2 bg-[#1A1A1A] hover:bg-black text-white px-6">

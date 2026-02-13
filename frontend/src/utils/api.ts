@@ -126,6 +126,42 @@ export const staffApi = {
   deactivate: (id: string) => fetchApi<{ success: boolean }>(`/staff/${id}/deactivate`, {
     method: 'POST',
   }),
+
+  // Export staff as CSV
+  exportCsv: (params?: { role?: string; active?: boolean; shift?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.role) query.append('role', params.role);
+    if (params?.active !== undefined) query.append('active', String(params.active));
+    if (params?.shift) query.append('shift', params.shift);
+    return fetchApi<{ csv: string; filename: string }>(`/staff/export/csv?${query.toString()}`);
+  },
+
+  // Export attendance as CSV
+  exportAttendanceCsv: (params?: { staffId?: string; date_from?: string; date_to?: string; status?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.staffId) query.append('staffId', params.staffId);
+    if (params?.date_from) query.append('date_from', params.date_from);
+    if (params?.date_to) query.append('date_to', params.date_to);
+    if (params?.status) query.append('status', params.status);
+    return fetchApi<{ csv: string; filename: string }>(`/staff/attendance/export/csv?${query.toString()}`);
+  },
+
+  // Export shifts as CSV
+  exportShiftsCsv: (params?: { staffId?: string; date_from?: string; date_to?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.staffId) query.append('staffId', params.staffId);
+    if (params?.date_from) query.append('date_from', params.date_from);
+    if (params?.date_to) query.append('date_to', params.date_to);
+    return fetchApi<{ csv: string; filename: string }>(`/staff/shifts/export/csv?${query.toString()}`);
+  },
+
+  // Export payroll as CSV
+  exportPayrollCsv: (params?: { date_from?: string; date_to?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.date_from) query.append('date_from', params.date_from);
+    if (params?.date_to) query.append('date_to', params.date_to);
+    return fetchApi<{ csv: string; filename: string }>(`/staff/payroll/export/csv?${query.toString()}`);
+  },
 };
 
 

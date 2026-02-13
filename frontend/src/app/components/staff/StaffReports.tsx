@@ -14,8 +14,8 @@ import {
   Pie, 
   Cell 
 } from 'recharts';
-import { FileDown, Calendar as CalendarIcon, Info, CheckCircle2, Loader2 } from 'lucide-react';
-import { staffApi, performanceApi, shiftsApi } from '@/utils/api';
+import { Calendar as CalendarIcon, CheckCircle2, Loader2 } from 'lucide-react';
+import { staffApi, shiftsApi } from '@/utils/api';
 
 const expenditureData = [
   { name: 'Kitchen', regular: 12000, overtime: 3000 },
@@ -38,6 +38,7 @@ interface StaffStats {
 
 export function StaffReports() {
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [stats, setStats] = useState<StaffStats | null>(null);
   const [shifts, setShifts] = useState<any[]>([]);
   const [expenditureData, setExpenditureData] = useState([
@@ -110,6 +111,34 @@ export function StaffReports() {
     }
   };
 
+  const handleExportPayrollCsv = async () => {
+    try {
+      setExporting(true);
+      
+      // Get date range for last month
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const result = await staffApi.exportPayrollCsv({
+        date_from: thirtyDaysAgo.toISOString().split('T')[0],
+        date_to: new Date().toISOString().split('T')[0]
+      });
+      
+      // Create and download CSV file
+      const blob = new Blob([result.csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.filename || 'payroll_export.csv';
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error exporting payroll:', err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const totalOvertimePaid = shifts.length * 2500; // Estimate
   const avgOTPerEmployee = shifts.length > 0 ? (shifts.length / (stats?.total || 1)).toFixed(1) : '0';
   return (
@@ -124,7 +153,12 @@ export function StaffReports() {
             <CalendarIcon className="h-4 w-4 text-[#8B5A2B]" />
             Monthly View
           </Button>
-          <Button className="bg-[#1A1A1A] hover:bg-black text-white px-6 rounded-xl">
+          <Button 
+            className="bg-[#1A1A1A] hover:bg-black text-white px-6 rounded-xl"
+            onClick={handleExportPayrollCsv}
+            disabled={exporting}
+          >
+            {exporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             Download Payroll CSV
           </Button>
         </div>

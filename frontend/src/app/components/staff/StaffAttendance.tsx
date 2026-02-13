@@ -23,53 +23,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { motion } from "motion/react";
-import { ImageWithFallback } from "../figma/ImageWithFallback";
 import { attendanceApi, staffApi } from '@/utils/api';
-
-const mockAttendance = [
-  { 
-    id: 1, 
-    name: 'James Wilson', 
-    role: 'Head Chef', 
-    shift: 'Morning', 
-    clockIn: '07:55 AM', 
-    clockInStatus: 'EARLY',
-    clockOut: '04:05 PM', 
-    hours: '8', 
-    pay: '₹14,000.00', 
-    payRate: '₹1,750/hr',
-    status: 'PRESENT',
-    image: 'https://images.unsplash.com/photo-1595436222774-4b1cd819aada?w=100&h=100&fit=crop'
-  },
-  { 
-    id: 2, 
-    name: 'Sarah Jenkins', 
-    role: 'Waitress', 
-    shift: 'Morning', 
-    clockIn: '08:15 AM', 
-    clockInStatus: '15M LATE',
-    clockOut: '04:00 PM', 
-    hours: '7.75', 
-    pay: '₹9,765.00', 
-    payRate: '₹1,260/hr',
-    status: 'LATE',
-    image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop'
-  },
-  { 
-    id: 3, 
-    name: 'Michael Chen', 
-    role: 'Sous Chef', 
-    shift: 'Morning', 
-    clockIn: '--:--', 
-    clockInStatus: '',
-    clockOut: '--:--', 
-    hours: '0', 
-    pay: '₹0.00', 
-    payRate: '₹1,540/hr',
-    status: 'ABSENT',
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop'
-  },
-];
 
 interface AttendanceRecord {
   _id: string;
@@ -99,6 +53,7 @@ export function StaffAttendance() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   // Calculate stats from attendance data
   const activeOnSite = attendance.filter((a: AttendanceRecord) => a.status === 'present' || a.status === 'late').length;
@@ -136,6 +91,27 @@ export function StaffAttendance() {
     }
   };
 
+  const handleExportCsv = async () => {
+    try {
+      setExporting(true);
+      const result = await staffApi.exportAttendanceCsv();
+      
+      // Create and download CSV file
+      const blob = new Blob([result.csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.filename || 'attendance_export.csv';
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error exporting attendance:', err);
+      setError('Failed to export attendance data');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const getStaffInfo = (staffId: string) => {
     const member = staff.find((s: StaffMember) => s._id === staffId);
     return member || { name: 'Unknown', role: 'N/A', shift: 'N/A' };
@@ -152,8 +128,13 @@ export function StaffAttendance() {
           <p className="text-muted-foreground">Real-time staff monitoring and shift verification.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" className="gap-2 bg-white border-gray-200 shadow-sm">
-            <CalendarIcon className="h-4 w-4 text-[#8B5A2B]" />
+          <Button 
+            variant="outline" 
+            className="gap-2 bg-white border-gray-200 shadow-sm"
+            onClick={handleExportCsv}
+            disabled={exporting}
+          >
+            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarIcon className="h-4 w-4 text-[#8B5A2B]" />}
             Export
           </Button>
           <Button className="gap-2 bg-[#1A1A1A] hover:bg-black text-white px-6">
