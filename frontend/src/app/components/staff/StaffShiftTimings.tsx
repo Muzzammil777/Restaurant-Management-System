@@ -4,8 +4,25 @@ import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { Badge } from "@/app/components/ui/badge";
 import { Checkbox } from "@/app/components/ui/checkbox";
-import { Clock, TrendingUp, Info, Loader2 } from 'lucide-react';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/app/components/ui/dialog";
+import { Label } from "@/app/components/ui/label";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/app/components/ui/select";
+import { Clock, TrendingUp, Info, Loader2, Plus, Pencil, Trash2 } from 'lucide-react';
 import { shiftsApi, staffApi } from '@/utils/api';
+import { toast } from 'sonner';
 
 const mockRoster = [
   { 
@@ -81,11 +98,32 @@ interface StaffMember {
   salary?: number;
 }
 
+interface ShiftForm {
+  staffId: string;
+  date: string;
+  shiftType: string;
+  startTime: string;
+  endTime: string;
+  notes: string;
+}
+
 export function StaffShiftTimings() {
   const [shifts, setShifts] = useState<ShiftAssignment[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [selectedShift, setSelectedShift] = useState<ShiftAssignment | null>(null);
+  const [shiftForm, setShiftForm] = useState<ShiftForm>({
+    staffId: '',
+    date: new Date().toISOString().split('T')[0],
+    shiftType: 'morning',
+    startTime: '08:00',
+    endTime: '16:00',
+    notes: ''
+  });
 
   useEffect(() => {
     fetchData();
@@ -141,6 +179,95 @@ export function StaffShiftTimings() {
       return '0';
     }
   };
+
+  const handleAddShift = async () => {
+    if (!shiftForm.staffId || !shiftForm.date) {
+      toast.error('Please select a staff member and date');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await shiftsApi.create({
+        staffId: shiftForm.staffId,
+        shiftType: shiftForm.shiftType,
+        date: shiftForm.date,
+        startTime: shiftForm.startTime,
+        endTime: shiftForm.endTime,
+        notes: shiftForm.notes || undefined
+      });
+      
+      toast.success('Shift added successfully!');
+      setAddDialogOpen(false);
+      setShiftForm({
+        staffId: '',
+        date: new Date().toISOString().split('T')[0],
+        shiftType: 'morning',
+        startTime: '08:00',
+        endTime: '16:00',
+        notes: ''
+      });
+      fetchData();
+    } catch (err) {
+      console.error('Error adding shift:', err);
+      toast.error('Failed to add shift');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEditShift = async () => {
+    if (!selectedShift) return;
+
+    try {
+      setSaving(true);
+      // Delete the old shift and create a new one
+      await shiftsApi.delete(selectedShift._id);
+      await shiftsApi.create({
+        staffId: selectedShift.staffId,
+        shiftType: shiftForm.shiftType,
+        date: shiftForm.date,
+        startTime: shiftForm.startTime,
+        endTime: shiftForm.endTime,
+        notes: shiftForm.notes || undefined
+      });
+      
+      toast.success('Shift updated successfully!');
+      setEditDialogOpen(false);
+      setSelectedShift(null);
+      fetchData();
+    } catch (err) {
+      console.error('Error updating shift:', err);
+      toast.error('Failed to update shift');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteShift = async (shiftId: string) => {
+    try {
+      await shiftsApi.delete(shiftId);
+      toast.success('Shift deleted successfully!');
+      fetchData();
+    } catch (err) {
+      console.error('Error deleting shift:', err);
+      toast.error('Failed to delete shift');
+    }
+  };
+
+  const openEditDialog = (shift: ShiftAssignment) => {
+    setSelectedShift(shift);
+    setShiftForm({
+      staffId: shift.staffId,
+      date: shift.date,
+      shiftType: shift.shiftType || 'morning',
+      startTime: shift.startTime,
+      endTime: shift.endTime,
+      notes: shift.notes || ''
+    });
+    setEditDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -148,6 +275,174 @@ export function StaffShiftTimings() {
           <h2 className="text-3xl font-semibold tracking-tight text-[#2D2D2D]">Shift Timings & Allocation</h2>
           <p className="text-muted-foreground">Manage mandatory shifts and customize financial rates per employee.</p>
         </div>
+        <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-[#1A1A1A] hover:bg-black text-white gap-2">
+              <Plus className="h-4 w-4" />
+              Add Shift
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Add New Shift</DialogTitle>
+              <DialogDescription>
+                Assign a shift to a staff member.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label>Staff Member *</Label>
+                <Select 
+                  value={shiftForm.staffId} 
+                  onValueChange={(value) => setShiftForm({ ...shiftForm, staffId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select staff member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staff.map((s) => (
+                      <SelectItem key={s._id} value={s._id}>
+                        {s.name} ({s.role})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Date *</Label>
+                <Input
+                  type="date"
+                  value={shiftForm.date}
+                  onChange={(e) => setShiftForm({ ...shiftForm, date: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Shift Type</Label>
+                <Select 
+                  value={shiftForm.shiftType} 
+                  onValueChange={(value) => setShiftForm({ ...shiftForm, shiftType: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select shift type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="morning">Morning (08:00 - 16:00)</SelectItem>
+                    <SelectItem value="afternoon">Afternoon (12:00 - 20:00)</SelectItem>
+                    <SelectItem value="evening">Evening (16:00 - 00:00)</SelectItem>
+                    <SelectItem value="night">Night (00:00 - 08:00)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label>Start Time</Label>
+                  <Input
+                    type="time"
+                    value={shiftForm.startTime}
+                    onChange={(e) => setShiftForm({ ...shiftForm, startTime: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>End Time</Label>
+                  <Input
+                    type="time"
+                    value={shiftForm.endTime}
+                    onChange={(e) => setShiftForm({ ...shiftForm, endTime: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label>Notes</Label>
+                <Input
+                  placeholder="Optional notes"
+                  value={shiftForm.notes}
+                  onChange={(e) => setShiftForm({ ...shiftForm, notes: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleAddShift} disabled={saving}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Add Shift
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Edit Shift</DialogTitle>
+              <DialogDescription>
+                Update the shift details.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label>Staff Member</Label>
+                <Input value={selectedShift?.staffName || ''} disabled />
+              </div>
+              <div className="grid gap-2">
+                <Label>Date *</Label>
+                <Input
+                  type="date"
+                  value={shiftForm.date}
+                  onChange={(e) => setShiftForm({ ...shiftForm, date: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Shift Type</Label>
+                <Select 
+                  value={shiftForm.shiftType} 
+                  onValueChange={(value) => setShiftForm({ ...shiftForm, shiftType: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select shift type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="morning">Morning (08:00 - 16:00)</SelectItem>
+                    <SelectItem value="afternoon">Afternoon (12:00 - 20:00)</SelectItem>
+                    <SelectItem value="evening">Evening (16:00 - 00:00)</SelectItem>
+                    <SelectItem value="night">Night (00:00 - 08:00)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label>Start Time</Label>
+                  <Input
+                    type="time"
+                    value={shiftForm.startTime}
+                    onChange={(e) => setShiftForm({ ...shiftForm, startTime: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>End Time</Label>
+                  <Input
+                    type="time"
+                    value={shiftForm.endTime}
+                    onChange={(e) => setShiftForm({ ...shiftForm, endTime: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label>Notes</Label>
+                <Input
+                  placeholder="Optional notes"
+                  value={shiftForm.notes}
+                  onChange={(e) => setShiftForm({ ...shiftForm, notes: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleEditShift} disabled={saving}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Update Shift
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
         <div className="bg-[#1A1A1A] text-white rounded-xl p-1 flex items-center shadow-lg">
           <div className="bg-[#8B5A2B] px-3 py-2 rounded-lg text-center flex flex-col justify-center">
             <span className="text-[10px] font-bold tracking-tighter leading-none">RATE</span>
@@ -258,6 +553,26 @@ export function StaffShiftTimings() {
                             <div className={`text-xs font-bold ${otPay > 0 ? 'text-green-600' : 'text-gray-300'}`}>
                               {otPay > 0 ? `+ ₹${otPay.toFixed(2)} OT Pay` : 'No OT Pay'}
                             </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-6 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-8 w-8 text-[#8B5A2B] hover:bg-[#8B5A2B]/10"
+                              onClick={() => openEditDialog(shift)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-8 w-8 text-red-500 hover:bg-red-50"
+                              onClick={() => handleDeleteShift(shift._id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </td>
                       </tr>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
 import { 
   BarChart, 
   Bar, 
@@ -17,18 +18,6 @@ import {
 import { Calendar as CalendarIcon, CheckCircle2, Loader2 } from 'lucide-react';
 import { staffApi, shiftsApi } from '@/utils/api';
 
-const expenditureData = [
-  { name: 'Kitchen', regular: 12000, overtime: 3000 },
-  { name: 'Service', regular: 8000, overtime: 1200 },
-  { name: 'Cleaning', regular: 3500, overtime: 200 },
-  { name: 'Bar', regular: 5500, overtime: 1500 },
-];
-
-const payrollSplitData = [
-  { name: 'Regular Salary', value: 86.7, color: '#1A1A1A' },
-  { name: 'Mandatory Overtime', value: 13.3, color: '#8B5A2B' },
-];
-
 interface StaffStats {
   byRole: Record<string, number>;
   active: number;
@@ -41,6 +30,8 @@ export function StaffReports() {
   const [exporting, setExporting] = useState(false);
   const [stats, setStats] = useState<StaffStats | null>(null);
   const [shifts, setShifts] = useState<any[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [expenditureData, setExpenditureData] = useState([
     { name: 'Kitchen', regular: 12000, overtime: 3000 },
     { name: 'Service', regular: 8000, overtime: 1200 },
@@ -54,23 +45,25 @@ export function StaffReports() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [selectedMonth]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
 
+      // Parse selected month
+      const [year, month] = selectedMonth.split('-').map(Number);
+      const firstDay = new Date(year, month - 1, 1);
+      const lastDay = new Date(year, month, 0); // Last day of the month
+
       // Fetch staff stats
       const statsData = await staffApi.getStats();
       setStats(statsData);
 
-      // Fetch shifts for the past month to calculate overtime
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
+      // Fetch shifts for the selected month
       const shiftsData = await shiftsApi.list({
-        date_from: thirtyDaysAgo.toISOString().split('T')[0],
-        date_to: new Date().toISOString().split('T')[0]
+        date_from: firstDay.toISOString().split('T')[0],
+        date_to: lastDay.toISOString().split('T')[0]
       });
       setShifts(shiftsData || []);
 
@@ -111,6 +104,10 @@ export function StaffReports() {
     }
   };
 
+  const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedMonth(e.target.value);
+  };
+
   const handleExportPayrollCsv = async () => {
     try {
       setExporting(true);
@@ -149,10 +146,15 @@ export function StaffReports() {
           <p className="text-muted-foreground">Detailed analysis of labor distribution and mandatory overtime expenditures.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="gap-2 bg-white border-gray-100 rounded-xl shadow-sm">
+          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-sm">
             <CalendarIcon className="h-4 w-4 text-[#8B5A2B]" />
-            Monthly View
-          </Button>
+            <Input
+              type="month"
+              value={selectedMonth}
+              onChange={handleMonthChange}
+              className="border-0 shadow-none focus:ring-0 w-auto text-sm font-medium"
+            />
+          </div>
           <Button 
             className="bg-[#1A1A1A] hover:bg-black text-white px-6 rounded-xl"
             onClick={handleExportPayrollCsv}
