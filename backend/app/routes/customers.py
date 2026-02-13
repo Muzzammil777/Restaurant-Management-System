@@ -215,7 +215,7 @@ async def delete_customer(customer_id: str):
 # ============ LOYALTY POINTS ============
 
 @router.patch("/{customer_id}/points")
-async def update_loyalty_points(customer_id: str, points: int, operation: str = "add"):
+async def update_loyalty_points(customer_id: str, points: int, operation: str = "add", reason: Optional[str] = None):
     """Add or deduct loyalty points"""
     db = get_db()
     
@@ -243,13 +243,15 @@ async def update_loyalty_points(customer_id: str, points: int, operation: str = 
         "points": points if operation == "add" else -points,
         "operation": operation,
         "balance": new_points,
+        "reason": reason,
         "timestamp": datetime.utcnow()
     })
     
     await log_audit("points_update", "customer", customer_id, {
         "operation": operation,
         "points": points,
-        "newBalance": new_points
+        "newBalance": new_points,
+        "reason": reason
     })
     
     return {"success": True, "loyaltyPoints": new_points}

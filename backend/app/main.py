@@ -70,6 +70,17 @@ app.include_router(billing_router.router, prefix='/api/billing')
 app.include_router(analytics_router.router, prefix='/api/analytics')
 
 
+# Health check endpoint
+@app.get('/api/health')
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "service": "RMS Backend",
+        "version": "1.0.0"
+    }
+
+
 # Database Seed Endpoint
 @app.post('/api/seed')
 async def seed_database(secret: str = ''):

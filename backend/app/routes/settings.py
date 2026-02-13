@@ -699,3 +699,62 @@ async def delete_backup(backup_id: str, request: Request):
     )
     
     return {'success': True}
+
+
+# ============ GOOGLE DRIVE STATUS ============
+@router.get('/gdrive-status', tags=['backup'])
+async def get_gdrive_status():
+    """Get Google Drive integration status"""
+    from ..gdrive import gdrive_service
+    
+    # Check if packages are available
+    try:
+        from google.oauth2 import service_credentials
+        packages_available = True
+    except ImportError:
+        packages_available = False
+    
+    # Check environment variables
+    import os
+    service_email = os.getenv('GDRIVE_SERVICE_ACCOUNT_EMAIL')
+    private_key = os.getenv('GDRIVE_PRIVATE_KEY')
+    project_id = os.getenv('GDRIVE_PROJECT_ID')
+    
+    credentials_found = bool(service_email and private_key and project_id)
+    
+    # Check JSON file
+    from pathlib import Path
+    credentials_path = Path(__file__).parent.parent / 'gdrive-credentials.json'
+    json_file_exists = credentials_path.exists()
+    
+    # Get backup config
+    db = get_db()
+    config_coll = db.get_collection('backup_config')
+    config = await config_coll.find_one({'_id': 'backup_settings'})
+    
+    google_drive_enabled = config.get('googleDriveEnabled', False) if config else False
+    google_drive_folder_id = config.get('googleDriveFolderId') if config else None
+    
+    # Try to initialize and check service
+    service_available = gdrive_service.is_available() if packages_available else False
+    error_message = gdrive_service.get_error() if not service_available else None
+    
+    # Count backups in drive if connected
+    backups_in_drive = 0
+    folder_accessible = False
+    if service_available and google_drive_folder_id:
+        result = gdrive_service.list_backups(google_drive_folder_id)
+        if result.get('success'):
+            backups_in_drive = len(result.get('files', []))
+            folder_accessible = True
+    
+    return {
+        'configured': packages_available and (credentials_found or json_file_exists),
+        'enabled': google_drive_enabled,
+        'serviceAvailable': service_available,
+        'credentialsFound': credentials_found or json_file_exists,
+        'folderAccessible': folder_accessible,
+        'backupsInDrive': backups_in_drive,
+        'error': error_message,
+        'packagesInstalled': packages_available,
+    }

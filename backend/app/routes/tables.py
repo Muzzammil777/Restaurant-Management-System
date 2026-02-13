@@ -135,7 +135,7 @@ async def update_table(table_id: str, data: dict):
 
 
 @router.patch("/{table_id}/status")
-async def update_table_status(table_id: str, status: str, data: Optional[dict] = None):
+async def update_table_status(table_id: str, status: str, data: Optional[dict] = None, guests: Optional[int] = None):
     """Update table status"""
     db = get_db()
     
@@ -145,13 +145,24 @@ async def update_table_status(table_id: str, status: str, data: Optional[dict] =
     
     update_data = {"status": status, "updatedAt": datetime.utcnow()}
     
+    # Handle data from request body (preferred for complex data)
     if data:
         if status == "occupied":
-            update_data["currentGuests"] = data.get("guests")
+            update_data["currentGuests"] = data.get("guests", guests)
             update_data["occupiedAt"] = datetime.utcnow()
         elif status == "reserved":
             update_data["reservedFor"] = data.get("customerName")
             update_data["reservationTime"] = data.get("time")
+        elif status == "available":
+            update_data["currentGuests"] = None
+            update_data["waiter"] = None
+            update_data["orders"] = []
+            update_data["totalBill"] = 0
+    else:
+        # Handle query parameter for guests (backward compatibility)
+        if status == "occupied" and guests:
+            update_data["currentGuests"] = guests
+            update_data["occupiedAt"] = datetime.utcnow()
         elif status == "available":
             update_data["currentGuests"] = None
             update_data["waiter"] = None

@@ -167,9 +167,13 @@ async def update_ingredient(ingredient_id: str, data: dict):
 
 
 @router.patch("/{ingredient_id}/stock")
-async def update_stock(ingredient_id: str, quantity: float, operation: str = "add"):
+async def update_stock(ingredient_id: str, quantity: float, operation: str = "add", type: Optional[str] = None):
     """Add or deduct stock"""
     db = get_db()
+    
+    # Support both 'type' and 'operation' parameters for frontend compatibility
+    # Frontend uses 'type' (add/deduct), backend uses 'operation' (add/deduct/set)
+    actual_operation = type if type else operation
     
     ingredient = await db.ingredients.find_one({"_id": ObjectId(ingredient_id)})
     if not ingredient:
@@ -177,9 +181,9 @@ async def update_stock(ingredient_id: str, quantity: float, operation: str = "ad
     
     current_stock = ingredient.get("stockLevel", 0)
     
-    if operation == "add":
+    if actual_operation == "add":
         new_stock = current_stock + quantity
-    elif operation == "deduct":
+    elif actual_operation == "deduct":
         new_stock = max(0, current_stock - quantity)
     else:
         new_stock = quantity  # Set exact value
@@ -191,13 +195,13 @@ async def update_stock(ingredient_id: str, quantity: float, operation: str = "ad
         {"$set": {
             "stockLevel": new_stock,
             "status": status,
-            "lastDeduction": datetime.utcnow() if operation == "deduct" else None,
+            "lastDeduction": datetime.utcnow() if actual_operation == "deduct" else None,
             "updatedAt": datetime.utcnow()
         }}
     )
     
     await log_audit("stock_update", "ingredient", ingredient_id, {
-        "operation": operation,
+        "operation": actual_operation,
         "quantity": quantity,
         "newStock": new_stock
     })
