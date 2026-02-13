@@ -53,10 +53,9 @@ export function CustomerView() {
 
   const fetchMenu = async () => {
     try {
-      const result = await menuApi.list();
-      const data = result.data || result || [];
+      const data = await menuApi.list();
       // Add default prep times if not present
-      const itemsWithPrepTime = data.map((item: MenuItem) => ({
+      const itemsWithPrepTime = (Array.isArray(data) ? data : []).map((item: MenuItem) => ({
         ...item,
         prepTime: item.prepTime || Math.floor(Math.random() * 20) + 10, // 10-30 mins
       }));

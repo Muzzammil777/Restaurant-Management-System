@@ -168,7 +168,7 @@ export function KDSTerminalLogin({ onLogin }: KDSTerminalLoginProps) {
             <ChefHat className="h-16 w-16 text-white" />
           </div>
           <h1 className="text-5xl font-bold mb-3" style={{ color: '#F5E6D3' }}>
-            MochaKDS Enterprise
+            Chef Terminal Login
           </h1>
           <p className="text-xl text-white/80">Kitchen Display System • Terminal Login</p>
         </div>
