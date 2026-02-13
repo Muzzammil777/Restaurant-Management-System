@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/app/components/ui/button";
-import {
-  Card,
-  CardContent,
-} from "@/app/components/ui/card";
+import { Card } from "@/app/components/ui/card";
 import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import {

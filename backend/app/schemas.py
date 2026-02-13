@@ -257,11 +257,11 @@ class DietType(str, Enum):
 
 
 class CuisineType(str, Enum):
-    south_indian = "south indian"
-    north_indian = "north indian"
-    chinese = "chinese"
-    italian = "italian"
-    continental = "continental"
+    south_indian = "South Indian"
+    north_indian = "North Indian"
+    chinese = "Chinese"
+    italian = "Italian"
+    continental = "Continental"
 
 
 class MenuCustomization(BaseModel):
@@ -288,7 +288,7 @@ class MenuItemIn(BaseModel):
 
     dietType: Optional[DietType] = None
 
-    customizations: Optional[List[MenuCustomization]] = []
+    customizations: Optional[List[MenuCustomization]] = Field(default_factory=list)
     offer: Optional[MenuOffer] = None
 
 
@@ -323,8 +323,49 @@ class MenuItemOut(BaseModel):
     preparationTime: Optional[int] = None
 
     dietType: Optional[str] = None
-    customizations: Optional[List[MenuCustomization]] = []
+    customizations: Optional[List[MenuCustomization]] = Field(default_factory=list)
     offer: Optional[MenuOffer] = None
 
+    createdAt: Optional[datetime] = None
+    updatedAt: Optional[datetime] = None
+
+# ============ COMBO MEALS ============
+
+class ComboMealIn(BaseModel):
+    name: str
+    description: Optional[str] = ""
+    cuisine: Optional[CuisineType] = None
+    originalPrice: float
+    discountedPrice: float
+    image: Optional[str] = ""
+    available: Optional[bool] = True
+    calories: Optional[int] = None
+    prepTime: Optional[str] = None
+
+
+class ComboMealUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    cuisine: Optional[CuisineType] = None
+    originalPrice: Optional[float] = None
+    discountedPrice: Optional[float] = None
+    image: Optional[str] = None
+    available: Optional[bool] = None
+    calories: Optional[int] = None
+    prepTime: Optional[str] = None
+
+
+class ComboMealOut(BaseModel):
+    id: Optional[str] = Field(None, alias="_id")
+    name: str
+    description: Optional[str] = ""
+    cuisine: Optional[str] = None
+    originalPrice: float
+    discountedPrice: float
+    image: Optional[str] = ""
+    available: bool
+    calories: Optional[int] = None
+    prepTime: Optional[str] = None
+    
     createdAt: Optional[datetime] = None
     updatedAt: Optional[datetime] = None
