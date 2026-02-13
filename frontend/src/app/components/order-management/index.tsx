@@ -24,7 +24,7 @@ import {
   parseSmartNotes,
   getKitchenLoad 
 } from './utils';
-import { mockApi } from '@/app/services/mock-api';
+import { ordersApi, menuApi } from '@/utils/api';
 
 // Animated Counter Component for count-up effect
 function AnimatedCounter({ value, className = '' }: { value: number; className?: string }) {
@@ -91,18 +91,17 @@ export function OrderManagement() {
 
   const fetchOrders = async () => {
     try {
-      // Try mock API first (for local development without backend)
-      const mockResult = await mockApi.getOrders();
-      if (mockResult.success) {
-        // Transform mock API data to match Order interface
-        const transformedOrders = mockResult.data.map((mockOrder: any) => ({
-          ...mockOrder,
-          total: mockOrder.totalAmount || mockOrder.total || 0,
-          items: (Array.isArray(mockOrder.items) ? mockOrder.items : []).map((item: any) => ({
+      const result = await ordersApi.list();
+      if (result.data) {
+        // Transform API data to match Order interface
+        const transformedOrders = result.data.map((order: any) => ({
+          ...order,
+          total: order.totalAmount || order.total || 0,
+          items: (Array.isArray(order.items) ? order.items : []).map((item: any) => ({
             ...item,
             price: item.price || 0,
             quantity: item.quantity || 0,
-            name: item.name || 'Unknown Item'
+            name: item.name || item.menuItemName || 'Unknown Item'
           }))
         }));
         setOrders(transformedOrders as any);
@@ -119,10 +118,9 @@ export function OrderManagement() {
 
   const fetchMenuItems = async () => {
     try {
-      // Use mock API for menu items
-      const mockResult = await mockApi.getMenuItems();
-      if (mockResult.success) {
-        setMenuItems(mockResult.data as any);
+      const result = await menuApi.list();
+      if (result.data) {
+        setMenuItems((result.data || []) as any);
       }
     } catch (error) {
       console.error('Error fetching menu items:', error);
@@ -144,9 +142,8 @@ export function OrderManagement() {
         setUndoCountdown(10);
       }
 
-      // Use mock API
-      const result = await mockApi.updateOrderStatus(orderId, newStatus);
-      if (result.success) {
+      await ordersApi.updateStatus(orderId, newStatus);
+      if (true) {
         const statusText = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
         toast.success(`Order marked as ${statusText}!`);
         
@@ -170,8 +167,7 @@ export function OrderManagement() {
 
   const deleteOrder = async (orderId: string) => {
     try {
-      // Use mock API
-      await mockApi.deleteOrder(orderId);
+      await ordersApi.delete(orderId);
       toast.success('Order deleted successfully!');
       fetchOrders();
     } catch (error) {

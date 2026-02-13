@@ -15,7 +15,13 @@ import {
   Timer, AlertTriangle, Coffee, Ban, Activity
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { mockApi, type MockOrder } from '@/app/services/mock-api';
+import { ordersApi } from '@/utils/api';
+
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+type OrderStatus = 'placed' | 'accepted' | 'preparing' | 'ready' | 'served' | 'bill_requested' | 'completed' | 'cancelled';
 
 // ============================================================================
 // SMART NOTES PARSING
@@ -82,8 +88,8 @@ function formatTimeAgo(createdAt: string): string {
 // ============================================================================
 
 interface OrderCardProps {
-  order: MockOrder;
-  onStatusChange: (orderId: string, newStatus: MockOrder['status']) => void;
+  order: any;
+  onStatusChange: (orderId: string, newStatus: string) => void;
   onDelete: (orderId: string) => void;
 }
 
@@ -112,7 +118,7 @@ function OrderCard({ order, onStatusChange, onDelete }: OrderCardProps) {
     return 'border-gray-200';
   };
 
-  const getNextStatus = (): MockOrder['status'] | null => {
+  const getNextStatus = (): OrderStatus | null => {
     switch (order.status) {
       case 'placed': return 'accepted';
       case 'accepted': return 'preparing';
@@ -191,7 +197,7 @@ function OrderCard({ order, onStatusChange, onDelete }: OrderCardProps) {
 
           {/* Items */}
           <div className="space-y-1">
-            {order.items.map((item) => (
+            {order.items.map((item: any) => (
               <div key={item.id} className="flex justify-between text-sm">
                 <span className="text-gray-700">
                   {item.quantity}x {item.name}
@@ -250,8 +256,8 @@ function OrderCard({ order, onStatusChange, onDelete }: OrderCardProps) {
 
 interface UndoState {
   orderId: string;
-  previousStatus: MockOrder['status'];
-  newStatus: MockOrder['status'];
+  previousStatus: string;
+  newStatus: string;
   timestamp: number;
 }
 
@@ -260,7 +266,7 @@ interface UndoState {
 // ============================================================================
 
 export function OrderManagementComprehensive() {
-  const [orders, setOrders] = useState<MockOrder[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
@@ -295,9 +301,27 @@ export function OrderManagementComprehensive() {
 
   const fetchOrders = async () => {
     try {
-      const result = await mockApi.getOrders();
-      if (result.success) {
-        setOrders(result.data);
+      const result = await ordersApi.list();
+      if (result.data) {
+        // Transform API data to match component expectations
+        const transformedOrders = (result.data || []).map((o: any) => ({
+          id: o._id || o.id,
+          displayId: o.displayId || o.orderNumber || `ORD-${(o._id || o.id).slice(-6)}`,
+          customerName: o.customerName || o.customer?.name || 'Guest',
+          tableNumber: o.tableNumber || o.table?.number,
+          type: o.type || o.orderType || 'dine-in',
+          status: o.status,
+          items: (o.items || []).map((item: any, idx: number) => ({
+            id: item._id || idx,
+            name: item.name || item.menuItemName,
+            quantity: item.quantity,
+            price: item.price
+          })),
+          totalAmount: o.totalAmount || o.total || 0,
+          customerNotes: o.notes || o.specialInstructions,
+          createdAt: o.createdAt || o.created_at
+        }));
+        setOrders(transformedOrders);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -307,14 +331,14 @@ export function OrderManagementComprehensive() {
     }
   };
 
-  const handleStatusChange = async (orderId: string, newStatus: MockOrder['status']) => {
+  const handleStatusChange = async (orderId: string, newStatus: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
 
     const previousStatus = order.status;
 
     try {
-      await mockApi.updateOrderStatus(orderId, newStatus);
+      await ordersApi.updateStatus(orderId, newStatus);
       
       // Set undo state
       setUndoState({
@@ -344,7 +368,7 @@ export function OrderManagementComprehensive() {
     if (!undoState) return;
 
     try {
-      await mockApi.updateOrderStatus(undoState.orderId, undoState.previousStatus);
+      await ordersApi.updateStatus(undoState.orderId, undoState.previousStatus);
       
       toast.success('Order status reverted');
       setUndoState(null);
@@ -362,7 +386,7 @@ export function OrderManagementComprehensive() {
 
   const handleDeleteOrder = async (orderId: string) => {
     try {
-      await mockApi.deleteOrder(orderId);
+      await ordersApi.delete(orderId);
       toast.success('Order deleted');
       fetchOrders();
     } catch (error) {

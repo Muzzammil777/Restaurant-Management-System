@@ -16,7 +16,9 @@ import {
   AlertCircle, ChefHat, Timer, MapPin, Calendar, X, Coffee, DollarSign
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { mockApi, type MockTable, type MockWaiter } from '@/app/services/mock-api';
+import { tablesApi } from '@/utils/api';
+import { staffApi } from '@/utils/api';
+import { ordersApi } from '@/utils/api';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -30,9 +32,9 @@ type Location = 'VIP' | 'Main Hall' | 'AC Hall';
 // ============================================================================
 
 interface TableCardProps {
-  table: MockTable;
+  table: any;
   onClick: () => void;
-  waiters: MockWaiter[];
+  waiters: any[];
   onAssignWaiter: (tableId: string, waiterId: string, waiterName: string) => void;
   onCheckout: (tableId: string) => void;
 }
@@ -49,12 +51,10 @@ function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout }: Tabl
         setCleaningTimeLeft(remaining);
         
         if (remaining === 0) {
-          // Auto-reset to Available after timer ends
-          mockApi.updateTable(table.id, { 
-            status: 'Available',
-            cleaningEndTime: null,
-            statusStartTime: null
-          });
+          // Auto-reset to Available after timer ends - emit event for parent to handle
+          window.dispatchEvent(new CustomEvent('table:reset-status', { 
+            detail: { tableId: table.id } 
+          }));
         }
       }, 1000);
 
@@ -233,7 +233,7 @@ function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout }: Tabl
 // ============================================================================
 
 interface ReservationCardProps {
-  table: MockTable;
+  table: any;
   onCancel: (tableId: string) => void;
 }
 
@@ -303,7 +303,7 @@ function ReservationCard({ table, onCancel }: ReservationCardProps) {
 interface WalkInModalProps {
   open: boolean;
   onClose: () => void;
-  tables: MockTable[];
+  tables: any[];
   onSelectTable: (tableId: string) => void;
   guestCount: number;
 }
@@ -369,8 +369,8 @@ function WalkInModal({ open, onClose, tables, onSelectTable, guestCount }: WalkI
 // ============================================================================
 
 export function TableManagementComprehensive() {
-  const [tables, setTables] = useState<MockTable[]>([]);
-  const [waiters, setWaiters] = useState<MockWaiter[]>([]);
+  const [tables, setTables] = useState<any[]>([]);
+  const [waiters, setWaiters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState<Location | 'All'>('All');
   const [walkInModalOpen, setWalkInModalOpen] = useState(false);
@@ -385,13 +385,40 @@ export function TableManagementComprehensive() {
 
   const fetchData = async () => {
     try {
-      const [tablesRes, waitersRes] = await Promise.all([
-        mockApi.getTables(),
-        mockApi.getWaiters()
+      const [tablesRes, staffRes] = await Promise.all([
+        tablesApi.list(),
+        staffApi.list({ role: 'Waiter' })
       ]);
       
-      if (tablesRes.success) setTables(tablesRes.data);
-      if (waitersRes.success) setWaiters(waitersRes.data);
+      // Transform tables data to match component expectations
+      const tablesData = Array.isArray(tablesRes) ? tablesRes : (tablesRes.data || []);
+      const transformedTables = tablesData.map((t: any) => ({
+        id: t._id || t.id,
+        displayNumber: t.tableNumber || t.displayNumber,
+        number: t.tableNumber || t.number,
+        capacity: t.capacity,
+        location: t.location,
+        status: t.status || 'Available',
+        guestCount: t.currentGuests || 0,
+        currentOrderId: t.currentOrderId,
+        waiterId: t.assignedWaiterId,
+        waiterName: t.assignedWaiterName,
+        kitchenStatus: t.kitchenStatus,
+        cleaningEndTime: t.cleaningEndTime,
+        reservationSlot: t.reservation?.timeSlot,
+        reservationStatus: t.reservation?.status,
+        reservationType: t.reservation?.type
+      }));
+      setTables(transformedTables);
+      
+      // Transform waiters data
+      const staffData = Array.isArray(staffRes) ? staffRes : ((staffRes as any).data || []);
+      const transformedWaiters = staffData.map((s: any) => ({
+        id: s._id || s.id,
+        name: s.name,
+        assignedTableId: s.assignedTableId
+      }));
+      setWaiters(transformedWaiters);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Failed to load tables');
@@ -402,15 +429,11 @@ export function TableManagementComprehensive() {
 
   const handleAssignWaiter = async (tableId: string, waiterId: string, waiterName: string) => {
     try {
-      await mockApi.updateTable(tableId, {
-        waiterId,
-        waiterName
+      await tablesApi.update(tableId, {
+        assignedWaiterId: waiterId,
+        assignedWaiterName: waiterName
       });
       
-      await mockApi.updateWaiter(waiterId, {
-        assignedTableId: tableId
-      });
-
       toast.success(`${waiterName} assigned to table`);
       fetchData();
     } catch (error) {
@@ -425,7 +448,7 @@ export function TableManagementComprehensive() {
     try {
       // Update order to bill_requested
       if (table.currentOrderId) {
-        await mockApi.updateOrderStatus(table.currentOrderId, 'bill_requested');
+        await ordersApi.updateStatus(table.currentOrderId, 'bill_requested');
       }
 
       toast.success('Checkout initiated - Bill requested');
@@ -441,12 +464,7 @@ export function TableManagementComprehensive() {
 
   const handleSelectTableForWalkIn = async (tableId: string) => {
     try {
-      await mockApi.updateTable(tableId, {
-        status: 'Occupied',
-        guestCount: walkInGuestCount,
-        reservationType: 'Walk-in',
-        statusStartTime: Date.now()
-      });
+      await tablesApi.updateStatus(tableId, 'Occupied', walkInGuestCount);
 
       toast.success('Table marked as Occupied');
       fetchData();
@@ -457,15 +475,7 @@ export function TableManagementComprehensive() {
 
   const handleCancelReservation = async (tableId: string) => {
     try {
-      await mockApi.updateTable(tableId, {
-        status: 'Available',
-        reservationStatus: 'Cancelled',
-        guestCount: 0,
-        reservationSlot: null,
-        reservationType: 'None',
-        waiterId: null,
-        waiterName: null
-      });
+      await tablesApi.updateStatus(tableId, 'Available');
 
       toast.success('Reservation cancelled');
       fetchData();
@@ -482,13 +492,14 @@ export function TableManagementComprehensive() {
     t => t.reservationStatus && !['Cancelled', 'Expired'].includes(t.reservationStatus)
   );
 
-  const groupedTables = filteredTables.reduce((acc, table) => {
-    if (!acc[table.location]) {
-      acc[table.location] = [];
+  const groupedTables: Record<string, any[]> = filteredTables.reduce((acc: Record<string, any[]>, table) => {
+    const location = table.location || 'Other';
+    if (!acc[location as Location]) {
+      acc[location as Location] = [];
     }
-    acc[table.location].push(table);
+    acc[location as Location].push(table);
     return acc;
-  }, {} as Record<Location, MockTable[]>);
+  }, {} as Record<string, any[]>);
 
   if (loading) {
     return <LoadingTables />;
