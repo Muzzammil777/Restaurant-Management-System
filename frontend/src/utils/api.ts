@@ -461,7 +461,7 @@ export const menuApi = {
     if (params?.available !== undefined) query.append('available', String(params.available));
     if (params?.dietType) query.append('dietType', params.dietType);
     if (params?.search) query.append('search', params.search);
-    return fetchApi<{ data: any[]; total: number }>(`/menu?${query.toString()}`);
+    return fetchApi<any[]>(`/menu?${query.toString()}`);
   },
 
   // Get stats
@@ -496,7 +496,7 @@ export const menuApi = {
   }),
 
   // Combos
-  listCombos: () => fetchApi<any[]>('/menu/combos/all'),
+listCombos: () => fetchApi<any[]>('/menu/combos'),
   createCombo: (data: any) => fetchApi<any>('/menu/combos', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -507,6 +507,9 @@ export const menuApi = {
   }),
   deleteCombo: (id: string) => fetchApi<{ success: boolean }>(`/menu/combos/${id}`, {
     method: 'DELETE',
+  }),
+  toggleComboAvailability: (id: string, available: boolean) => fetchApi<any>(`/menu/combos/${id}/availability?available=${available}`, {
+    method: 'PATCH',
   }),
 };
 

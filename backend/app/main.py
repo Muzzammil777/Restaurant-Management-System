@@ -27,6 +27,7 @@ from .routes import billing as billing_router
 from .routes import analytics as analytics_router
 from .routes import recipes as recipes_router
 
+
 app = FastAPI(title='RMS Backend (FastAPI)')
 
 app.add_middleware(
