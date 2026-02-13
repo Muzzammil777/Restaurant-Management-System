@@ -98,7 +98,7 @@ export function OrderManagement() {
         const transformedOrders = mockResult.data.map((mockOrder: any) => ({
           ...mockOrder,
           total: mockOrder.totalAmount || mockOrder.total || 0,
-          items: (Array.isArray(mockOrder.items) ? mockOrder.items : []).map((item: any) => ({
+          items: (mockOrder.items || []).map((item: any) => ({
             ...item,
             price: item.price || 0,
             quantity: item.quantity || 0,
@@ -483,22 +483,13 @@ export function OrderManagement() {
           </h1>
           <p className="text-muted-foreground mt-1">Manage and track all orders in real-time</p>
         </div>
-        
-        <motion.div
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <Button 
-            onClick={() => setQuickOrderOpen(true)} 
-            size="lg" 
-            className="gap-2 shadow-lg btn-ripple glossy bg-gradient-to-r from-[#8B5A2B] to-[#A67C52] hover:from-[#7a4e24] hover:to-[#8B5A2B] border-0"
+
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}>
+          <Button
+            onClick={() => setQuickOrderOpen(true)}
+            className="gap-2 shadow-md btn-ripple bg-gradient-to-r from-[#8B5A2B] to-[#A67C52] hover:from-[#7a4e24] hover:to-[#8B5A2B] border-0"
           >
-            <motion.div
-              animate={{ rotate: [0, 15, -15, 0] }}
-              transition={{ duration: 0.6, repeat: Infinity, repeatDelay: 2 }}
-            >
-              <Zap className="h-5 w-5" />
-            </motion.div>
+            <Zap className="h-4 w-4" />
             Quick Order
           </Button>
         </motion.div>
@@ -761,8 +752,7 @@ export function OrderManagement() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {sortedOrders.map((order, index) => {
-            const orderItems = Array.isArray(order.items) ? order.items : [];
-            const totalItems = orderItems.reduce((sum, item) => sum + item.quantity, 0);
+            const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
             const ageInMinutes = getOrderAge(order);
             const delayLevel = getDelayLevel(ageInMinutes, order.status);
             const priority = getOrderPriority(order);
@@ -983,7 +973,7 @@ export function OrderManagement() {
                         Order Items ({totalItems})
                       </p>
                       <ul className="text-sm space-y-2">
-                        {(Array.isArray(order.items) ? order.items : []).map((item, idx) => (
+                        {order.items.map((item, idx) => (
                           <motion.li 
                             key={idx} 
                             initial={{ opacity: 0, x: -20 }}
@@ -1125,7 +1115,7 @@ export function OrderManagement() {
                               <div className="bg-[#F7F3EE] p-3 rounded-lg">
                                 <p className="text-xs font-semibold text-muted-foreground mb-2">ORDER ITEMS</p>
                                 <ul className="space-y-2">
-                                  {(Array.isArray(order.items) ? order.items : []).map((item, idx) => (
+                                  {order.items.map((item, idx) => (
                                     <li key={idx} className="flex justify-between text-sm bg-white p-2 rounded">
                                       <span className="font-medium">{item.quantity}x {item.name}</span>
                                       <span className="flex items-center gap-0.5 font-semibold">
