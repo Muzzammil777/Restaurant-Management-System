@@ -73,7 +73,7 @@ const AVAILABLE_ADDONS = ["Ketchup", "Mayonnaise", "Green Sauce", "Pepper Dip", 
 
 const normalizeMenuItems = (items: any[]): MenuItem[] =>
   items.map((item) => ({
-    id: item._id ?? item.id ?? `menu-${Math.random().toString(36).slice(2)}`,
+    id: item._id ?? item.id ?? `menu-${item.name?.replace(/\s+/g, '-').toLowerCase() ?? 'unknown'}-${Date.now()}`,
     name: item.name ?? "Unnamed Item",
     category: item.category ?? "main-course",
     cuisine: item.cuisine ?? "North Indian",
@@ -93,7 +93,7 @@ const normalizeMenuItems = (items: any[]): MenuItem[] =>
 
 const normalizeComboMeals = (items: any[]): ComboMeal[] =>
   items.map((combo) => ({
-    id: combo._id ?? combo.id ?? `combo-${Math.random().toString(36).slice(2)}`,
+    id: combo._id ?? combo.id ?? `combo-${combo.name?.replace(/\s+/g, '-').toLowerCase() ?? 'unknown'}-${Date.now()}`,
     name: combo.name ?? "Unnamed Combo",
     description: combo.description ?? "",
     cuisine: combo.cuisine ?? "North Indian",
@@ -172,21 +172,50 @@ useEffect(() => {
 
     const dietType = (fd.get("diet") as "veg" | "non-veg") ?? "veg";
     const baseBadges = editingItem?.badges ?? (dietType === "veg" ? ["VEG"] : ["NON-VEG"]);
+    
+    // Extract prep time and convert to minutes (if needed)
+    const prepTimeStr = fd.get("prepTime") as string;
+    const prepTimeMatch = prepTimeStr?.match(/(\d+)/);
+    const preparationTime = prepTimeMatch ? parseInt(prepTimeMatch[1]) : undefined;
+    
+    // Build offer object
+    const offerDiscount = fd.get("offerDiscount") as string;
+    const offerLabel = fd.get("offerLabel") as string;
+    const offer = (offerDiscount || offerLabel) ? {
+      discount: offerDiscount ? parseFloat(offerDiscount.replace(/[^\d.]/g, '')) || 0 : 0,
+      label: offerLabel || undefined
+    } : undefined;
+    
+    // Convert addons to customizations format
+    const customizations = selectedAddons.map(addon => ({
+      name: addon,
+      price: 0 // Default price, can be enhanced later
+    }));
+    
+    // Build payload matching backend schema
     const payload = {
       name: fd.get("name") as string,
       cuisine: fd.get("cuisine") as CuisineType,
       category: fd.get("category") as string,
       price: parseFloat(fd.get("price") as string),
-      calories: parseInt(fd.get("calories") as string),
-      prepTime: fd.get("prepTime") as string,
       dietType: dietType,
       description: fd.get("description") as string,
       spiceLevel: fd.get("spiceLevel") as string,
-      offerDiscount: (fd.get("offerDiscount") as string) || undefined,
-      offerLabel: (fd.get("offerLabel") as string) || undefined,
-      addons: selectedAddons,
+      preparationTime: preparationTime,
+      customizations: customizations.length > 0 ? customizations : undefined,
+      offer: offer,
       image: editingItem?.image ?? "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800",
       available: editingItem?.available ?? true,
+    };
+    
+    // Keep frontend-specific fields for local state
+    const displayPayload = {
+      ...payload,
+      calories: parseInt(fd.get("calories") as string),
+      prepTime: prepTimeStr,
+      addons: selectedAddons,
+      offerDiscount: offerDiscount || undefined,
+      offerLabel: offerLabel || undefined,
       badges: baseBadges,
     };
 
@@ -194,14 +223,14 @@ useEffect(() => {
       if (editingItem) {
         await menuApi.update(editingItem.id, payload);
 
-        const updated: MenuItem = { ...editingItem, ...payload };
+        const updated: MenuItem = { ...editingItem, ...displayPayload };
         setMenuItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
         toast.success("Item Updated Successfully!");
       } else {
         const result = await menuApi.create(payload);
 
         const createdId = result?._id ?? result?.id ?? Date.now().toString();
-        const newItem: MenuItem = { id: createdId, ...payload };
+        const newItem: MenuItem = { id: createdId, ...displayPayload };
         setMenuItems((prev) => [...prev, newItem]);
         toast.success("New Item Added Successfully!");
       }
@@ -795,7 +824,13 @@ useEffect(() => {
       </div>
 
       {/* Add/Edit Item Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => {
+        setDialogOpen(open);
+        if (!open) {
+          setEditingItem(null);
+          setSelectedAddons([]);
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle style={{ fontFamily: 'Poppins, sans-serif' }}>
@@ -901,6 +936,11 @@ useEffect(() => {
                 </div>
               </div>
               
+              <div className="space-y-2">
+                <Label htmlFor="offerLabel" style={{ fontFamily: 'Inter, sans-serif' }}>Offer Label</Label>
+                <Input id="offerLabel" name="offerLabel" defaultValue={editingItem?.offerLabel} placeholder="e.g., Weekend Special" />
+              </div>
+              
               {/* Addons as Checkboxes */}
               <div className="space-y-2 mt-4">
                 <Label style={{ fontFamily: 'Inter, sans-serif' }}>Available Addons (Select Multiple)</Label>
@@ -911,9 +951,9 @@ useEffect(() => {
                         id={addon}
                         checked={selectedAddons.includes(addon)}
                         onCheckedChange={(checked) => {
-                          if (checked) {
+                          if (checked === true) {
                             setSelectedAddons([...selectedAddons, addon]);
-                          } else {
+                          } else if (checked === false) {
                             setSelectedAddons(selectedAddons.filter(a => a !== addon));
                           }
                         }}
@@ -936,7 +976,12 @@ useEffect(() => {
       </Dialog>
 
       {/* Add/Edit Combo Dialog */}
-      <Dialog open={comboDialogOpen} onOpenChange={setComboDialogOpen}>
+      <Dialog open={comboDialogOpen} onOpenChange={(open) => {
+        setComboDialogOpen(open);
+        if (!open) {
+          setEditingCombo(null);
+        }
+      }}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle style={{ fontFamily: 'Poppins, sans-serif' }}>
