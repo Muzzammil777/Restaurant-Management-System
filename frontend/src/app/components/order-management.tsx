@@ -139,7 +139,7 @@ export function OrderManagement() {
   const fetchMenuItems = async () => {
     try {
       const result = await menuApi.list();
-      const items = result.data || result || [];
+      const items = Array.isArray(result) ? result : (result as any)?.data || [];
       setMenuItems(items.filter((item: MenuItem) => item.available !== false));
     } catch (error) {
       console.error('Error fetching menu items:', error);
