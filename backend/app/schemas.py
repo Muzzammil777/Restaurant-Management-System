@@ -246,3 +246,85 @@ class RoleOut(BaseModel):
     permissions: RolePermissions
     createdAt: Optional[datetime] = None
     updatedAt: Optional[datetime] = None
+
+
+
+# ============ MENU MANAGEMENT ============
+
+class DietType(str, Enum):
+    veg = "veg"
+    non_veg = "non-veg"
+
+
+class CuisineType(str, Enum):
+    south_indian = "south indian"
+    north_indian = "north indian"
+    chinese = "chinese"
+    italian = "italian"
+    continental = "continental"
+
+
+class MenuCustomization(BaseModel):
+    name: str
+    price: float
+
+
+class MenuOffer(BaseModel):
+    discount: float
+    label: Optional[str] = None
+
+
+class MenuItemIn(BaseModel):
+    name: str
+    category: str
+    cuisine: CuisineType
+    price: float
+    description: Optional[str] = ""
+    image: Optional[str] = ""
+    available: Optional[bool] = True
+
+    spiceLevel: Optional[str] = None
+    preparationTime: Optional[int] = None
+
+    dietType: Optional[DietType] = None
+
+    customizations: Optional[List[MenuCustomization]] = []
+    offer: Optional[MenuOffer] = None
+
+
+class MenuItemUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    cuisine: Optional[CuisineType] = None
+    price: Optional[float] = None
+    description: Optional[str] = None
+    image: Optional[str] = None
+    available: Optional[bool] = None
+
+    spiceLevel: Optional[str] = None
+    preparationTime: Optional[int] = None
+
+    dietType: Optional[DietType] = None
+    customizations: Optional[List[MenuCustomization]] = None
+    offer: Optional[MenuOffer] = None
+
+
+class MenuItemOut(BaseModel):
+    id: Optional[str] = Field(None, alias="_id")
+    name: str
+    category: str
+    cuisine: str
+    price: float
+    description: Optional[str] = ""
+    image: Optional[str] = ""
+    available: bool
+
+    spiceLevel: Optional[str] = None
+    preparationTime: Optional[int] = None
+
+    dietType: Optional[str] = None
+    customizations: Optional[List[MenuCustomization]] = []
+    offer: Optional[MenuOffer] = None
+
+    createdAt: Optional[datetime] = None
+    updatedAt: Optional[datetime] = None
