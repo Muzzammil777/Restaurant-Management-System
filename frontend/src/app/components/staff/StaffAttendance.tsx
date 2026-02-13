@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -19,10 +19,12 @@ import {
   Clock,
   UserX,
   UserCheck,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { motion } from "motion/react";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
+import { attendanceApi, staffApi } from '@/utils/api';
 
 const mockAttendance = [
   { 
@@ -69,7 +71,79 @@ const mockAttendance = [
   },
 ];
 
+interface AttendanceRecord {
+  _id: string;
+  staffId: string;
+  staffName: string;
+  date: string;
+  status: string;
+  checkIn?: string;
+  checkOut?: string;
+  hoursWorked?: number;
+  notes?: string;
+}
+
+interface StaffMember {
+  _id: string;
+  name: string;
+  role: string;
+  shift: string;
+  phone?: string;
+  department?: string;
+}
+
 export function StaffAttendance() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Calculate stats from attendance data
+  const activeOnSite = attendance.filter((a: AttendanceRecord) => a.status === 'present' || a.status === 'late').length;
+  const totalStaff = staff.length || 46;
+  const lateToday = attendance.filter((a: AttendanceRecord) => a.status === 'late').length;
+  const absences = attendance.filter((a: AttendanceRecord) => a.status === 'absent').length;
+
+  useEffect(() => {
+    fetchData();
+  }, [departmentFilter]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Get today's date
+      const today = new Date().toISOString().split('T')[0];
+
+      // Fetch attendance records
+      const attendanceData = await attendanceApi.list({
+        date_from: today,
+        date_to: today
+      });
+      setAttendance(attendanceData || []);
+
+      // Fetch all staff for reference
+      const staffData = await staffApi.getAll();
+      setStaff(staffData || []);
+    } catch (err) {
+      console.error('Error fetching attendance:', err);
+      setError('Failed to load attendance data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStaffInfo = (staffId: string) => {
+    const member = staff.find((s: StaffMember) => s._id === staffId);
+    return member || { name: 'Unknown', role: 'N/A', shift: 'N/A' };
+  };
+
+  const filteredAttendance = attendance.filter((record: AttendanceRecord) => 
+    record.staffName?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -95,7 +169,11 @@ export function StaffAttendance() {
             <div className="flex justify-between items-start mb-4">
               <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Active On-Site</p>
-                <div className="text-4xl font-bold text-[#2D2D2D]">42/46</div>
+                {loading ? (
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
+                ) : (
+                  <div className="text-4xl font-bold text-[#2D2D2D]">{activeOnSite}/{totalStaff}</div>
+                )}
               </div>
               <Badge className="bg-green-50 text-green-600 border-none font-bold text-[10px]">+5.2%</Badge>
             </div>
@@ -103,7 +181,7 @@ export function StaffAttendance() {
               <motion.div 
                 className="bg-green-500 h-full rounded-full"
                 initial={{ width: 0 }}
-                animate={{ width: '91.3%' }}
+                animate={{ width: totalStaff > 0 ? `${(activeOnSite / totalStaff) * 100}%` : '0%' }}
                 transition={{ duration: 1, ease: "easeOut" }}
               />
             </div>
@@ -115,7 +193,11 @@ export function StaffAttendance() {
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Late Today</p>
-                <div className="text-4xl font-bold text-[#2D2D2D]">3</div>
+                {loading ? (
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
+                ) : (
+                  <div className="text-4xl font-bold text-[#2D2D2D]">{lateToday}</div>
+                )}
                 <p className="text-xs text-muted-foreground mt-2">Pending review: <span className="font-semibold text-gray-700">1</span></p>
               </div>
               <div className="bg-orange-50 text-orange-600 rounded-full h-8 w-8 flex items-center justify-center font-bold text-xs">-2</div>
@@ -128,10 +210,14 @@ export function StaffAttendance() {
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Absences</p>
-                <div className="text-4xl font-bold text-[#2D2D2D]">1</div>
+                {loading ? (
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
+                ) : (
+                  <div className="text-4xl font-bold text-[#2D2D2D]">{absences}</div>
+                )}
                 <p className="text-xs text-muted-foreground mt-2">Unexcused this week: <span className="font-semibold text-gray-700">2</span></p>
               </div>
-              <div className="text-red-600 font-bold text-xl">1</div>
+              <div className="text-red-600 font-bold text-xl">{absences}</div>
             </div>
           </CardContent>
         </Card>
@@ -182,61 +268,90 @@ export function StaffAttendance() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {mockAttendance.map((record) => (
-                  <tr key={record.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full overflow-hidden border border-gray-100 shadow-sm">
-                          <ImageWithFallback src={record.image} alt={record.name} className="h-full w-full object-cover" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-gray-800">{record.name}</div>
-                          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{record.role}</div>
-                        </div>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-12 text-center">
+                      <div className="flex items-center justify-center gap-2 text-gray-400">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span>Loading attendance data...</span>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-500 font-medium">{record.shift}</td>
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="font-bold text-gray-800">{record.clockIn}</div>
-                        {record.clockInStatus && (
-                          <div className={`text-[9px] font-bold uppercase tracking-tighter ${record.clockInStatus === 'EARLY' ? 'text-green-500' : 'text-orange-500'}`}>
-                            {record.clockInStatus}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-800 font-medium">{record.clockOut}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="bg-white border border-gray-200 px-3 py-1 rounded-md font-bold text-gray-800 w-14 text-center">
-                          {record.hours}
-                        </div>
-                        <span className="text-gray-400 text-xs font-medium">hrs</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="font-bold text-green-600">{record.pay}</div>
-                        <div className="text-[10px] font-bold text-gray-400">{record.payRate}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge className={`border-none font-bold text-[10px] px-3 py-1 ${
-                        record.status === 'PRESENT' ? 'bg-green-50 text-green-600' : 
-                        record.status === 'LATE' ? 'bg-orange-50 text-orange-600' : 
-                        'bg-red-50 text-red-600'
-                      }`}>
-                        {record.status}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-[#8B5A2B] hover:bg-[#8B5A2B]/10">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
                     </td>
                   </tr>
-                ))}
+                ) : error ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-12 text-center text-red-500">
+                      {error}
+                    </td>
+                  </tr>
+                ) : filteredAttendance.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-12 text-center text-gray-400">
+                      No attendance records found
+                    </td>
+                  </tr>
+                ) : (
+                  filteredAttendance.map((record: AttendanceRecord) => {
+                    const staffInfo = getStaffInfo(record.staffId);
+                    const status = record.status?.toUpperCase() || 'ABSENT';
+                    const clockInStatus = record.checkIn ? (new Date(`2000-01-01T${record.checkIn}`) < new Date('2000-01-01T08:00:00') ? 'EARLY' : 'ON TIME') : '';
+                    
+                    return (
+                      <tr key={record._id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 font-semibold text-xs border border-white shadow-sm">
+                              {staffInfo.name.split(' ').map(n => n[0]).join('')}
+                            </div>
+                            <div>
+                              <div className="font-bold text-gray-800">{staffInfo.name}</div>
+                              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{staffInfo.role}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-gray-500 font-medium">{staffInfo.shift}</td>
+                        <td className="px-6 py-4">
+                          <div>
+                            <div className="font-bold text-gray-800">{record.checkIn || '--:--'}</div>
+                            {clockInStatus && (
+                              <div className={`text-[9px] font-bold uppercase tracking-tighter ${clockInStatus === 'EARLY' ? 'text-green-500' : 'text-orange-500'}`}>
+                                {clockInStatus}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-gray-800 font-medium">{record.checkOut || '--:--'}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <div className="bg-white border border-gray-200 px-3 py-1 rounded-md font-bold text-gray-800 w-14 text-center">
+                              {record.hoursWorked || '0'}
+                            </div>
+                            <span className="text-gray-400 text-xs font-medium">hrs</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div>
+                            <div className="font-bold text-green-600">₹{(record.hoursWorked || 0) * 1500}.00</div>
+                            <div className="text-[10px] font-bold text-gray-400">₹1,500/hr</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge className={`border-none font-bold text-[10px] px-3 py-1 ${
+                            status === 'PRESENT' ? 'bg-green-50 text-green-600' : 
+                            status === 'LATE' ? 'bg-orange-50 text-orange-600' : 
+                            'bg-red-50 text-red-600'
+                          }`}>
+                            {status}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-[#8B5A2B] hover:bg-[#8B5A2B]/10">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -19,8 +19,10 @@ import {
   Eye, 
   ChevronLeft, 
   ChevronRight,
-  MoreHorizontal
+  MoreHorizontal,
+  Loader2
 } from 'lucide-react';
+import { staffApi } from '@/utils/api';
 
 const mockStaff = [
   { id: '#ST-001', name: 'Alex Johnson', role: 'CHEF', shift: 'Morning (08:00 - 16:00)', status: 'Active', initials: 'AJ' },
@@ -29,8 +31,68 @@ const mockStaff = [
   { id: '#ST-004', name: 'Linda Chen', role: 'CHEF', shift: 'Evening (16:00 - 00:00)', status: 'Active', initials: 'LC' },
 ];
 
+interface StaffMember {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+  phone?: string;
+  shift: string;
+  department?: string;
+  salary?: number;
+  active: boolean;
+  hireDate?: string;
+}
+
 export function StaffList() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [shiftFilter, setShiftFilter] = useState('all');
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchStaff();
+  }, [roleFilter, shiftFilter]);
+
+  const fetchStaff = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const params: { role?: string; active?: boolean; shift?: string } = {};
+      if (roleFilter !== 'all') params.role = roleFilter;
+      if (shiftFilter !== 'all') params.shift = shiftFilter;
+      
+      const data = await staffApi.list(params);
+      setStaff(data || []);
+    } catch (err) {
+      console.error('Error fetching staff:', err);
+      setError('Failed to load staff data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredStaff = staff.filter(s => 
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.role.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getShiftLabel = (shift: string) => {
+    const shifts: Record<string, string> = {
+      'morning': 'Morning (08:00 - 16:00)',
+      'evening': 'Evening (16:00 - 00:00)',
+      'night': 'Night (00:00 - 08:00)'
+    };
+    return shifts[shift] || shift;
+  };
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
 
   return (
     <div className="space-y-6">
@@ -70,7 +132,7 @@ export function StaffList() {
             <div className="flex items-center gap-4 w-full md:w-auto">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Role:</span>
-                <Select defaultValue="all">
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
                   <SelectTrigger className="w-[120px] bg-transparent border-none font-semibold text-gray-700">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
@@ -80,12 +142,13 @@ export function StaffList() {
                     <SelectItem value="waiter">Waiter</SelectItem>
                     <SelectItem value="cashier">Cashier</SelectItem>
                     <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Shift:</span>
-                <Select defaultValue="all">
+                <Select value={shiftFilter} onValueChange={setShiftFilter}>
                   <SelectTrigger className="w-[120px] bg-transparent border-none font-semibold text-gray-700">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
@@ -113,49 +176,74 @@ export function StaffList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {mockStaff.map((staff) => (
-                  <tr key={staff.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4 text-gray-400 font-medium">{staff.id}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 font-semibold text-xs border border-white shadow-sm">
-                          {staff.initials}
-                        </div>
-                        <span className="font-semibold text-gray-800">{staff.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge variant="outline" className="bg-gray-50 text-gray-400 border-none font-bold text-[10px] py-1 px-3">
-                        {staff.role}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-gray-500">{staff.shift}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className={`h-2 w-2 rounded-full ${staff.status === 'Active' ? 'bg-green-500' : 'bg-gray-300'}`} />
-                        <span className={staff.status === 'Active' ? 'text-green-600 font-medium' : 'text-gray-400 font-medium'}>
-                          {staff.status}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-[#8B5A2B] hover:bg-[#8B5A2B]/10">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-gray-400 hover:bg-gray-100">
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <div className="flex items-center justify-center gap-2 text-gray-400">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span>Loading staff data...</span>
                       </div>
                     </td>
                   </tr>
-                ))}
+                ) : error ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-red-500">
+                      {error}
+                    </td>
+                  </tr>
+                ) : filteredStaff.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
+                      No staff members found
+                    </td>
+                  </tr>
+                ) : (
+                  filteredStaff.map((member) => (
+                    <tr key={member._id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4 text-gray-400 font-medium">#{member._id.slice(-6).toUpperCase()}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 font-semibold text-xs border border-white shadow-sm">
+                            {getInitials(member.name)}
+                          </div>
+                          <span className="font-semibold text-gray-800">{member.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge variant="outline" className="bg-gray-50 text-gray-400 border-none font-bold text-[10px] py-1 px-3">
+                          {member.role?.toUpperCase()}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 text-gray-500">{getShiftLabel(member.shift)}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className={`h-2 w-2 rounded-full ${member.active ? 'bg-green-500' : 'bg-gray-300'}`} />
+                          <span className={member.active ? 'text-green-600 font-medium' : 'text-gray-400 font-medium'}>
+                            {member.active ? 'Active' : 'Off-duty'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-[#8B5A2B] hover:bg-[#8B5A2B]/10">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-gray-400 hover:bg-gray-100">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
 
           <div className="p-4 border-t border-gray-100 flex items-center justify-between">
-            <span className="text-xs text-gray-400">Showing 1 to 4 of 24 results</span>
+            <span className="text-xs text-gray-400">
+              {loading ? 'Loading...' : `Showing 1 to ${filteredStaff.length} of ${staff.length} results`}
+            </span>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-gray-400">
                 <ChevronLeft className="h-4 w-4" />

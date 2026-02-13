@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { Badge } from "@/app/components/ui/badge";
 import { Checkbox } from "@/app/components/ui/checkbox";
-import { Clock, TrendingUp, Info } from 'lucide-react';
+import { Clock, TrendingUp, Info, Loader2 } from 'lucide-react';
+import { shiftsApi, staffApi } from '@/utils/api';
 
 const mockRoster = [
   { 
@@ -61,7 +62,85 @@ const mockRoster = [
   },
 ];
 
+interface ShiftAssignment {
+  _id: string;
+  staffId: string;
+  staffName: string;
+  shiftType: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  notes?: string;
+}
+
+interface StaffMember {
+  _id: string;
+  name: string;
+  role: string;
+  shift: string;
+  salary?: number;
+}
+
 export function StaffShiftTimings() {
+  const [shifts, setShifts] = useState<ShiftAssignment[]>([]);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Get today's date
+      const today = new Date().toISOString().split('T')[0];
+      const nextWeek = new Date();
+      nextWeek.setDate(nextWeek.getDate() + 7);
+
+      // Fetch shifts for this week
+      const shiftsData = await shiftsApi.list({
+        date_from: today,
+        date_to: nextWeek.toISOString().split('T')[0]
+      });
+      setShifts(shiftsData || []);
+
+      // Fetch all staff
+      const staffData = await staffApi.getAll();
+      setStaff(staffData || []);
+    } catch (err) {
+      console.error('Error fetching shift data:', err);
+      setError('Failed to load shift data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStaffInfo = (staffId: string) => {
+    return staff.find((s: StaffMember) => s._id === staffId) || { name: 'Unknown', role: 'N/A', salary: 0 };
+  };
+
+  const formatTime = (time: string) => {
+    if (!time) return '--:--';
+    return time;
+  };
+
+  const calculateHours = (startTime: string, endTime: string) => {
+    if (!startTime || !endTime) return '0';
+    try {
+      const [start] = startTime.split(' ');
+      const [end] = endTime.split(' ');
+      const startDate = new Date(`2000-01-01T${start}`);
+      const endDate = new Date(`2000-01-01T${end}`);
+      const hours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
+      return hours > 0 ? hours.toFixed(1) : (hours + 24).toFixed(1);
+    } catch {
+      return '0';
+    }
+  };
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -97,62 +176,94 @@ export function StaffShiftTimings() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {mockRoster.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-6 text-center">
-                      <Checkbox className="rounded" />
-                    </td>
-                    <td className="px-6 py-6">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 font-semibold text-xs border border-white shadow-sm">
-                          {item.name.split(' ').map(n => n[0]).join('')}
-                        </div>
-                        <div>
-                          <div className="font-bold text-gray-800">{item.name}</div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{item.role}</span>
-                            <Badge className="bg-orange-50 text-orange-600 border-none font-bold text-[9px] px-2 py-0">RATE: {item.rate}</Badge>
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-6">
-                      <div>
-                        <div className="font-bold text-gray-800">Base: {item.baseRate}</div>
-                        <div className="text-[10px] font-bold text-gray-400">OT Multiplier: {item.otMultiplier}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-6">
-                      <div className="flex items-center gap-2">
-                        <div className="bg-white border border-gray-200 px-3 py-2 rounded-lg flex items-center gap-2 font-bold text-gray-700 w-32 justify-between">
-                          <span>{item.startTime}</span>
-                          <Clock className="h-3 w-3 text-gray-400" />
-                        </div>
-                        <span className="text-gray-300">→</span>
-                        <div className="bg-white border border-gray-200 px-3 py-2 rounded-lg flex items-center gap-2 font-bold text-gray-700 w-32 justify-between">
-                          <span>{item.endTime}</span>
-                          <Clock className="h-3 w-3 text-gray-400" />
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-6">
-                      <div className="flex items-center gap-2">
-                        <div className="bg-white border border-gray-200 px-4 py-2 rounded-lg font-bold text-gray-800 w-16 text-center">
-                          {item.adjustment}
-                        </div>
-                        <span className="text-gray-400 text-xs font-semibold uppercase tracking-wider">Hours</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-6 text-right">
-                      <div>
-                        <div className="font-bold text-[#8B5A2B] text-base">{item.totalHours} Total Hours</div>
-                        <div className={`text-xs font-bold ${item.otPay.includes('Extra') ? 'text-gray-300' : 'text-green-600'}`}>
-                          {item.otPay.includes('Extra') ? item.otPay : `+ ${item.otPay} OT Pay`}
-                        </div>
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <div className="flex items-center justify-center gap-2 text-gray-400">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span>Loading shift data...</span>
                       </div>
                     </td>
                   </tr>
-                ))}
+                ) : error ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-red-500">
+                      {error}
+                    </td>
+                  </tr>
+                ) : shifts.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
+                      No shifts scheduled for this week
+                    </td>
+                  </tr>
+                ) : (
+                  shifts.map((shift: ShiftAssignment) => {
+                    const staffInfo = getStaffInfo(shift.staffId);
+                    const hourlyRate = (staffInfo.salary || 30000) / 30 / 8;
+                    const totalHours = calculateHours(shift.startTime, shift.endTime);
+                    const regularHours = Math.min(parseFloat(totalHours), 8);
+                    const otHours = Math.max(0, parseFloat(totalHours) - 8);
+                    const otPay = otHours * hourlyRate * 1.5;
+                    
+                    return (
+                      <tr key={shift._id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-6 py-6 text-center">
+                          <Checkbox className="rounded" />
+                        </td>
+                        <td className="px-6 py-6">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 font-semibold text-xs border border-white shadow-sm">
+                              {staffInfo.name.split(' ').map(n => n[0]).join('')}
+                            </div>
+                            <div>
+                              <div className="font-bold text-gray-800">{staffInfo.name}</div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{staffInfo.role}</span>
+                                <Badge className="bg-orange-50 text-orange-600 border-none font-bold text-[9px] px-2 py-0">RATE: ₹{Math.round(hourlyRate)}/h</Badge>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-6">
+                          <div>
+                            <div className="font-bold text-gray-800">Base: ₹{hourlyRate.toFixed(2)}/h</div>
+                            <div className="text-[10px] font-bold text-gray-400">OT Multiplier: 1.5x</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-6">
+                          <div className="flex items-center gap-2">
+                            <div className="bg-white border border-gray-200 px-3 py-2 rounded-lg flex items-center gap-2 font-bold text-gray-700 w-32 justify-between">
+                              <span>{formatTime(shift.startTime)}</span>
+                              <Clock className="h-3 w-3 text-gray-400" />
+                            </div>
+                            <span className="text-gray-300">→</span>
+                            <div className="bg-white border border-gray-200 px-3 py-2 rounded-lg flex items-center gap-2 font-bold text-gray-700 w-32 justify-between">
+                              <span>{formatTime(shift.endTime)}</span>
+                              <Clock className="h-3 w-3 text-gray-400" />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-6">
+                          <div className="flex items-center gap-2">
+                            <div className="bg-white border border-gray-200 px-4 py-2 rounded-lg font-bold text-gray-800 w-16 text-center">
+                              0
+                            </div>
+                            <span className="text-gray-400 text-xs font-semibold uppercase tracking-wider">Hours</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-6 text-right">
+                          <div>
+                            <div className="font-bold text-[#8B5A2B] text-base">{totalHours} Total Hours</div>
+                            <div className={`text-xs font-bold ${otPay > 0 ? 'text-green-600' : 'text-gray-300'}`}>
+                              {otPay > 0 ? `+ ₹${otPay.toFixed(2)} OT Pay` : 'No OT Pay'}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
