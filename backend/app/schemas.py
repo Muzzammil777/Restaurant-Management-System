@@ -72,12 +72,13 @@ class StaffIn(BaseModel):
     name: str
     email: EmailStr
     role: Optional[StaffRole] = StaffRole.staff
-    password: str
+    password: Optional[str] = None
     phone: Optional[str] = None
     shift: Optional[ShiftType] = ShiftType.morning
     department: Optional[str] = None
     salary: Optional[float] = None
     hireDate: Optional[date] = None
+    active: Optional[bool] = True
 
 
 class StaffUpdate(BaseModel):

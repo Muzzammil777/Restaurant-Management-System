@@ -155,7 +155,7 @@ async def create_staff(payload: StaffIn, request: Request):
     if existing:
         raise HTTPException(status_code=409, detail='Email already exists')
     
-    pw_hash = hash_password(payload.password)
+    pw_hash = hash_password(payload.password) if payload.password else None
     doc = {
         'name': payload.name,
         'email': payload.email,
@@ -166,7 +166,7 @@ async def create_staff(payload: StaffIn, request: Request):
         'department': payload.department,
         'salary': payload.salary,
         'hireDate': payload.hireDate.isoformat() if payload.hireDate else None,
-        'active': True,
+        'active': payload.active if payload.active is not None else True,
         'createdAt': datetime.utcnow().isoformat()
     }
     res = await coll.insert_one(doc)
