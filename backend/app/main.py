@@ -9,7 +9,7 @@ load_dotenv(BASE_DIR / '.env')
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .db import init_db
+from .db import init_db, close_db
 
 # Import all route modules
 from .routes import settings as settings_router
@@ -40,12 +40,16 @@ app.add_middleware(
 @app.on_event('startup')
 async def startup():
     try:
-        from .db import init_db
         init_db()
         print("✅ MongoDB connected successfully")
     except Exception as e:
-        print(f"⚠️  MongoDB connection warning: {e}")
+        print(f"⚠️  MongoDB connection error: {e}")
         print("📝 API will work in read-only mode or with mock data")
+
+
+@app.on_event('shutdown')
+async def shutdown():
+    close_db()
 
 
 # Settings & Security

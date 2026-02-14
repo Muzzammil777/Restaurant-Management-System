@@ -1,0 +1,6 @@
+[
+  {"title": "Low Stock Alert", "message": "Green Chilli stock is below minimum threshold", "type": "inventory", "isRead": false, "createdAt": "2024-01-15T10:00:00"},
+  {"title": "New Order Received", "message": "Order ORD-8823 has been placed", "type": "order", "isRead": true, "createdAt": "2024-01-15T10:30:00"},
+  {"title": "Delivery Completed", "message": "Order ORD-8819 has been delivered successfully", "type": "delivery", "isRead": true, "createdAt": "2024-01-15T11:00:00"},
+  {"title": "Daily Report Ready", "message": "Today's sales report is now available", "type": "report", "isRead": false, "createdAt": "2024-01-15T18:00:00"}
+]

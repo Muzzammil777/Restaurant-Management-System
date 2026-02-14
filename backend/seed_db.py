@@ -29,6 +29,11 @@ def import_seed_data():
         'menu': 'menu.json',
         'staff': 'staff.json',
         'ingredients': 'ingredients.json',
+        'tables': 'tables.json',
+        'customers': 'customers.json',
+        'offers': 'offers.json',
+        'notifications': 'notifications.json',
+        'settings': 'settings.json',
     }
     
     print("=" * 60)

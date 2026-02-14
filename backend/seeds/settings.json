@@ -1,0 +1,12 @@
+[
+  {"key": "restaurant_name", "value": "Taste of India", "category": "general"},
+  {"key": "gst_rate", "value": "5", "category": "billing"},
+  {"key": "delivery_fee", "value": "30", "category": "delivery"},
+  {"key": "min_order_amount", "value": "100", "category": "billing"},
+  {"key": "currency", "value": "INR", "category": "general"},
+  {"key": "timezone", "value": "Asia/Kolkata", "category": "general"},
+  {"key": "opening_time", "value": "09:00", "category": "general"},
+  {"key": "closing_time", "value": "23:00", "category": "general"},
+  {"key": "tax_enabled", "value": "true", "category": "billing"},
+  {"key": "delivery_enabled", "value": "true", "category": "delivery"}
+]

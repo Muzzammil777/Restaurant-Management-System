@@ -1,0 +1,7 @@
+[
+  {"name": "Priya Sharma", "phone": "+91 98765 11111", "email": "priya@email.com", "totalOrders": 15, "loyaltyPoints": 450, "visitFrequency": "weekly"},
+  {"name": "Arjun Reddy", "phone": "+91 98765 22222", "email": "arjun@email.com", "totalOrders": 8, "loyaltyPoints": 220, "visitFrequency": "bi-weekly"},
+  {"name": "Neha Kapoor", "phone": "+91 98765 33333", "email": "neha@email.com", "totalOrders": 25, "loyaltyPoints": 780, "visitFrequency": "weekly"},
+  {"name": "David John", "phone": "+91 98765 44444", "email": "david@email.com", "totalOrders": 5, "loyaltyPoints": 120, "visitFrequency": "monthly"},
+  {"name": "Sarah Williams", "phone": "+91 98765 55555", "email": "sarah@email.com", "totalOrders": 12, "loyaltyPoints": 340, "visitFrequency": "weekly"}
+]

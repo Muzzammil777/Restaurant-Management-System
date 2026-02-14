@@ -1,0 +1,6 @@
+[
+  {"name": "Summer Special 20% Off", "type": "percentage", "value": 20, "minOrderAmount": 500, "validFrom": "2024-01-01T00:00:00", "validUntil": "2024-12-31T23:59:59", "isActive": true, "applicableCategories": ["Curries"]},
+  {"name": "Free Delivery on Orders Above 300", "type": "free_delivery", "minOrderAmount": 300, "validFrom": "2024-01-01T00:00:00", "validUntil": "2024-12-31T23:59:59", "isActive": true},
+  {"name": "Buy 1 Get 1 Naan", "type": "bogo", "minOrderAmount": 200, "validFrom": "2024-01-01T00:00:00", "validUntil": "2024-12-31T23:59:59", "isActive": true, "applicableItems": ["Naan"]},
+  {"name": "Weekend Family Pack", "type": "combo", "value": 150, "minOrderAmount": 800, "validFrom": "2024-01-01T00:00:00", "validUntil": "2024-12-31T23:59:59", "isActive": true}
+]
