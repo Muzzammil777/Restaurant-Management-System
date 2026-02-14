@@ -497,8 +497,8 @@ export function TableManagement() {
   const [, setForceUpdate] = useState(0);
   
   // Track pending auto-order timeouts
-  const autoOrderTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
-  const autoCleanupTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const autoOrderTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const autoCleanupTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   
   // Walk-in Modal State
   const [walkInModalOpen, setWalkInModalOpen] = useState(false);
@@ -818,7 +818,7 @@ export function TableManagement() {
             tableId,
             tableNumber: currentTable.displayNumber,
             waiterId: waiterId,
-            waiterName: currentTable.waiterName,
+            waiterName: currentTable.waiterName || waiter.name,
             items: [
               { name: 'Sample Item 1', quantity: 2, price: 150 },
               { name: 'Sample Item 2', quantity: 1, price: 200 }
