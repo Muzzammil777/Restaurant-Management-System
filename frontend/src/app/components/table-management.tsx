@@ -246,7 +246,9 @@ function getRemainingTime(table: TableData, currentTime: number): number | null 
     return Math.max(0, 900 - elapsed); // 15 minutes
   }
   
-  // Note: Cleaning timer removed - Admin must manually clean
+  if (table.status === 'Cleaning') {
+    return Math.max(0, 300 - elapsed); // 5 minutes = 300 seconds
+  }
   
   return null;
 }
@@ -348,10 +350,10 @@ function TableCard({
         )}
 
         {/* Timer Display */}
-        {remainingTime !== null && table.status === 'Reserved' && (
+        {remainingTime !== null && (table.status === 'Reserved' || table.status === 'Cleaning') && (
           <div className={cn(
             "flex items-center justify-center gap-1 py-1 px-2 rounded text-xs font-mono",
-            'bg-orange-100 text-orange-700'
+            table.status === 'Reserved' ? 'bg-orange-100 text-orange-700' : 'bg-purple-100 text-purple-700'
           )}>
             <Timer className="h-3 w-3" />
             {formatTimer(remainingTime)}
@@ -494,6 +496,10 @@ export function TableManagement() {
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [, setForceUpdate] = useState(0);
   
+  // Track pending auto-order timeouts
+  const autoOrderTimeoutsRef = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const autoCleanupTimeoutsRef = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
+  
   // Walk-in Modal State
   const [walkInModalOpen, setWalkInModalOpen] = useState(false);
   const [walkInGuestCount, setWalkInGuestCount] = useState(2);
@@ -579,6 +585,51 @@ export function TableManagement() {
             ? { ...t, status: 'Cleaning', statusStartTime: Date.now() } 
             : t
         ));
+        
+        // AUTOMATION: 5-minute auto-reset from Cleaning to Available (300,000ms)
+        const existingCleanupTimeout = autoCleanupTimeoutsRef.current.get(tableId);
+        if (existingCleanupTimeout) {
+          clearTimeout(existingCleanupTimeout);
+        }
+        
+        const autoCleanupTimeout = setTimeout(() => {
+          setTables(prev => prev.map(t => {
+            if (t.id === tableId && t.status === 'Cleaning') {
+              // Free up waiter
+              if (t.waiterId) {
+                setWaiters(prevW => prevW.map(w => 
+                  w.id === t.waiterId ? { ...w, assignedTableId: null } : w
+                ));
+              }
+              
+              // Clear auto-order timeout if still pending
+              const autoOrderTimeout = autoOrderTimeoutsRef.current.get(tableId);
+              if (autoOrderTimeout) {
+                clearTimeout(autoOrderTimeout);
+                autoOrderTimeoutsRef.current.delete(tableId);
+              }
+              
+              toast.info(`Table ${t.displayNumber} automatically reset to Available`);
+              
+              return {
+                ...t,
+                status: 'Available',
+                reservationType: 'None',
+                statusStartTime: null,
+                waiterName: null,
+                waiterId: null,
+                guestCount: 0,
+                currentOrderId: null
+              };
+            }
+            return t;
+          }));
+          
+          // Clean up cleanup timeout reference
+          autoCleanupTimeoutsRef.current.delete(tableId);
+        }, 300000); // 5 minutes = 300,000ms
+        
+        autoCleanupTimeoutsRef.current.set(tableId, autoCleanupTimeout);
       }
       
       if (event.type === 'TABLE_CLEANED') {
@@ -586,6 +637,19 @@ export function TableManagement() {
         // Reset table to Available
         setTables(prev => prev.map(t => {
           if (t.id === tableId) {
+            // Clear any pending timeouts
+            const autoOrderTimeout = autoOrderTimeoutsRef.current.get(tableId);
+            if (autoOrderTimeout) {
+              clearTimeout(autoOrderTimeout);
+              autoOrderTimeoutsRef.current.delete(tableId);
+            }
+            
+            const autoCleanupTimeout = autoCleanupTimeoutsRef.current.get(tableId);
+            if (autoCleanupTimeout) {
+              clearTimeout(autoCleanupTimeout);
+              autoCleanupTimeoutsRef.current.delete(tableId);
+            }
+            
             // Free up waiter
             if (t.waiterId) {
               setWaiters(prevW => prevW.map(w => 
@@ -609,6 +673,19 @@ export function TableManagement() {
     });
 
     return unsubscribe;
+  }, []);
+
+  // Cleanup pending timeouts on unmount
+  useEffect(() => {
+    return () => {
+      // Clear all pending auto-order timeouts
+      autoOrderTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
+      autoOrderTimeoutsRef.current.clear();
+      
+      // Clear all pending auto-cleanup timeouts
+      autoCleanupTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
+      autoCleanupTimeoutsRef.current.clear();
+    };
   }, []);
 
   // Update current time every second for timer displays
@@ -722,6 +799,51 @@ export function TableManagement() {
     });
     
     toast.success(`${waiter.name} assigned to Table ${table.displayNumber}`);
+    
+    // Clear any existing auto-order timeout for this table
+    const existingTimeout = autoOrderTimeoutsRef.current.get(tableId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+    
+    // AUTOMATION: 3-second auto-order trigger after waiter assignment
+    const autoOrderTimeout = setTimeout(() => {
+      // Create order from current state
+      setTables(currentTables => {
+        const currentTable = currentTables.find(t => t.id === tableId);
+        if (currentTable && !currentTable.currentOrderId) {
+          const orderId = `ORD-${Date.now()}`;
+          const order: RestaurantOrder = {
+            id: orderId,
+            tableId,
+            tableNumber: currentTable.displayNumber,
+            waiterId: waiterId,
+            waiterName: waiter.name,
+            items: [
+              { name: 'Sample Item 1', quantity: 2, price: 150 },
+              { name: 'Sample Item 2', quantity: 1, price: 200 }
+            ],
+            total: 500,
+            status: 'created',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            notes: 'Auto-generated order'
+          };
+          
+          restaurantState.createOrder(order);
+          
+          return currentTables.map(t => 
+            t.id === tableId ? { ...t, currentOrderId: orderId } : t
+          );
+        }
+        return currentTables;
+      });
+      
+      // Clean up timeout reference
+      autoOrderTimeoutsRef.current.delete(tableId);
+    }, 3000); // 3-second delay
+    
+    autoOrderTimeoutsRef.current.set(tableId, autoOrderTimeout);
   };
 
   const handleSimulateWebBooking = () => {
@@ -741,17 +863,36 @@ export function TableManagement() {
 
   const handleWalkInSubmit = (tableId: string) => {
     const table = tables.find(t => t.id === tableId);
-    if (table) {
-      reserveTable(tableId, walkInGuestCount, 'Walk-in');
-      // Immediately seat them
-      seatGuests(tableId);
+    if (!table || table.status !== 'Available') {
+      toast.error('Table not available');
+      return;
     }
+
+    if (walkInGuestCount > table.capacity) {
+      toast.error(`Guest count exceeds capacity of ${table.capacity}`);
+      return;
+    }
+
+    // Direct: Available → Occupied (no Reserved intermediate state)
+    setTables(prev => prev.map(t => 
+      t.id === tableId 
+        ? { 
+            ...t, 
+            status: 'Occupied',
+            reservationType: 'Walk-in',
+            guestCount: walkInGuestCount,
+            statusStartTime: null
+          }
+        : t
+    ));
     
     setWalkInModalOpen(false);
     
     // Prompt for waiter assignment
     setSelectedTableForWaiter(tableId);
     setWaiterModalOpen(true);
+    
+    toast.success(`Walk-in guests ready to be seated at Table ${table.displayNumber}`);
   };
 
   const handleAssignWaiter = (waiterId: string) => {
