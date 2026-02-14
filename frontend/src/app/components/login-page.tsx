@@ -46,7 +46,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary/10 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-login-module flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Login Form */}
         <Card className="shadow-xl border-0">

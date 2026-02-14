@@ -2003,12 +2003,12 @@ export function MenuManagement() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="bg-menu-management-module min-h-screen p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="module-container flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Menu Management</h1>
-          <p className="text-gray-500 mt-1">Manage your restaurant menu items and combos</p>
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">Menu Management</h1>
+          <p className="text-gray-200 mt-1">Manage your restaurant menu items and combos</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => {
           setDialogOpen(open);

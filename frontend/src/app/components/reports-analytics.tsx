@@ -120,11 +120,11 @@ export function ReportsAnalytics() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="bg-analytics-module min-h-screen space-y-6">
+      <div className="module-container flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Reports & Analytics</h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h2 className="text-2xl font-semibold tracking-tight text-white drop-shadow-lg">Reports & Analytics</h2>
+          <p className="text-sm text-gray-200 mt-1">
             Comprehensive insights and performance metrics
           </p>
         </div>

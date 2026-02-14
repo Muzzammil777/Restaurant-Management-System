@@ -35,9 +35,9 @@ export function StaffManagement() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB] flex flex-col">
+    <div className="bg-staff-module min-h-screen flex flex-col">
       {/* Module Header Bar */}
-      <div className="bg-white border-b border-gray-100 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-30">
+      <div className="bg-black/40 backdrop-blur-sm border-b border-gray-700 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-30">
         <div className="relative w-full md:w-[400px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8B5A2B]" />
           <Input 

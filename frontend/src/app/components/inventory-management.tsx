@@ -276,15 +276,15 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-20">
+    <div className="bg-inventory-module min-h-screen pb-20">
       <div className="max-w-[1800px] mx-auto p-6 space-y-8">
         
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="module-container flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
            <div>
-             <h1 className="text-3xl font-bold tracking-tight text-gray-900">Inventory Management</h1>
-             <p className="text-muted-foreground flex items-center gap-2 mt-1">
-               <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+             <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-lg">Inventory Management</h1>
+             <p className="text-gray-200 flex items-center gap-2 mt-1">
+               <span className="flex h-2 w-2 rounded-full bg-green-300 animate-pulse" />
                {loading ? 'Loading inventory data...' : 'Connected to backend • Order-Driven mode active'}
              </p>
            </div>

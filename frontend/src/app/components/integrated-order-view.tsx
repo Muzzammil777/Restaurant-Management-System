@@ -118,12 +118,12 @@ export function IntegratedOrderView() {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="bg-order-management-module space-y-6 p-6 min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="module-container flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900">Order Monitor</h2>
-          <p className="text-sm text-gray-600">Real-time order tracking across all tables</p>
+          <h2 className="text-2xl font-semibold text-white drop-shadow-lg">Order Monitor</h2>
+          <p className="text-sm text-gray-200">Real-time order tracking across all tables</p>
         </div>
         <Badge variant="secondary" className="text-lg px-4 py-2">
           {activeOrders.length} Active Orders

@@ -426,12 +426,12 @@ export function OrderManagementComprehensive() {
   }
 
   return (
-    <div className="space-y-6" style={{ backgroundColor: '#FDFCFB' }}>
+    <div className="bg-order-management-module min-h-screen space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="module-container flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Order Management</h1>
-          <p className="text-gray-600 mt-1">Track and manage all orders</p>
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">Order Management</h1>
+          <p className="text-gray-200 mt-1">Track and manage all orders</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-lg px-4 py-2">

@@ -407,16 +407,16 @@ export function KitchenDisplayComprehensive() {
   const activeTerminalMeta = TERMINAL_STATIONS.find((s) => s.id === activeTerminal);
 
   return (
-    <div className="min-h-screen p-6 space-y-6" style={{ background: 'linear-gradient(135deg, #FDFCFB 0%, #F7F3EE 100%)' }}>
+    <div className="bg-kitchen-display-module min-h-screen p-6 space-y-6">
       {/* Header */}
-      <div className="bg-white border border-gray-200 p-6 rounded-xl shadow-sm sticky top-0 z-10">
+      <div className="module-container bg-black/40 backdrop-blur-sm border border-gray-600 p-6 rounded-xl shadow-sm sticky top-0 z-10">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-[#000000] flex items-center gap-3">
-              <ChefHat className="w-10 h-10 text-[#8B5A2B]" />
+            <h1 className="text-4xl font-bold text-white drop-shadow-lg flex items-center gap-3">
+              <ChefHat className="w-10 h-10 text-white" />
               Kitchen Display System
             </h1>
-            <p className="text-muted-foreground mt-2">
+            <p className="text-gray-200 mt-2">
               {activeTerminalMeta?.name} • Production tracking and order management
             </p>
           </div>
