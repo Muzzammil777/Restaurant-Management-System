@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Label } from '@/app/components/ui/label';
@@ -497,8 +497,8 @@ export function TableManagement() {
   const [, setForceUpdate] = useState(0);
   
   // Track pending auto-order timeouts
-  const autoOrderTimeoutsRef = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
-  const autoCleanupTimeoutsRef = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const autoOrderTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const autoCleanupTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   
   // Walk-in Modal State
   const [walkInModalOpen, setWalkInModalOpen] = useState(false);
@@ -818,7 +818,7 @@ export function TableManagement() {
             tableId,
             tableNumber: currentTable.displayNumber,
             waiterId: waiterId,
-            waiterName: waiter.name,
+            waiterName: currentTable.waiterName || waiter.name,
             items: [
               { name: 'Sample Item 1', quantity: 2, price: 150 },
               { name: 'Sample Item 2', quantity: 1, price: 200 }
@@ -892,7 +892,7 @@ export function TableManagement() {
     setSelectedTableForWaiter(tableId);
     setWaiterModalOpen(true);
     
-    toast.success(`Walk-in guests ready to be seated at Table ${table.displayNumber}`);
+    toast.success(`Walk-in guests seated at Table ${table.displayNumber}`);
   };
 
   const handleAssignWaiter = (waiterId: string) => {
