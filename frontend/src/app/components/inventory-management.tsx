@@ -214,6 +214,41 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
 
   const uniqueCategories = useMemo(() => Array.from(new Set(ingredients.map(i => i.category))), [ingredients]);
 
+  // Fetch ingredients from backend API
+  useEffect(() => {
+    const fetchIngredients = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/inventory');
+        if (response.ok) {
+          const data = await response.json();
+          // Map API response to component state
+          const mappedIngredients = data.map((ing: any) => ({
+            id: ing._id || ing.id,
+            name: ing.name,
+            category: ing.category,
+            stockLevel: ing.stockLevel,
+            unit: ing.unit,
+            minThreshold: ing.minThreshold,
+            costPerUnit: ing.costPerUnit,
+            supplierId: ing.supplierId,
+            status: ing.status as Ingredient['status'],
+            usageRate: ing.usageRate as Ingredient['usageRate'],
+            lastDeduction: ing.lastDeduction
+          }));
+          setIngredients(mappedIngredients);
+        }
+      } catch (error) {
+        console.log('Using mock data: Could not fetch from API');
+        setIngredients([]);
+      }
+    };
+
+    fetchIngredients();
+    // Auto-refresh every 10 seconds
+    const interval = setInterval(fetchIngredients, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Simulation Logic
   useEffect(() => {
     let interval: any;
@@ -281,9 +316,9 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
         
         {/* Header */}
         <div className="module-container flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-           <div className="bg-black/40 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-             <h1 className="text-3xl font-bold tracking-tight text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5)' }}>Inventory Management</h1>
-             <p className="text-gray-100 flex items-center gap-2 mt-1">
+           <div>
+             <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-lg">Inventory Management</h1>
+             <p className="text-gray-200 flex items-center gap-2 mt-1">
                <span className="flex h-2 w-2 rounded-full bg-green-300 animate-pulse" />
                {loading ? 'Loading inventory data...' : 'Connected to backend • Order-Driven mode active'}
              </p>

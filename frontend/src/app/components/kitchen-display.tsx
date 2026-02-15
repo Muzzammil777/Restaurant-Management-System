@@ -113,11 +113,11 @@ export function KitchenDisplay() {
   return (
     <div className="bg-kitchen-display-module min-h-screen p-6 space-y-6">
       <div className="module-container flex items-center justify-between">
-        <div className="module-container flex items-center gap-4 bg-black/40 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-          <ChefHat className="h-8 w-8 text-white" style={{ filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.8))' }} />
+        <div className="flex items-center gap-3">
+          <ChefHat className="h-8 w-8 text-white drop-shadow-lg" />
           <div>
-            <h1 className="text-3xl font-bold text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5)' }}>Kitchen Display System</h1>
-            <p className="text-gray-100">Kitchen Order Tickets (KOT) • Active orders queue</p>
+            <h1 className="text-3xl font-bold text-white drop-shadow-lg">Kitchen Display System</h1>
+            <p className="text-gray-200">Kitchen Order Tickets (KOT) • Active orders queue</p>
           </div>
         </div>
         <Button 

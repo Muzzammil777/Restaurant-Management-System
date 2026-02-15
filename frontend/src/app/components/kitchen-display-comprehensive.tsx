@@ -412,11 +412,11 @@ export function KitchenDisplayComprehensive() {
       <div className="module-container bg-black/40 backdrop-blur-sm border border-gray-600 p-6 rounded-xl shadow-sm sticky top-0 z-10">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-white flex items-center gap-3" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5)' }}>
-              <ChefHat className="w-10 h-10 text-white" style={{ filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.8))' }} />
+            <h1 className="text-4xl font-bold text-white drop-shadow-lg flex items-center gap-3">
+              <ChefHat className="w-10 h-10 text-white" />
               Kitchen Display System
             </h1>
-            <p className="text-gray-100 mt-2">
+            <p className="text-gray-200 mt-2">
               {activeTerminalMeta?.name} • Production tracking and order management
             </p>
           </div>

@@ -122,9 +122,9 @@ export function ReportsAnalytics() {
   return (
     <div className="bg-analytics-module min-h-screen space-y-6">
       <div className="module-container flex items-center justify-between">
-        <div className="bg-black/40 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-          <h2 className="text-2xl font-semibold tracking-tight text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5)' }}>Reports & Analytics</h2>
-          <p className="text-sm text-gray-100 mt-1">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight text-white drop-shadow-lg">Reports & Analytics</h2>
+          <p className="text-sm text-gray-200 mt-1">
             Comprehensive insights and performance metrics
           </p>
         </div>

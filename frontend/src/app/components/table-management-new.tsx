@@ -782,7 +782,7 @@ export function TableManagement() {
               </div>
               <div>
                 <h1 className="text-2xl font-semibold text-gray-900">Table Management</h1>
-                <p className="text-sm text-gray-600">Floor Dashboard</p>
+                <p className="text-sm text-gray-500">Floor Dashboard</p>
               </div>
             </div>
             

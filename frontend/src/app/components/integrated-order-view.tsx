@@ -121,9 +121,9 @@ export function IntegratedOrderView() {
     <div className="bg-order-management-module space-y-6 p-6 min-h-screen">
       {/* Header */}
       <div className="module-container flex items-center justify-between">
-        <div className="bg-black/40 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-          <h2 className="text-2xl font-semibold text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5)' }}>Order Monitor</h2>
-          <p className="text-sm text-gray-100">Real-time order tracking across all tables</p>
+        <div>
+          <h2 className="text-2xl font-semibold text-white drop-shadow-lg">Order Monitor</h2>
+          <p className="text-sm text-gray-200">Real-time order tracking across all tables</p>
         </div>
         <Badge variant="secondary" className="text-lg px-4 py-2">
           {activeOrders.length} Active Orders

@@ -1,4 +1,4 @@
-:root {
+@theme {
   /* Background Colors - Extracted from Figma Reference */
   --color-background: #FAF8F5;  /* Light cream page background */
   --color-foreground: #2D2D2D;  /* Dark text */
@@ -21,7 +21,7 @@
   
   /* Muted Colors */
   --color-muted: #F5F1ED;
-  --color-muted-foreground: #D1D5DB; /* Light gray for better visibility on dark backgrounds */
+  --color-muted-foreground: #6B6B6B;
   
   /* Accent Colors */
   --color-accent: #8B5A2B;
@@ -69,66 +69,7 @@
 
 body {
   background-color: #FAF8F5;
-  color: #2D2D2D; /* Changed from #6B6B6B to dark gray for better readability */
-}
-
-/* Text visibility utilities for dark background modules */
-.bg-admin-module,
-.bg-kitchen-display-module,
-.bg-order-management-module,
-.bg-menu-management-module,
-.bg-inventory-module,
-.bg-delivery-module,
-.bg-billing-module,
-.bg-staff-module,
-.bg-table-management-module,
-.bg-customer-module,
-.bg-analytics-module,
-.bg-offers-module,
-.bg-settings-module,
-.bg-notifications-module,
-.bg-pos-module,
-.bg-audit-module {
-  color: #F9FAFB;
-}
-
-.bg-admin-module .text-muted-foreground,
-.bg-kitchen-display-module .text-muted-foreground,
-.bg-order-management-module .text-muted-foreground,
-.bg-menu-management-module .text-muted-foreground,
-.bg-inventory-module .text-muted-foreground,
-.bg-delivery-module .text-muted-foreground,
-.bg-billing-module .text-muted-foreground,
-.bg-staff-module .text-muted-foreground,
-.bg-table-management-module .text-muted-foreground,
-.bg-customer-module .text-muted-foreground,
-.bg-analytics-module .text-muted-foreground,
-.bg-offers-module .text-muted-foreground,
-.bg-settings-module .text-muted-foreground,
-.bg-notifications-module .text-muted-foreground,
-.bg-pos-module .text-muted-foreground,
-.bg-audit-module .text-muted-foreground {
-  color: #D1D5DB !important;
-}
-
-/* Ensure card content is readable */
-.bg-admin-module .card .text-muted-foreground,
-.bg-kitchen-display-module .card .text-muted-foreground,
-.bg-order-management-module .card .text-muted-foreground,
-.bg-menu-management-module .card .text-muted-foreground,
-.bg-inventory-module .card .text-muted-foreground,
-.bg-delivery-module .card .text-muted-foreground,
-.bg-billing-module .card .text-muted-foreground,
-.bg-staff-module .card .text-muted-foreground,
-.bg-table-management-module .card .text-muted-foreground,
-.bg-customer-module .card .text-muted-foreground,
-.bg-analytics-module .card .text-muted-foreground,
-.bg-offers-module .card .text-muted-foreground,
-.bg-settings-module .card .text-muted-foreground,
-.bg-notifications-module .card .text-muted-foreground,
-.bg-pos-module .card .text-muted-foreground,
-.bg-audit-module .card .text-muted-foreground {
-  color: #6B7280 !important;
+  color: #6B6B6B;
 }
 
 /* Card shadows - Subtle from Figma */

@@ -164,9 +164,9 @@ export function CustomerManagement() {
     <div className="bg-customer-module space-y-6 max-w-[1600px] mx-auto p-6 min-h-screen">
       {/* Header */}
       <div className="module-container flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="bg-black/40 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-          <h1 className="text-3xl font-bold tracking-tight text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5)' }}>Customer Management</h1>
-          <p className="text-gray-100 mt-1">CRM, insights, and loyalty tracking.</p>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-lg">Customer Management</h1>
+          <p className="text-gray-200 mt-1">CRM, insights, and loyalty tracking.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" className="bg-white">
