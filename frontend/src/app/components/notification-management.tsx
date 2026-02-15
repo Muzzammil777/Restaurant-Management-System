@@ -199,9 +199,9 @@ export function NotificationManagement() {
   return (
     <div className="bg-notifications-module min-h-screen space-y-6">
       <div className="module-container flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-white drop-shadow-lg">Notifications</h2>
-          <p className="text-sm text-gray-200 mt-1">
+        <div className="bg-black/40 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+          <h2 className="text-2xl font-semibold tracking-tight text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5)' }}>Notifications</h2>
+          <p className="text-sm text-gray-100 mt-1">
             Configure notification preferences and view notification history
           </p>
         </div>

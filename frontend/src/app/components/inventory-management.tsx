@@ -281,9 +281,9 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
         
         {/* Header */}
         <div className="module-container flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-           <div>
-             <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-lg">Inventory Management</h1>
-             <p className="text-gray-200 flex items-center gap-2 mt-1">
+           <div className="bg-black/40 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+             <h1 className="text-3xl font-bold tracking-tight text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5)' }}>Inventory Management</h1>
+             <p className="text-gray-100 flex items-center gap-2 mt-1">
                <span className="flex h-2 w-2 rounded-full bg-green-300 animate-pulse" />
                {loading ? 'Loading inventory data...' : 'Connected to backend • Order-Driven mode active'}
              </p>

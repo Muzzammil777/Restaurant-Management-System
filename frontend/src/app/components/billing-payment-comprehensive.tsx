@@ -483,9 +483,9 @@ export function BillingPaymentComprehensive() {
     <div className="bg-billing-module min-h-screen space-y-6">
       {/* Header */}
       <div className="module-container flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-white drop-shadow-lg">Billing & Payment</h1>
-          <p className="text-gray-200 mt-1">Manage bills and process payments</p>
+        <div className="bg-black/40 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+          <h1 className="text-3xl font-bold text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5)' }}>Billing & Payment</h1>
+          <p className="text-gray-100 mt-1">Manage bills and process payments</p>
         </div>
         <Badge variant="outline" className="text-lg px-4 py-2 border-amber-300 bg-amber-50 text-amber-900">
           <DollarSign className="w-4 h-4 mr-2" />

@@ -209,9 +209,9 @@ export function DeliveryManagement() {
         
         {/* Header */}
         <div className="module-container flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-lg">Delivery Management</h1>
-            <p className="text-gray-200 mt-1">Live fleet orchestration and order tracking.</p>
+          <div className="bg-black/40 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+            <h1 className="text-3xl font-bold tracking-tight text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5)' }}>Delivery Management</h1>
+            <p className="text-gray-100 mt-1">Live fleet orchestration and order tracking.</p>
           </div>
           <div className="flex gap-3">
              <Button variant="outline" className="bg-white" onClick={() => setIsReportOpen(true)}>
