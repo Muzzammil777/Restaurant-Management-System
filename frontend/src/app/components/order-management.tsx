@@ -347,12 +347,12 @@ export function OrderManagement() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="bg-order-management-module min-h-screen p-6 space-y-6">
       {/* Header Section */}
-      <div className="flex justify-between items-start">
+      <div className="module-container flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold">Orders</h1>
-          <p className="text-muted-foreground">View, manage, and track all customer orders</p>
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">Orders</h1>
+          <p className="text-gray-200">View, manage, and track all customer orders</p>
         </div>
         
         {/* Quick Order Button */}

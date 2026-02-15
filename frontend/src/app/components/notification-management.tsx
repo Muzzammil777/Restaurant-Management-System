@@ -197,11 +197,11 @@ export function NotificationManagement() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="bg-notifications-module min-h-screen space-y-6">
+      <div className="module-container flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Notifications</h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h2 className="text-2xl font-semibold tracking-tight text-white drop-shadow-lg">Notifications</h2>
+          <p className="text-sm text-gray-200 mt-1">
             Configure notification preferences and view notification history
           </p>
         </div>

@@ -131,14 +131,14 @@ export function DeliveryManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-20">
+    <div className="bg-delivery-module min-h-screen pb-20">
       <div className="max-w-[1800px] mx-auto p-6 space-y-8">
         
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="module-container flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Delivery Management</h1>
-            <p className="text-muted-foreground mt-1">Live fleet orchestration and order tracking.</p>
+            <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-lg">Delivery Management</h1>
+            <p className="text-gray-200 mt-1">Live fleet orchestration and order tracking.</p>
           </div>
           <div className="flex gap-3">
              <Button variant="outline" className="bg-white" onClick={() => setIsReportOpen(true)}>

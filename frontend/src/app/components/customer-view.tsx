@@ -158,7 +158,7 @@ export function CustomerView() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-customer-module">
       <div className="container mx-auto px-6 py-6">
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Menu Section */}

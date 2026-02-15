@@ -630,14 +630,14 @@ export function OffersLoyalty() {
   });
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="bg-offers-module min-h-screen p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="module-container flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">
             Offers & Loyalty
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-gray-200 mt-1">
             Manage coupons, memberships, and loyalty programs
           </p>
         </div>

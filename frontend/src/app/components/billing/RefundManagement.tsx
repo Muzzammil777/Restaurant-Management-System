@@ -162,11 +162,11 @@ export function RefundManagement() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="bg-billing-module min-h-screen space-y-6 p-6">
+      <div className="module-container flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-[#000000]">Refund Management</h2>
-          <p className="text-muted-foreground mt-1">Review and process customer refund requests</p>
+          <h2 className="text-2xl font-bold text-white drop-shadow-lg">Refund Management</h2>
+          <p className="text-gray-200 mt-1">Review and process customer refund requests</p>
         </div>
         <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
           <AlertTriangle className="h-4 w-4 text-blue-600" />

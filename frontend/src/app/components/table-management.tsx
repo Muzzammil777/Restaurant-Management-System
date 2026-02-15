@@ -1111,18 +1111,18 @@ export function TableManagement() {
   // ============================================================================
 
   return (
-    <div className="min-h-screen bg-[#F7F3EE] pb-8">
+    <div className="bg-table-management-module min-h-screen pb-8">
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-[#F7F3EE] border-b border-gray-200 px-6 py-4">
+      <div className="sticky top-0 z-40 bg-black/40 backdrop-blur-sm border-b border-gray-600 px-6 py-4">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
+          <div className="module-container flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-[#8B5A2B] rounded-xl">
+              <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
                 <Armchair className="h-7 w-7 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900">Table Management</h1>
-                <p className="text-sm text-gray-600">Floor Command Center</p>
+                <h1 className="text-2xl font-semibold text-white drop-shadow-lg">Table Management</h1>
+                <p className="text-sm text-gray-200">Floor Command Center</p>
               </div>
             </div>
             

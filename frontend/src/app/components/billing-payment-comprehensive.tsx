@@ -480,12 +480,12 @@ export function BillingPaymentComprehensive() {
   }
 
   return (
-    <div className="space-y-6" style={{ backgroundColor: '#FDFCFB' }}>
+    <div className="bg-billing-module min-h-screen space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="module-container flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Billing & Payment</h1>
-          <p className="text-gray-600 mt-1">Manage bills and process payments</p>
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">Billing & Payment</h1>
+          <p className="text-gray-200 mt-1">Manage bills and process payments</p>
         </div>
         <Badge variant="outline" className="text-lg px-4 py-2 border-amber-300 bg-amber-50 text-amber-900">
           <DollarSign className="w-4 h-4 mr-2" />

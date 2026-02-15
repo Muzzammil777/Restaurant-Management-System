@@ -268,7 +268,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB]">
+    <div className="min-h-screen bg-kitchen-display-module">
       <style>{`
         @keyframes pulse-border {
           0%, 100% { border-color: rgba(230, 57, 70, 0.5); }

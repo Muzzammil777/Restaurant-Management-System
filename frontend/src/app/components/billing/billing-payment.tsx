@@ -218,14 +218,14 @@ export function BillingPayment() {
   };
 
   return (
-    <div className="min-h-screen pb-20" style={{ backgroundColor: '#FDFCFB' }}>
+    <div className="bg-billing-module min-h-screen pb-20">
       <div className="max-w-[1600px] mx-auto p-6 space-y-6">
         
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="module-container flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-[#000000]">Billing & Payment</h1>
-            <p className="text-muted-foreground mt-1">Process payments and manage invoices for served orders</p>
+            <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-lg">Billing & Payment</h1>
+            <p className="text-gray-200 mt-1">Process payments and manage invoices for served orders</p>
           </div>
           
           {/* Mini Daily Summary Panel (Innovation #10) */}
