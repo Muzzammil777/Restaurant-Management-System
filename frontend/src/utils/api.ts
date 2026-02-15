@@ -430,6 +430,123 @@ export const backupApi = {
 };
 
 
+// ============ TAX CONFIG API ============
+export const taxConfigApi = {
+  // Get tax configuration
+  get: () => fetchApi<{
+    gstEnabled: boolean;
+    gstRate: number;
+    cgstRate: number;
+    sgstRate: number;
+    serviceChargeEnabled: boolean;
+    serviceChargeRate: number;
+    packagingChargeEnabled: boolean;
+    packagingChargeRate: number;
+  }>('/settings/tax-config'),
+
+  // Update tax configuration
+  update: (data: {
+    gstEnabled?: boolean;
+    gstRate?: number;
+    cgstRate?: number;
+    sgstRate?: number;
+    serviceChargeEnabled?: boolean;
+    serviceChargeRate?: number;
+    packagingChargeEnabled?: boolean;
+    packagingChargeRate?: number;
+  }) => fetchApi<any>('/settings/tax-config', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+};
+
+
+// ============ DISCOUNT RULES API ============
+export const discountRulesApi = {
+  // List all discount rules
+  list: () => fetchApi<any[]>('/settings/discounts'),
+
+  // Get a single discount rule
+  get: (id: string) => fetchApi<any>(`/settings/discounts/${id}`),
+
+  // Create a new discount rule
+  create: (data: {
+    name: string;
+    type: 'percentage' | 'fixed';
+    value: number;
+    minOrderAmount?: number;
+    maxDiscount?: number;
+    enabled?: boolean;
+  }) => fetchApi<any>('/settings/discounts', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  // Update a discount rule
+  update: (id: string, data: {
+    name?: string;
+    type?: 'percentage' | 'fixed';
+    value?: number;
+    minOrderAmount?: number;
+    maxDiscount?: number;
+    enabled?: boolean;
+  }) => fetchApi<any>(`/settings/discounts/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+
+  // Delete a discount rule
+  delete: (id: string) => fetchApi<{ success: boolean }>(`/settings/discounts/${id}`, {
+    method: 'DELETE',
+  }),
+
+  // Toggle a discount rule enabled status
+  toggle: (id: string) => fetchApi<any>(`/settings/discounts/${id}/toggle`, {
+    method: 'POST',
+  }),
+};
+
+
+// ============ USER ACCOUNTS API ============
+export const userAccountsApi = {
+  // List all user accounts
+  list: () => fetchApi<any[]>('/settings/users'),
+
+  // Create a new user account
+  create: (data: {
+    name: string;
+    email: string;
+    role: string;
+    password: string;
+  }) => fetchApi<any>('/settings/users', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  // Update a user account
+  update: (id: string, data: {
+    name?: string;
+    email?: string;
+    role?: string;
+    status?: 'active' | 'inactive';
+    password?: string;
+  }) => fetchApi<any>(`/settings/users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+
+  // Delete a user account
+  delete: (id: string) => fetchApi<{ success: boolean }>(`/settings/users/${id}`, {
+    method: 'DELETE',
+  }),
+
+  // Toggle user active status
+  toggleStatus: (id: string) => fetchApi<any>(`/settings/users/${id}/toggle-status`, {
+    method: 'POST',
+  }),
+};
+
+
 // ============ AUDIT API ============
 export const auditApi = {
   // List audit logs

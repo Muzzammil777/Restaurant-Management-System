@@ -2,7 +2,9 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from ..db import init_db, get_db
 from ..schemas import (
     SettingIn, SystemConfigIn, BackupCreate, BackupConfig, 
-    RoleIn, RoleUpdate, PasswordChange, PasswordReset
+    RoleIn, RoleUpdate, PasswordChange, PasswordReset,
+    TaxConfigIn, DiscountRuleIn, DiscountRuleUpdate,
+    UserAccountIn, UserAccountUpdate
 )
 from ..utils import hash_password, verify_password
 from ..audit import log_audit
@@ -757,4 +759,422 @@ async def get_gdrive_status():
         'backupsInDrive': backups_in_drive,
         'error': error_message,
         'packagesInstalled': packages_available,
+    }
+
+
+# ============ TAX & SERVICE CONFIGURATION ============
+@router.get('/tax-config', tags=['tax'])
+async def get_tax_config():
+    """Get tax and service charge configuration"""
+    db = get_db()
+    coll = db.get_collection('tax_config')
+    doc = await coll.find_one({'_id': 'main_tax_config'})
+    if not doc:
+        # Return default tax configuration
+        return {
+            '_id': 'main_tax_config',
+            'gstEnabled': True,
+            'gstRate': 5.0,
+            'cgstRate': 2.5,
+            'sgstRate': 2.5,
+            'serviceChargeEnabled': True,
+            'serviceChargeRate': 10.0,
+            'packagingChargeEnabled': True,
+            'packagingChargeRate': 20.0
+        }
+    return serialize_doc(doc)
+
+
+@router.post('/tax-config', tags=['tax'])
+async def update_tax_config(config: TaxConfigIn, request: Request):
+    """Update tax and service charge configuration"""
+    db = get_db()
+    coll = db.get_collection('tax_config')
+    
+    update_data = config.model_dump()
+    update_data['updatedAt'] = datetime.utcnow().isoformat()
+    update_data['updatedBy'] = request.headers.get('x-user-name')
+    
+    await coll.update_one(
+        {'_id': 'main_tax_config'},
+        {
+            '$set': update_data,
+            '$setOnInsert': {'createdAt': datetime.utcnow().isoformat()}
+        },
+        upsert=True
+    )
+    
+    await log_audit(
+        action='update_tax_config',
+        resource='tax_config',
+        resourceId='main_tax_config',
+        userId=request.headers.get('x-user-id'),
+        userName=request.headers.get('x-user-name'),
+        details={'updated_fields': list(update_data.keys())},
+        ip=request.client.host if request.client else None
+    )
+    
+    return serialize_doc(await coll.find_one({'_id': 'main_tax_config'}))
+
+
+# ============ DISCOUNT RULES ============
+@router.get('/discounts', tags=['discounts'])
+async def list_discount_rules():
+    """List all discount rules"""
+    db = get_db()
+    coll = db.get_collection('discount_rules')
+    docs = await coll.find().to_list(100)
+    
+    if not docs:
+        # Initialize with default discount rules
+        default_discounts = [
+            {
+                'name': 'New Customer Discount',
+                'type': 'percentage',
+                'value': 10,
+                'minOrderAmount': 500,
+                'maxDiscount': 100,
+                'enabled': True,
+                'createdAt': datetime.utcnow().isoformat()
+            },
+            {
+                'name': 'Flat ₹50 Off',
+                'type': 'fixed',
+                'value': 50,
+                'minOrderAmount': 300,
+                'maxDiscount': 50,
+                'enabled': True,
+                'createdAt': datetime.utcnow().isoformat()
+            },
+            {
+                'name': 'Large Order Discount',
+                'type': 'percentage',
+                'value': 15,
+                'minOrderAmount': 2000,
+                'maxDiscount': 500,
+                'enabled': True,
+                'createdAt': datetime.utcnow().isoformat()
+            }
+        ]
+        res = await coll.insert_many(default_discounts)
+        docs = await coll.find().to_list(100)
+    
+    return serialize_doc(docs)
+
+
+@router.get('/discounts/{discount_id}', tags=['discounts'])
+async def get_discount_rule(discount_id: str):
+    """Get a specific discount rule by ID"""
+    db = get_db()
+    coll = db.get_collection('discount_rules')
+    doc = await coll.find_one({'_id': to_object_id(discount_id)})
+    if not doc:
+        raise HTTPException(status_code=404, detail='Discount rule not found')
+    return serialize_doc(doc)
+
+
+@router.post('/discounts', tags=['discounts'])
+async def create_discount_rule(discount: DiscountRuleIn, request: Request):
+    """Create a new discount rule"""
+    db = get_db()
+    coll = db.get_collection('discount_rules')
+    
+    doc = {
+        'name': discount.name,
+        'type': discount.type.value,
+        'value': discount.value,
+        'minOrderAmount': discount.minOrderAmount,
+        'maxDiscount': discount.maxDiscount,
+        'enabled': discount.enabled,
+        'createdAt': datetime.utcnow().isoformat()
+    }
+    
+    res = await coll.insert_one(doc)
+    
+    await log_audit(
+        action='create_discount_rule',
+        resource='discount_rule',
+        resourceId=str(res.inserted_id),
+        userId=request.headers.get('x-user-id'),
+        userName=request.headers.get('x-user-name'),
+        details={'name': discount.name, 'type': discount.type.value, 'value': discount.value},
+        ip=request.client.host if request.client else None
+    )
+    
+    return serialize_doc(await coll.find_one({'_id': res.inserted_id}))
+
+
+@router.put('/discounts/{discount_id}', tags=['discounts'])
+async def update_discount_rule(discount_id: str, discount: DiscountRuleUpdate, request: Request):
+    """Update a discount rule"""
+    db = get_db()
+    coll = db.get_collection('discount_rules')
+    
+    existing = await coll.find_one({'_id': to_object_id(discount_id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail='Discount rule not found')
+    
+    update_data = {}
+    if discount.name is not None:
+        update_data['name'] = discount.name
+    if discount.type is not None:
+        update_data['type'] = discount.type.value
+    if discount.value is not None:
+        update_data['value'] = discount.value
+    if discount.minOrderAmount is not None:
+        update_data['minOrderAmount'] = discount.minOrderAmount
+    if discount.maxDiscount is not None:
+        update_data['maxDiscount'] = discount.maxDiscount
+    if discount.enabled is not None:
+        update_data['enabled'] = discount.enabled
+    
+    update_data['updatedAt'] = datetime.utcnow().isoformat()
+    
+    await coll.update_one({'_id': to_object_id(discount_id)}, {'$set': update_data})
+    
+    await log_audit(
+        action='update_discount_rule',
+        resource='discount_rule',
+        resourceId=discount_id,
+        userId=request.headers.get('x-user-id'),
+        userName=request.headers.get('x-user-name'),
+        details={'updated_fields': list(update_data.keys())},
+        ip=request.client.host if request.client else None
+    )
+    
+    return serialize_doc(await coll.find_one({'_id': to_object_id(discount_id)}))
+
+
+@router.delete('/discounts/{discount_id}', tags=['discounts'])
+async def delete_discount_rule(discount_id: str, request: Request):
+    """Delete a discount rule"""
+    db = get_db()
+    coll = db.get_collection('discount_rules')
+    
+    res = await coll.delete_one({'_id': to_object_id(discount_id)})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail='Discount rule not found')
+    
+    await log_audit(
+        action='delete_discount_rule',
+        resource='discount_rule',
+        resourceId=discount_id,
+        userId=request.headers.get('x-user-id'),
+        userName=request.headers.get('x-user-name'),
+        ip=request.client.host if request.client else None
+    )
+    
+    return {'success': True}
+
+
+@router.post('/discounts/{discount_id}/toggle', tags=['discounts'])
+async def toggle_discount_rule(discount_id: str, request: Request):
+    """Toggle a discount rule's enabled status"""
+    db = get_db()
+    coll = db.get_collection('discount_rules')
+    
+    existing = await coll.find_one({'_id': to_object_id(discount_id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail='Discount rule not found')
+    
+    new_enabled = not existing.get('enabled', False)
+    
+    await coll.update_one(
+        {'_id': to_object_id(discount_id)},
+        {'$set': {'enabled': new_enabled, 'updatedAt': datetime.utcnow().isoformat()}}
+    )
+    
+    await log_audit(
+        action='toggle_discount_rule',
+        resource='discount_rule',
+        resourceId=discount_id,
+        userId=request.headers.get('x-user-id'),
+        userName=request.headers.get('x-user-name'),
+        details={'enabled': new_enabled},
+        ip=request.client.host if request.client else None
+    )
+    
+    return serialize_doc(await coll.find_one({'_id': to_object_id(discount_id)}))
+
+
+# ============ USER ACCOUNTS (Staff Management for Settings) ============
+@router.get('/users', tags=['users'])
+async def list_users():
+    """List all user accounts (from staff collection)"""
+    db = get_db()
+    coll = db.get_collection('staff')
+    docs = await coll.find().to_list(100)
+    
+    # Map staff to user format
+    users = []
+    for doc in docs:
+        users.append({
+            '_id': str(doc.get('_id')),
+            'name': doc.get('name'),
+            'email': doc.get('email'),
+            'role': doc.get('role', 'Staff'),
+            'status': 'active' if doc.get('active', True) else 'inactive',
+            'lastLogin': doc.get('lastLogin', 'Never'),
+            'createdAt': doc.get('createdAt')
+        })
+    
+    return users
+
+
+@router.post('/users', tags=['users'])
+async def create_user(user: UserAccountIn, request: Request):
+    """Create a new user account"""
+    db = get_db()
+    coll = db.get_collection('staff')
+    
+    # Check if email already exists
+    existing = await coll.find_one({'email': user.email})
+    if existing:
+        raise HTTPException(status_code=409, detail='Email already exists')
+    
+    doc = {
+        'name': user.name,
+        'email': user.email,
+        'role': user.role,
+        'password_hash': hash_password(user.password),
+        'active': True,
+        'lastLogin': 'Never',
+        'createdAt': datetime.utcnow().isoformat()
+    }
+    
+    res = await coll.insert_one(doc)
+    
+    await log_audit(
+        action='create_user',
+        resource='user',
+        resourceId=str(res.inserted_id),
+        userId=request.headers.get('x-user-id'),
+        userName=request.headers.get('x-user-name'),
+        details={'name': user.name, 'email': user.email, 'role': user.role},
+        ip=request.client.host if request.client else None
+    )
+    
+    created = await coll.find_one({'_id': res.inserted_id})
+    return {
+        '_id': str(created.get('_id')),
+        'name': created.get('name'),
+        'email': created.get('email'),
+        'role': created.get('role'),
+        'status': 'active',
+        'lastLogin': 'Never',
+        'createdAt': created.get('createdAt')
+    }
+
+
+@router.put('/users/{user_id}', tags=['users'])
+async def update_user(user_id: str, user: UserAccountUpdate, request: Request):
+    """Update a user account"""
+    db = get_db()
+    coll = db.get_collection('staff')
+    
+    existing = await coll.find_one({'_id': to_object_id(user_id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail='User not found')
+    
+    update_data = {}
+    if user.name is not None:
+        update_data['name'] = user.name
+    if user.email is not None:
+        update_data['email'] = user.email
+    if user.role is not None:
+        update_data['role'] = user.role
+    if user.status is not None:
+        update_data['active'] = user.status == 'active'
+    if user.password is not None:
+        update_data['password_hash'] = hash_password(user.password)
+    
+    update_data['updatedAt'] = datetime.utcnow().isoformat()
+    
+    await coll.update_one({'_id': to_object_id(user_id)}, {'$set': update_data})
+    
+    await log_audit(
+        action='update_user',
+        resource='user',
+        resourceId=user_id,
+        userId=request.headers.get('x-user-id'),
+        userName=request.headers.get('x-user-name'),
+        details={'updated_fields': list(update_data.keys())},
+        ip=request.client.host if request.client else None
+    )
+    
+    updated = await coll.find_one({'_id': to_object_id(user_id)})
+    return {
+        '_id': str(updated.get('_id')),
+        'name': updated.get('name'),
+        'email': updated.get('email'),
+        'role': updated.get('role'),
+        'status': 'active' if updated.get('active', True) else 'inactive',
+        'lastLogin': updated.get('lastLogin', 'Never'),
+        'createdAt': updated.get('createdAt')
+    }
+
+
+@router.delete('/users/{user_id}', tags=['users'])
+async def delete_user(user_id: str, request: Request):
+    """Delete a user account"""
+    db = get_db()
+    coll = db.get_collection('staff')
+    
+    # Check if trying to delete admin
+    existing = await coll.find_one({'_id': to_object_id(user_id)})
+    if existing and existing.get('role', '').lower() == 'admin':
+        raise HTTPException(status_code=400, detail='Cannot delete admin user')
+    
+    res = await coll.delete_one({'_id': to_object_id(user_id)})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail='User not found')
+    
+    await log_audit(
+        action='delete_user',
+        resource='user',
+        resourceId=user_id,
+        userId=request.headers.get('x-user-id'),
+        userName=request.headers.get('x-user-name'),
+        ip=request.client.host if request.client else None
+    )
+    
+    return {'success': True}
+
+
+@router.post('/users/{user_id}/toggle-status', tags=['users'])
+async def toggle_user_status(user_id: str, request: Request):
+    """Toggle a user's active status"""
+    db = get_db()
+    coll = db.get_collection('staff')
+    
+    existing = await coll.find_one({'_id': to_object_id(user_id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail='User not found')
+    
+    new_status = not existing.get('active', True)
+    
+    await coll.update_one(
+        {'_id': to_object_id(user_id)},
+        {'$set': {'active': new_status, 'updatedAt': datetime.utcnow().isoformat()}}
+    )
+    
+    await log_audit(
+        action='toggle_user_status',
+        resource='user',
+        resourceId=user_id,
+        userId=request.headers.get('x-user-id'),
+        userName=request.headers.get('x-user-name'),
+        details={'active': new_status},
+        ip=request.client.host if request.client else None
+    )
+    
+    updated = await coll.find_one({'_id': to_object_id(user_id)})
+    return {
+        '_id': str(updated.get('_id')),
+        'name': updated.get('name'),
+        'email': updated.get('email'),
+        'role': updated.get('role'),
+        'status': 'active' if updated.get('active', True) else 'inactive',
+        'lastLogin': updated.get('lastLogin', 'Never'),
+        'createdAt': updated.get('createdAt')
     }

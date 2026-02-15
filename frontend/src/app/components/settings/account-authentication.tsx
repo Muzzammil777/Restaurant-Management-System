@@ -7,11 +7,12 @@ import { Badge } from '@/app/components/ui/badge';
 import { Switch } from '@/app/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/app/components/ui/dialog';
-import { Lock, User, Mail, Shield, Check, X, Edit, Plus, Trash2, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Lock, User, Mail, Shield, Check, X, Edit, Plus, Trash2, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { userAccountsApi, securityApi } from '@/utils/api';
 
 interface UserAccount {
-  id: string;
+  _id: string;
   name: string;
   email: string;
   role: string;
@@ -19,8 +20,6 @@ interface UserAccount {
   lastLogin: string;
   createdAt: string;
 }
-
-const STORAGE_KEY = 'rms_user_accounts';
 
 export function AccountAuthentication() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -30,6 +29,8 @@ export function AccountAuthentication() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [userAccounts, setUserAccounts] = useState<UserAccount[]>([]);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
@@ -37,73 +38,23 @@ export function AccountAuthentication() {
     password: '',
   });
 
-  // Load user accounts from localStorage
+  // Load user accounts from backend API
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      setUserAccounts(JSON.parse(stored));
-    } else {
-      // Initialize with default users
-      const defaultUsers: UserAccount[] = [
-        {
-          id: '1',
-          name: 'Admin User',
-          email: 'admin@movicloud.com',
-          role: 'Admin',
-          status: 'active',
-          lastLogin: '2026-01-29 09:30:00',
-          createdAt: '2026-01-01 00:00:00',
-        },
-        {
-          id: '2',
-          name: 'John Manager',
-          email: 'john.manager@movicloud.com',
-          role: 'Manager',
-          status: 'active',
-          lastLogin: '2026-01-29 08:15:00',
-          createdAt: '2026-01-05 00:00:00',
-        },
-        {
-          id: '3',
-          name: 'Sarah Chef',
-          email: 'sarah.chef@movicloud.com',
-          role: 'Chef',
-          status: 'active',
-          lastLogin: '2026-01-28 22:45:00',
-          createdAt: '2026-01-10 00:00:00',
-        },
-        {
-          id: '4',
-          name: 'Mike Cashier',
-          email: 'mike.cashier@movicloud.com',
-          role: 'Cashier',
-          status: 'active',
-          lastLogin: '2026-01-29 07:00:00',
-          createdAt: '2026-01-12 00:00:00',
-        },
-        {
-          id: '5',
-          name: 'Lisa Waiter',
-          email: 'lisa.waiter@movicloud.com',
-          role: 'Waiter',
-          status: 'inactive',
-          lastLogin: '2026-01-20 18:30:00',
-          createdAt: '2026-01-15 00:00:00',
-        },
-      ];
-      setUserAccounts(defaultUsers);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultUsers));
-    }
+    const fetchUsers = async () => {
+      try {
+        const data = await userAccountsApi.list();
+        setUserAccounts(data || []);
+      } catch (error) {
+        console.error('Failed to load users:', error);
+        toast.error('Failed to load user accounts');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
   }, []);
 
-  // Save to localStorage whenever userAccounts changes
-  useEffect(() => {
-    if (userAccounts.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(userAccounts));
-    }
-  }, [userAccounts]);
-
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
       toast.error('Please fill in all password fields');
       return;
@@ -119,25 +70,49 @@ export function AccountAuthentication() {
       return;
     }
 
-    // Simulate password change (in real app, this would call an API)
-    toast.success('Password changed successfully!');
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-  };
-
-  const toggleUserStatus = (userId: string) => {
-    setUserAccounts(prev => prev.map(user => {
-      if (user.id === userId) {
-        const newStatus = user.status === 'active' ? 'inactive' : 'active';
-        toast.success(`User ${user.name} is now ${newStatus}`);
-        return { ...user, status: newStatus };
+    setSaving(true);
+    try {
+      // Get current user ID from localStorage
+      const currentUser = localStorage.getItem('rms_current_user');
+      const userId = currentUser ? JSON.parse(currentUser).id : '';
+      
+      if (!userId) {
+        toast.error('Please log in to change password');
+        return;
       }
-      return user;
-    }));
+
+      await securityApi.changePassword({
+        userId,
+        currentPassword,
+        newPassword,
+      });
+      
+      toast.success('Password changed successfully!');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      console.error('Failed to change password:', error);
+      toast.error(error.message || 'Failed to change password');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleAddUser = () => {
+  const toggleUserStatus = async (userId: string) => {
+    try {
+      const updated = await userAccountsApi.toggleStatus(userId);
+      setUserAccounts(prev => prev.map(user => 
+        user._id === userId ? updated : user
+      ));
+      toast.success(`User is now ${updated.status}`);
+    } catch (error) {
+      console.error('Failed to toggle user status:', error);
+      toast.error('Failed to update user status');
+    }
+  };
+
+  const handleAddUser = async () => {
     if (!newUser.name || !newUser.email || !newUser.password) {
       toast.error('Please fill in all required fields');
       return;
@@ -148,39 +123,51 @@ export function AccountAuthentication() {
       return;
     }
 
-    const user: UserAccount = {
-      id: Date.now().toString(),
-      name: newUser.name,
-      email: newUser.email,
-      role: newUser.role,
-      status: 'active',
-      lastLogin: 'Never',
-      createdAt: new Date().toLocaleString('en-IN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      }),
-    };
+    setSaving(true);
+    try {
+      const created = await userAccountsApi.create({
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        password: newUser.password,
+      });
 
-    setUserAccounts(prev => [...prev, user]);
-    toast.success(`User ${newUser.name} added successfully!`);
-    setNewUser({ name: '', email: '', role: 'Waiter', password: '' });
-    setIsAddUserOpen(false);
+      setUserAccounts(prev => [...prev, created]);
+      toast.success(`User ${newUser.name} added successfully!`);
+      setNewUser({ name: '', email: '', role: 'Waiter', password: '' });
+      setIsAddUserOpen(false);
+    } catch (error: any) {
+      console.error('Failed to create user:', error);
+      toast.error(error.message || 'Failed to create user');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const deleteUser = (userId: string) => {
-    const user = userAccounts.find(u => u.id === userId);
+  const deleteUser = async (userId: string) => {
+    const user = userAccounts.find(u => u._id === userId);
     if (user?.role === 'Admin') {
       toast.error('Cannot delete admin user');
       return;
     }
     
-    setUserAccounts(prev => prev.filter(u => u.id !== userId));
-    toast.success('User deleted successfully');
+    try {
+      await userAccountsApi.delete(userId);
+      setUserAccounts(prev => prev.filter(u => u._id !== userId));
+      toast.success('User deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+      toast.error('Failed to delete user');
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="bg-settings-module min-h-screen space-y-6 p-6">
@@ -261,8 +248,8 @@ export function AccountAuthentication() {
           </div>
 
           <div className="flex justify-end">
-            <Button onClick={handleChangePassword}>
-              <Lock className="h-4 w-4 mr-2" />
+            <Button onClick={handleChangePassword} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Lock className="h-4 w-4 mr-2" />}
               Update Password
             </Button>
           </div>
@@ -342,7 +329,10 @@ export function AccountAuthentication() {
                   <Button variant="outline" onClick={() => setIsAddUserOpen(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={handleAddUser}>Add User</Button>
+                  <Button onClick={handleAddUser} disabled={saving}>
+                    {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Add User
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -362,7 +352,7 @@ export function AccountAuthentication() {
             </TableHeader>
             <TableBody>
               {userAccounts.map((user) => (
-                <TableRow key={user.id}>
+                <TableRow key={user._id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
@@ -385,7 +375,7 @@ export function AccountAuthentication() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => toggleUserStatus(user.id)}
+                        onClick={() => toggleUserStatus(user._id)}
                         disabled={user.role === 'Admin'}
                       >
                         {user.status === 'active' ? 'Deactivate' : 'Activate'}
@@ -393,7 +383,7 @@ export function AccountAuthentication() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => deleteUser(user.id)}
+                        onClick={() => deleteUser(user._id)}
                         disabled={user.role === 'Admin'}
                         className="text-red-600 hover:text-red-700"
                       >

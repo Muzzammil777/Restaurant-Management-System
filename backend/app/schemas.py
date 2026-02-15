@@ -329,3 +329,83 @@ class MenuItemOut(BaseModel):
 
     createdAt: Optional[datetime] = None
     updatedAt: Optional[datetime] = None
+
+
+# ============ TAX & SERVICE CONFIGURATION ============
+class TaxConfigIn(BaseModel):
+    gstEnabled: bool = True
+    gstRate: float = 5.0
+    cgstRate: float = 2.5
+    sgstRate: float = 2.5
+    serviceChargeEnabled: bool = True
+    serviceChargeRate: float = 10.0
+    packagingChargeEnabled: bool = True
+    packagingChargeRate: float = 20.0
+
+
+class TaxConfigOut(TaxConfigIn):
+    id: Optional[str] = Field(None, alias="_id")
+    updatedBy: Optional[str] = None
+    updatedAt: Optional[datetime] = None
+
+
+# ============ DISCOUNT RULES ============
+class DiscountType(str, Enum):
+    percentage = "percentage"
+    fixed = "fixed"
+
+
+class DiscountRuleIn(BaseModel):
+    name: str
+    type: DiscountType = DiscountType.percentage
+    value: float
+    minOrderAmount: float = 0
+    maxDiscount: float = 0
+    enabled: bool = True
+
+
+class DiscountRuleUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[DiscountType] = None
+    value: Optional[float] = None
+    minOrderAmount: Optional[float] = None
+    maxDiscount: Optional[float] = None
+    enabled: Optional[bool] = None
+
+
+class DiscountRuleOut(BaseModel):
+    id: Optional[str] = Field(None, alias="_id")
+    name: str
+    type: str
+    value: float
+    minOrderAmount: float
+    maxDiscount: float
+    enabled: bool
+    createdAt: Optional[datetime] = None
+    updatedAt: Optional[datetime] = None
+
+
+# ============ USER ACCOUNTS ============
+class UserAccountIn(BaseModel):
+    name: str
+    email: EmailStr
+    role: str = "Waiter"
+    password: str
+
+
+class UserAccountUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    role: Optional[str] = None
+    status: Optional[str] = None
+    password: Optional[str] = None
+
+
+class UserAccountOut(BaseModel):
+    id: Optional[str] = Field(None, alias="_id")
+    name: str
+    email: str
+    role: str
+    status: str = "active"
+    lastLogin: Optional[str] = None
+    createdAt: Optional[datetime] = None
