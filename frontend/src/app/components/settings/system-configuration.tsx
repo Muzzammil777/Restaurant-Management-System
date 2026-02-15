@@ -3,11 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
-import { Textarea } from '@/app/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
-import { Wrench, Save, Upload, MapPin, Phone, Mail, Clock, Globe } from 'lucide-react';
+import { Wrench, Save, Upload, MapPin, Phone, Globe, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { systemConfigApi } from '@/utils/api';
 
 interface SystemConfig {
   restaurantName: string;
@@ -26,42 +26,84 @@ interface SystemConfig {
   timeFormat: string;
 }
 
-const STORAGE_KEY = 'rms_system_config';
+const defaultConfig: SystemConfig = {
+  restaurantName: 'Restaurant Management System',
+  address: '',
+  city: '',
+  state: '',
+  pincode: '',
+  contactNumber: '',
+  email: '',
+  website: '',
+  operatingHours: '',
+  currency: 'INR',
+  timezone: 'Asia/Kolkata',
+  language: 'English',
+  dateFormat: 'DD/MM/YYYY',
+  timeFormat: '12-hour',
+};
 
 export function SystemConfiguration() {
-  const [config, setConfig] = useState<SystemConfig>({
-    restaurantName: 'Restaurant Management System',
-    address: '123, MG Road, Koramangala',
-    city: 'Bangalore',
-    state: 'Karnataka',
-    pincode: '560095',
-    contactNumber: '+91 98765 43210',
-    email: 'contact@restaurant.com',
-    website: 'www.restaurant.com',
-    operatingHours: '10:00 AM - 11:00 PM',
-    currency: 'INR',
-    timezone: 'Asia/Kolkata',
-    language: 'English',
-    dateFormat: 'DD/MM/YYYY',
-    timeFormat: '12-hour',
-  });
+  const [config, setConfig] = useState<SystemConfig>(defaultConfig);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  // Load configuration from localStorage
+  // Load configuration from backend API
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      setConfig(JSON.parse(stored));
-    }
+    const fetchConfig = async () => {
+      try {
+        const data = await systemConfigApi.get();
+        if (data) {
+          setConfig({
+            restaurantName: data.restaurantName || defaultConfig.restaurantName,
+            address: data.address || '',
+            city: data.city || '',
+            state: data.state || '',
+            pincode: data.pincode || '',
+            contactNumber: data.contactNumber || '',
+            email: data.email || '',
+            website: data.website || '',
+            operatingHours: data.operatingHours || '',
+            currency: data.currency || 'INR',
+            timezone: data.timezone || 'Asia/Kolkata',
+            language: data.language || 'English',
+            dateFormat: data.dateFormat || 'DD/MM/YYYY',
+            timeFormat: data.timeFormat || '12-hour',
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load system config:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchConfig();
   }, []);
 
-  const handleSave = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-    toast.success('System configuration saved successfully!');
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await systemConfigApi.update(config);
+      toast.success('System configuration saved successfully!');
+    } catch (error) {
+      console.error('Failed to save config:', error);
+      toast.error('Failed to save configuration');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleLogoUpload = () => {
-    toast.success('Logo upload functionality will be connected with backend');
+    toast.info('Logo upload functionality');
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="bg-settings-module min-h-screen space-y-6 p-6">
@@ -75,8 +117,8 @@ export function SystemConfiguration() {
                 <CardDescription>Configure restaurant details and system preferences</CardDescription>
               </div>
             </div>
-            <Button onClick={handleSave}>
-              <Save className="h-4 w-4 mr-2" />
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
               Save Configuration
             </Button>
           </div>
@@ -288,8 +330,8 @@ export function SystemConfiguration() {
 
           {/* Save Button at Bottom */}
           <div className="flex justify-end pt-4">
-            <Button onClick={handleSave} size="lg">
-              <Save className="h-4 w-4 mr-2" />
+            <Button onClick={handleSave} size="lg" disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
               Save All Changes
             </Button>
           </div>

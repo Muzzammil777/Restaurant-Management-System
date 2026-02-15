@@ -5,156 +5,62 @@ import { Input } from '@/app/components/ui/input';
 import { Badge } from '@/app/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
-import { FileText, Download, RefreshCcw, Search, Calendar, Filter } from 'lucide-react';
+import { FileText, Download, RefreshCcw, Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { auditApi } from '@/utils/api';
 
 interface AuditLog {
-  id: string;
-  user: string;
+  _id: string;
   action: string;
-  module: string;
-  details: string;
+  resource: string;
+  resourceId?: string;
+  userId?: string;
+  userName?: string;
+  details?: Record<string, unknown>;
+  status?: string;
+  ip?: string;
   timestamp: string;
-  ipAddress: string;
-  device: string;
-  status: 'success' | 'failed' | 'warning';
 }
-
-const STORAGE_KEY = 'rms_audit_logs';
 
 export function AuditLogs() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<AuditLog[]>([]);
+  const [loading, setLoading] = useState(true);
   const [userFilter, setUserFilter] = useState('all');
   const [moduleFilter, setModuleFilter] = useState('all');
   const [timeFilter, setTimeFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [stats, setStats] = useState<{ total: number; actions: string[]; resources: string[] }>({
+    total: 0,
+    actions: [],
+    resources: [],
+  });
 
-  // Load audit logs from localStorage
+  // Load audit logs from backend API
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const logs = JSON.parse(stored);
-      setAuditLogs(logs);
-      setFilteredLogs(logs);
-    } else {
-      // Initialize with sample audit logs
-      const defaultLogs: AuditLog[] = [
-        {
-          id: '1',
-          user: 'admin@movicloud.com',
-          action: 'Created New Menu Item',
-          module: 'Menu Management',
-          details: 'Added "Butter Chicken Masala" to menu with price ₹350',
-          timestamp: '2026-01-29 14:30:25',
-          ipAddress: '192.168.1.100',
-          device: 'Chrome on Windows',
-          status: 'success',
-        },
-        {
-          id: '2',
-          user: 'john.manager@movicloud.com',
-          action: 'Updated Order Status',
-          module: 'Order Management',
-          details: 'Changed order #ORD-1234 status to "Completed"',
-          timestamp: '2026-01-29 14:15:10',
-          ipAddress: '192.168.1.105',
-          device: 'Safari on iPad',
-          status: 'success',
-        },
-        {
-          id: '3',
-          user: 'mike.cashier@movicloud.com',
-          action: 'Generated Invoice',
-          module: 'Billing & Payments',
-          details: 'Invoice INV-2026-0089 for ₹1,450 (Payment: UPI)',
-          timestamp: '2026-01-29 13:45:55',
-          ipAddress: '192.168.1.110',
-          device: 'Chrome on Android',
-          status: 'success',
-        },
-        {
-          id: '4',
-          user: 'admin@movicloud.com',
-          action: 'Updated Staff Role',
-          module: 'Staff Management',
-          details: 'Changed role for John Manager from Waiter to Manager',
-          timestamp: '2026-01-29 12:20:30',
-          ipAddress: '192.168.1.100',
-          device: 'Chrome on Windows',
-          status: 'success',
-        },
-        {
-          id: '5',
-          user: 'john.manager@movicloud.com',
-          action: 'Stock Adjustment',
-          module: 'Inventory Management',
-          details: 'Added 50kg Basmati Rice to inventory',
-          timestamp: '2026-01-29 11:00:15',
-          ipAddress: '192.168.1.105',
-          device: 'Safari on iPad',
-          status: 'success',
-        },
-        {
-          id: '6',
-          user: 'sarah.chef@movicloud.com',
-          action: 'Order Status Update Failed',
-          module: 'Kitchen Display',
-          details: 'Attempted to mark order #ORD-1230 as completed but item was already completed',
-          timestamp: '2026-01-29 10:30:00',
-          ipAddress: '192.168.1.115',
-          device: 'Chrome on Android',
-          status: 'failed',
-        },
-        {
-          id: '7',
-          user: 'admin@movicloud.com',
-          action: 'System Configuration Updated',
-          module: 'Settings',
-          details: 'Changed GST rate from 5% to 5%',
-          timestamp: '2026-01-29 09:15:20',
-          ipAddress: '192.168.1.100',
-          device: 'Chrome on Windows',
-          status: 'success',
-        },
-        {
-          id: '8',
-          user: 'lisa.waiter@movicloud.com',
-          action: 'Table Assignment',
-          module: 'Table Management',
-          details: 'Assigned Table #12 to customer group of 4',
-          timestamp: '2026-01-28 20:45:30',
-          ipAddress: '192.168.1.120',
-          device: 'Safari on iPhone',
-          status: 'success',
-        },
-        {
-          id: '9',
-          user: 'mike.cashier@movicloud.com',
-          action: 'Payment Processing',
-          module: 'Billing & Payments',
-          details: 'Processed card payment of ₹2,340 (Card ending in 4532)',
-          timestamp: '2026-01-28 19:30:15',
-          ipAddress: '192.168.1.110',
-          device: 'Chrome on Android',
-          status: 'success',
-        },
-        {
-          id: '10',
-          user: 'admin@movicloud.com',
-          action: 'Backup Created',
-          module: 'Settings',
-          details: 'Manual backup initiated - Size: 256 MB',
-          timestamp: '2026-01-28 15:00:00',
-          ipAddress: '192.168.1.100',
-          device: 'Chrome on Windows',
-          status: 'success',
-        },
-      ];
-      setAuditLogs(defaultLogs);
-      setFilteredLogs(defaultLogs);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultLogs));
-    }
+    const fetchData = async () => {
+      try {
+        const [logsData, actionsData, resourcesData] = await Promise.all([
+          auditApi.list({ limit: 500 }).catch(() => ({ data: [], total: 0 })),
+          auditApi.getActions().catch(() => []),
+          auditApi.getResources().catch(() => []),
+        ]);
+        
+        const logs = logsData.data || [];
+        setAuditLogs(logs);
+        setFilteredLogs(logs);
+        setStats({
+          total: logsData.total || logs.length,
+          actions: actionsData || [],
+          resources: resourcesData || [],
+        });
+      } catch (error) {
+        console.error('Failed to load audit logs:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   // Apply filters
@@ -163,12 +69,15 @@ export function AuditLogs() {
 
     // User filter
     if (userFilter !== 'all') {
-      filtered = filtered.filter(log => log.user.includes(userFilter));
+      filtered = filtered.filter(log => 
+        log.userName?.toLowerCase().includes(userFilter.toLowerCase()) ||
+        log.userId?.includes(userFilter)
+      );
     }
 
-    // Module filter
+    // Module/Resource filter
     if (moduleFilter !== 'all') {
-      filtered = filtered.filter(log => log.module === moduleFilter);
+      filtered = filtered.filter(log => log.resource === moduleFilter);
     }
 
     // Time filter
@@ -187,27 +96,51 @@ export function AuditLogs() {
 
     // Search filter
     if (searchQuery) {
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(log => 
-        log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        log.details.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        log.user.toLowerCase().includes(searchQuery.toLowerCase())
+        log.action?.toLowerCase().includes(query) ||
+        log.resource?.toLowerCase().includes(query) ||
+        log.userName?.toLowerCase().includes(query) ||
+        JSON.stringify(log.details)?.toLowerCase().includes(query)
       );
     }
 
     setFilteredLogs(filtered);
   }, [userFilter, moduleFilter, timeFilter, searchQuery, auditLogs]);
 
-  const handleExportLogs = () => {
-    toast.success('Exporting audit logs...');
-    // In a real app, this would generate a CSV/PDF file
+  const handleExportLogs = async () => {
+    try {
+      const data = await auditApi.export({ format: 'json', limit: 1000 });
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Audit logs exported successfully');
+    } catch (error) {
+      console.error('Failed to export logs:', error);
+      toast.error('Failed to export logs');
+    }
   };
 
-  const handleRefresh = () => {
-    toast.success('Audit logs refreshed');
-    // In a real app, this would fetch fresh data from the API
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      const logsData = await auditApi.list({ limit: 500 }).catch(() => ({ data: [], total: 0 }));
+      setAuditLogs(logsData.data || []);
+      setFilteredLogs(logsData.data || []);
+      toast.success('Audit logs refreshed');
+    } catch (error) {
+      console.error('Failed to refresh logs:', error);
+      toast.error('Failed to refresh logs');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const getStatusColor = (status: AuditLog['status']) => {
+  const getStatusColor = (status?: string) => {
     switch (status) {
       case 'success':
         return 'bg-green-500';
@@ -216,9 +149,23 @@ export function AuditLogs() {
       case 'warning':
         return 'bg-yellow-500';
       default:
-        return 'bg-gray-500';
+        return 'bg-blue-500';
     }
   };
+
+  const formatAction = (action: string) => {
+    return action.split('_').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="bg-settings-module min-h-screen space-y-6 p-6">
@@ -237,8 +184,8 @@ export function AuditLogs() {
                 <Download className="h-4 w-4 mr-2" />
                 Export Logs
               </Button>
-              <Button variant="outline" size="sm" onClick={handleRefresh}>
-                <RefreshCcw className="h-4 w-4 mr-2" />
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+                <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
             </div>
@@ -249,7 +196,7 @@ export function AuditLogs() {
           <Card className="border-dashed">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-muted-foreground" />
+                <Search className="h-4 w-4 text-muted-foreground" />
                 <CardTitle className="text-base">Filters</CardTitle>
               </div>
             </CardHeader>
@@ -259,7 +206,7 @@ export function AuditLogs() {
                   <label className="text-sm font-medium">Filter by User</label>
                   <Select value={userFilter} onValueChange={setUserFilter}>
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="All Users" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Users</SelectItem>
@@ -276,18 +223,15 @@ export function AuditLogs() {
                   <label className="text-sm font-medium">Filter by Module</label>
                   <Select value={moduleFilter} onValueChange={setModuleFilter}>
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="All Modules" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Modules</SelectItem>
-                      <SelectItem value="Menu Management">Menu Management</SelectItem>
-                      <SelectItem value="Order Management">Order Management</SelectItem>
-                      <SelectItem value="Billing & Payments">Billing & Payments</SelectItem>
-                      <SelectItem value="Inventory Management">Inventory Management</SelectItem>
-                      <SelectItem value="Kitchen Display">Kitchen Display</SelectItem>
-                      <SelectItem value="Table Management">Table Management</SelectItem>
-                      <SelectItem value="Staff Management">Staff Management</SelectItem>
-                      <SelectItem value="Settings">Settings</SelectItem>
+                      {stats.resources.map(resource => (
+                        <SelectItem key={resource} value={resource}>
+                          {resource.charAt(0).toUpperCase() + resource.slice(1)}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -296,7 +240,7 @@ export function AuditLogs() {
                   <label className="text-sm font-medium">Time Range</label>
                   <Select value={timeFilter} onValueChange={setTimeFilter}>
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="All Time" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Time</SelectItem>
@@ -327,7 +271,7 @@ export function AuditLogs() {
           <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
             <p className="text-sm text-muted-foreground">
               Showing <span className="font-semibold text-foreground">{filteredLogs.length}</span> of{' '}
-              <span className="font-semibold text-foreground">{auditLogs.length}</span> audit logs
+              <span className="font-semibold text-foreground">{stats.total}</span> audit logs
             </p>
           </div>
 
@@ -343,37 +287,37 @@ export function AuditLogs() {
                   <TableHead>Details</TableHead>
                   <TableHead>Date & Time</TableHead>
                   <TableHead>IP Address</TableHead>
-                  <TableHead>Device</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredLogs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       No audit logs found matching your filters
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredLogs.map(log => (
-                    <TableRow key={log.id}>
+                    <TableRow key={log._id}>
                       <TableCell>
                         <Badge className={getStatusColor(log.status)}>
-                          {log.status}
+                          {log.status || 'success'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-medium">{log.user}</TableCell>
-                      <TableCell>{log.action}</TableCell>
+                      <TableCell className="font-medium">{log.userName || log.userId || 'System'}</TableCell>
+                      <TableCell>{formatAction(log.action)}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{log.module}</Badge>
+                        <Badge variant="outline">{log.resource || 'N/A'}</Badge>
                       </TableCell>
                       <TableCell className="max-w-xs">
-                        <p className="truncate" title={log.details}>
-                          {log.details}
+                        <p className="truncate text-sm">
+                          {log.details ? JSON.stringify(log.details) : log.resourceId || '-'}
                         </p>
                       </TableCell>
-                      <TableCell className="text-sm whitespace-nowrap">{log.timestamp}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{log.ipAddress}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{log.device}</TableCell>
+                      <TableCell className="text-sm whitespace-nowrap">
+                        {log.timestamp ? new Date(log.timestamp).toLocaleString() : '-'}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{log.ip || '-'}</TableCell>
                     </TableRow>
                   ))
                 )}

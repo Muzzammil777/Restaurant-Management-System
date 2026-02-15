@@ -7,148 +7,142 @@ import { Switch } from '@/app/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
 import { Separator } from '@/app/components/ui/separator';
-import { Database, Download, Upload, RefreshCcw, Check, AlertCircle, Calendar, Clock, HardDrive } from 'lucide-react';
+import { Database, Download, Upload, RefreshCcw, Check, AlertCircle, Calendar, Clock, HardDrive, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { backupApi } from '@/utils/api';
 
 interface Backup {
-  id: string;
+  _id: string;
   name: string;
   size: string;
   date: string;
   time: string;
   status: 'completed' | 'failed' | 'in_progress';
   type: 'manual' | 'automatic';
+  documentCounts?: Record<string, number>;
 }
 
 interface BackupConfig {
   autoBackupEnabled: boolean;
-  backupFrequency: 'hourly' | 'daily' | 'weekly' | 'monthly';
+  frequency: string;
   retentionDays: number;
   backupLocation: string;
+  googleDriveEnabled: boolean;
 }
-
-const STORAGE_KEY_BACKUPS = 'rms_backups';
-const STORAGE_KEY_CONFIG = 'rms_backup_config';
 
 export function BackupRecovery() {
   const [backups, setBackups] = useState<Backup[]>([]);
   const [config, setConfig] = useState<BackupConfig>({
     autoBackupEnabled: true,
-    backupFrequency: 'daily',
+    frequency: 'daily',
     retentionDays: 30,
-    backupLocation: 'Cloud Storage',
+    backupLocation: 'local',
+    googleDriveEnabled: false,
   });
-  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  // Load backups from localStorage
+  // Load backups and config from backend API
   useEffect(() => {
-    const storedBackups = localStorage.getItem(STORAGE_KEY_BACKUPS);
-    if (storedBackups) {
-      setBackups(JSON.parse(storedBackups));
-    } else {
-      // Initialize with sample backups
-      const defaultBackups: Backup[] = [
-        {
-          id: '1',
-          name: 'Full Backup - 2026-01-29',
-          size: '258 MB',
-          date: '2026-01-29',
-          time: '02:00:00',
-          status: 'completed',
-          type: 'automatic',
-        },
-        {
-          id: '2',
-          name: 'Full Backup - 2026-01-28',
-          size: '256 MB',
-          date: '2026-01-28',
-          time: '02:00:00',
-          status: 'completed',
-          type: 'automatic',
-        },
-        {
-          id: '3',
-          name: 'Manual Backup - 2026-01-27',
-          size: '255 MB',
-          date: '2026-01-27',
-          time: '15:30:00',
-          status: 'completed',
-          type: 'manual',
-        },
-        {
-          id: '4',
-          name: 'Full Backup - 2026-01-27',
-          size: '254 MB',
-          date: '2026-01-27',
-          time: '02:00:00',
-          status: 'completed',
-          type: 'automatic',
-        },
-        {
-          id: '5',
-          name: 'Full Backup - 2026-01-26',
-          size: '252 MB',
-          date: '2026-01-26',
-          time: '02:00:00',
-          status: 'completed',
-          type: 'automatic',
-        },
-      ];
-      setBackups(defaultBackups);
-      localStorage.setItem(STORAGE_KEY_BACKUPS, JSON.stringify(defaultBackups));
-    }
-
-    const storedConfig = localStorage.getItem(STORAGE_KEY_CONFIG);
-    if (storedConfig) {
-      setConfig(JSON.parse(storedConfig));
-    }
+    const fetchData = async () => {
+      try {
+        const [backupsData, configData] = await Promise.all([
+          backupApi.list().catch(() => []),
+          backupApi.getConfig(),
+        ]);
+        
+        setBackups(backupsData || []);
+        
+        if (configData) {
+          setConfig({
+            autoBackupEnabled: configData.autoBackupEnabled ?? true,
+            frequency: configData.frequency ?? 'daily',
+            retentionDays: configData.retentionDays ?? 30,
+            backupLocation: configData.backupLocation ?? 'local',
+            googleDriveEnabled: configData.googleDriveEnabled ?? false,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load backup data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
-  // Save config to localStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
-  }, [config]);
-
-  const handleCreateBackup = () => {
-    setIsBackingUp(true);
-    toast.success('Backup initiated. This may take a few minutes...');
-
-    // Simulate backup creation
-    setTimeout(() => {
-      const newBackup: Backup = {
-        id: Date.now().toString(),
+  const handleCreateBackup = async () => {
+    try {
+      const newBackup = await backupApi.create({
         name: `Manual Backup - ${new Date().toISOString().split('T')[0]}`,
-        size: '258 MB',
-        date: new Date().toISOString().split('T')[0],
-        time: new Date().toTimeString().split(' ')[0],
-        status: 'completed',
         type: 'manual',
-      };
-
-      const updatedBackups = [newBackup, ...backups];
-      setBackups(updatedBackups);
-      localStorage.setItem(STORAGE_KEY_BACKUPS, JSON.stringify(updatedBackups));
-      setIsBackingUp(false);
-      toast.success('Backup completed successfully!');
-    }, 3000);
+      });
+      setBackups(prev => [newBackup, ...prev]);
+      toast.success('Backup created successfully!');
+    } catch (error) {
+      console.error('Failed to create backup:', error);
+      toast.error('Failed to create backup');
+    }
   };
 
-  const handleRestoreBackup = (backup: Backup) => {
-    toast.success(`Restoring backup: ${backup.name}. System will restart...`);
-    // In real app, this would call API to restore
+  const handleRestoreBackup = async (backupId: string) => {
+    try {
+      await backupApi.restore(backupId);
+      toast.success('Backup restore initiated');
+    } catch (error) {
+      console.error('Failed to restore backup:', error);
+      toast.error('Failed to restore backup');
+    }
   };
 
-  const handleDownloadBackup = (backup: Backup) => {
-    toast.success(`Downloading: ${backup.name}`);
-    // In real app, this would trigger file download
+  const handleDownloadBackup = async (backupId: string) => {
+    try {
+      const data = await fetch(`/api/settings/backups/${backupId}/download`).then(r => r.json());
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backup-${backupId}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Backup downloaded');
+    } catch (error) {
+      console.error('Failed to download backup:', error);
+      toast.error('Failed to download backup');
+    }
   };
 
-  const handleUploadBackup = () => {
-    toast.success('Upload backup functionality will be connected with backend');
-    // In real app, this would open file picker
+  const handleDeleteBackup = async (backupId: string) => {
+    try {
+      await backupApi.delete(backupId);
+      setBackups(prev => prev.filter(b => b._id !== backupId));
+      toast.success('Backup deleted');
+    } catch (error) {
+      console.error('Failed to delete backup:', error);
+      toast.error('Failed to delete backup');
+    }
   };
 
-  const getStatusBadge = (status: Backup['status']) => {
+  const handleSaveConfig = async () => {
+    setSaving(true);
+    try {
+      await backupApi.updateConfig({
+        autoBackupEnabled: config.autoBackupEnabled,
+        frequency: config.frequency,
+        retentionDays: config.retentionDays,
+        backupLocation: config.backupLocation,
+        googleDriveEnabled: config.googleDriveEnabled,
+      });
+      toast.success('Backup configuration saved!');
+    } catch (error) {
+      console.error('Failed to save config:', error);
+      toast.error('Failed to save configuration');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
         return (
@@ -164,7 +158,7 @@ export function BackupRecovery() {
             Failed
           </Badge>
         );
-      case 'in_progress':
+      default:
         return (
           <Badge className="bg-blue-500">
             <RefreshCcw className="h-3 w-3 mr-1 animate-spin" />
@@ -174,9 +168,13 @@ export function BackupRecovery() {
     }
   };
 
-  const totalBackupSize = backups
-    .reduce((total, backup) => total + parseFloat(backup.size), 0)
-    .toFixed(2);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="bg-settings-module min-h-screen space-y-6 p-6">
@@ -197,19 +195,9 @@ export function BackupRecovery() {
               onClick={handleCreateBackup} 
               className="w-full" 
               size="lg"
-              disabled={isBackingUp}
             >
-              {isBackingUp ? (
-                <>
-                  <RefreshCcw className="h-5 w-5 mr-2 animate-spin" />
-                  Backing Up...
-                </>
-              ) : (
-                <>
-                  <Database className="h-5 w-5 mr-2" />
-                  Create Backup Now
-                </>
-              )}
+              <Database className="h-5 w-5 mr-2" />
+              Create Backup Now
             </Button>
 
             <Separator />
@@ -232,8 +220,8 @@ export function BackupRecovery() {
                 <div className="space-y-2">
                   <Label htmlFor="backup-frequency">Backup Frequency</Label>
                   <Select 
-                    value={config.backupFrequency} 
-                    onValueChange={(value: any) => setConfig({ ...config, backupFrequency: value })}
+                    value={config.frequency} 
+                    onValueChange={(value) => setConfig({ ...config, frequency: value })}
                   >
                     <SelectTrigger id="backup-frequency">
                       <SelectValue />
@@ -270,16 +258,10 @@ export function BackupRecovery() {
 
             <Separator />
 
-            <div className="space-y-2">
-              <Label>Upload Backup</Label>
-              <Button variant="outline" className="w-full" onClick={handleUploadBackup}>
-                <Upload className="h-4 w-4 mr-2" />
-                Choose File to Upload
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                Upload a previously downloaded backup file
-              </p>
-            </div>
+            <Button onClick={handleSaveConfig} className="w-full" disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Save Configuration
+            </Button>
           </CardContent>
         </Card>
 
@@ -310,14 +292,6 @@ export function BackupRecovery() {
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 border rounded-lg">
                 <div className="flex items-center gap-2">
-                  <Database className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Total Backup Size</span>
-                </div>
-                <span className="font-medium">{totalBackupSize} MB</span>
-              </div>
-
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">Next Scheduled</span>
                 </div>
@@ -341,16 +315,6 @@ export function BackupRecovery() {
                 </div>
                 <span className="font-medium">{config.backupLocation}</span>
               </div>
-            </div>
-
-            <div className="pt-2">
-              <p className="text-xs text-muted-foreground mb-2">Storage Usage</p>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-primary" style={{ width: '35%' }} />
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {totalBackupSize} MB of 1000 MB used
-              </p>
             </div>
           </CardContent>
         </Card>
@@ -381,41 +345,49 @@ export function BackupRecovery() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {backups.map(backup => (
-                <TableRow key={backup.id}>
-                  <TableCell className="font-medium">{backup.name}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">
-                      {backup.type === 'manual' ? 'Manual' : 'Automatic'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{backup.size}</TableCell>
-                  <TableCell>{backup.date}</TableCell>
-                  <TableCell>{backup.time}</TableCell>
-                  <TableCell>{getStatusBadge(backup.status)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex gap-2 justify-end">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleRestoreBackup(backup)}
-                        disabled={backup.status !== 'completed'}
-                      >
-                        <RefreshCcw className="h-4 w-4 mr-2" />
-                        Restore
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDownloadBackup(backup)}
-                        disabled={backup.status !== 'completed'}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </div>
+              {backups.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    No backups found
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                backups.map(backup => (
+                  <TableRow key={backup._id}>
+                    <TableCell className="font-medium">{backup.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {backup.type === 'manual' ? 'Manual' : 'Automatic'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{backup.size || 'N/A'}</TableCell>
+                    <TableCell>{backup.date}</TableCell>
+                    <TableCell>{backup.time}</TableCell>
+                    <TableCell>{getStatusBadge(backup.status)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRestoreBackup(backup._id)}
+                          disabled={backup.status !== 'completed'}
+                        >
+                          <RefreshCcw className="h-4 w-4 mr-2" />
+                          Restore
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDownloadBackup(backup._id)}
+                          disabled={backup.status !== 'completed'}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
