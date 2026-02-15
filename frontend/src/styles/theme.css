@@ -1,4 +1,4 @@
-@theme {
+:root {
   /* Background Colors - Extracted from Figma Reference */
   --color-background: #FAF8F5;  /* Light cream page background */
   --color-foreground: #2D2D2D;  /* Dark text */
