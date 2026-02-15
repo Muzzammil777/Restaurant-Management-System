@@ -92,18 +92,28 @@ function AppContent() {
       setTimeout(() => setTriggerStockManagement(false), 100);
     };
 
+    const handleTabNavigation = (event: Event) => {
+      const customEvent = event as CustomEvent<string>;
+      const nextTab = customEvent.detail;
+      if (typeof nextTab === 'string' && hasPermission(nextTab)) {
+        setActiveTab(nextTab);
+      }
+    };
+
     const handleNewNotification = () => {
       setNotificationCount(prev => prev + 1);
     };
 
     window.addEventListener('navigate:stock-management' as any, handleStockManagementRequest);
+    window.addEventListener('rms:navigate-tab' as any, handleTabNavigation);
     window.addEventListener('new-admin-notification' as any, handleNewNotification);
     
     return () => {
       window.removeEventListener('navigate:stock-management' as any, handleStockManagementRequest);
+      window.removeEventListener('rms:navigate-tab' as any, handleTabNavigation);
       window.removeEventListener('new-admin-notification' as any, handleNewNotification);
     };
-  }, []);
+  }, [hasPermission]);
 
   // If not authenticated, show login page
   if (!isAuthenticated) {

@@ -974,6 +974,16 @@ export const notificationsApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // Mark as read
+  markAsRead: (id: string) => fetchApi<{ success: boolean }>(`/notifications/${id}/read`, {
+    method: 'PATCH',
+  }),
+
+  // Mark all as read
+  markAllRead: () => fetchApi<{ success: boolean }>('/notifications/mark-all-read', {
+    method: 'PATCH',
+  }),
 };
 
 
@@ -1013,6 +1023,15 @@ export const billingApi = {
     if (amount) query.append('amount', String(amount));
     if (reason) query.append('reason', reason);
     return fetchApi<any>(`/billing/${id}/refund?${query.toString()}`, {
+      method: 'POST',
+    });
+  },
+
+  // Retry payment
+  retryPayment: (paymentId: string, method?: string) => {
+    const query = new URLSearchParams();
+    if (method) query.append('method', method);
+    return fetchApi<any>(`/billing/${paymentId}/retry?${query.toString()}`, {
       method: 'POST',
     });
   },
