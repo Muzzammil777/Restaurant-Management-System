@@ -5,13 +5,13 @@ import { Input } from '@/app/components/ui/input';
 import { Badge } from '@/app/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
-import { FileText, Download, RefreshCcw, Search, Loader2 } from 'lucide-react';
+import { FileText, Download, RefreshCcw, Search, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AuditLog {
   _id: string;
-  action: string;
-  resource: string;
+  action?: string;
+  resource?: string;
   resourceId?: string;
   userId?: string;
   userName?: string;
@@ -26,6 +26,7 @@ export function AuditLogs() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [userFilter, setUserFilter] = useState('all');
   const [moduleFilter, setModuleFilter] = useState('all');
   const [timeFilter, setTimeFilter] = useState('all');
@@ -33,11 +34,11 @@ export function AuditLogs() {
   const [resources, setResources] = useState<string[]>([]);
   const [totalLogs, setTotalLogs] = useState(0);
 
-  // Fetch from API - with fallback to localStorage
+  // Fetch from API - with proper error handling
   const fetchData = async () => {
     setLoading(true);
+    setApiError(null);
     try {
-      // Try to fetch from API
       const API_URL = import.meta.env.VITE_API_URL || 'https://restaurant-management-system-24c2.onrender.com/api';
       
       const headers = {
@@ -45,25 +46,48 @@ export function AuditLogs() {
       };
 
       // Fetch audit logs
-      const logsResponse = await fetch(`${API_URL}/audit?limit=500`, { headers });
-      const logsResult = logsResponse.ok ? await logsResponse.json() : { data: [], total: 0 };
-      
-      // Fetch unique resources
-      const resourcesResponse = await fetch(`${API_URL}/audit/resources`, { headers });
-      const resourcesResult = resourcesResponse.ok ? await resourcesResponse.json() : [];
+      let logs: AuditLog[] = [];
+      let total = 0;
+      try {
+        const logsResponse = await fetch(`${API_URL}/audit?limit=500`, { 
+          headers,
+          signal: AbortSignal.timeout(5000) // 5 second timeout
+        });
+        
+        if (logsResponse.ok) {
+          const logsResult = await logsResponse.json();
+          logs = Array.isArray(logsResult.data) ? logsResult.data : [];
+          total = logsResult.total || logs.length;
+        } else {
+          console.log('API returned error status:', logsResponse.status);
+        }
+      } catch (err) {
+        console.log('Failed to fetch audit logs, using empty state');
+      }
 
-      const logs = Array.isArray(logsResult.data) ? logsResult.data : [];
+      // Fetch unique resources
+      let resourcesList: string[] = [];
+      try {
+        const resourcesResponse = await fetch(`${API_URL}/audit/resources`, { 
+          headers,
+          signal: AbortSignal.timeout(5000)
+        });
+        
+        if (resourcesResponse.ok) {
+          const resourcesResult = await resourcesResponse.json();
+          resourcesList = Array.isArray(resourcesResult) ? resourcesResult : [];
+        }
+      } catch (err) {
+        console.log('Failed to fetch resources');
+      }
       
       setAuditLogs(logs);
       setFilteredLogs(logs);
-      setResources(Array.isArray(resourcesResult) ? resourcesResult : []);
-      setTotalLogs(logsResult.total || logs.length);
+      setResources(resourcesList);
+      setTotalLogs(total);
     } catch (error) {
-      console.error('Failed to fetch from API, using empty state:', error);
-      setAuditLogs([]);
-      setFilteredLogs([]);
-      setResources([]);
-      setTotalLogs(0);
+      console.error('Error fetching audit data:', error);
+      setApiError('Unable to connect to server');
     } finally {
       setLoading(false);
     }
@@ -80,8 +104,8 @@ export function AuditLogs() {
     // User filter
     if (userFilter !== 'all') {
       filtered = filtered.filter(log => {
-        const userName = log.userName || '';
-        const userId = log.userId || '';
+        const userName = String(log.userName || '');
+        const userId = String(log.userId || '');
         return userName.toLowerCase().includes(userFilter.toLowerCase()) || userId.includes(userFilter);
       });
     }
@@ -96,14 +120,18 @@ export function AuditLogs() {
       const now = new Date();
       filtered = filtered.filter(log => {
         const timestamp = log.timestamp || log.createdAt;
-        if (!timestamp) return true; // Skip logs without timestamp
-        const logDate = new Date(timestamp);
-        if (isNaN(logDate.getTime())) return true; // Skip invalid dates
-        const diffDays = Math.floor((now.getTime() - logDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        if (timeFilter === 'today') return diffDays === 0;
-        if (timeFilter === 'week') return diffDays <= 7;
-        if (timeFilter === 'month') return diffDays <= 30;
+        if (!timestamp) return true;
+        try {
+          const logDate = new Date(timestamp);
+          if (isNaN(logDate.getTime())) return true;
+          const diffDays = Math.floor((now.getTime() - logDate.getTime()) / (1000 * 60 * 60 * 24));
+          
+          if (timeFilter === 'today') return diffDays === 0;
+          if (timeFilter === 'week') return diffDays <= 7;
+          if (timeFilter === 'month') return diffDays <= 30;
+        } catch (e) {
+          return true;
+        }
         return true;
       });
     }
@@ -131,7 +159,8 @@ export function AuditLogs() {
     try {
       const API_URL = import.meta.env.VITE_API_URL || 'https://restaurant-management-system-24c2.onrender.com/api';
       const response = await fetch(`${API_URL}/audit/export?format=json&limit=1000`, {
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(5000)
       });
       
       if (response.ok) {
@@ -173,7 +202,7 @@ export function AuditLogs() {
 
   const formatAction = (action?: string) => {
     if (!action) return 'Unknown';
-    return action.split('_').map(word => 
+    return String(action).split('_').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
   };
@@ -187,6 +216,14 @@ export function AuditLogs() {
     }
   };
 
+  const formatValue = (value: unknown): string => {
+    if (value === null || value === undefined) return '-';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number') return String(value);
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -197,6 +234,20 @@ export function AuditLogs() {
 
   return (
     <div className="bg-settings-module min-h-screen space-y-6 p-6">
+      {/* API Error Banner */}
+      {apiError && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
+          <div>
+            <p className="font-medium text-amber-800">Server Connection Error</p>
+            <p className="text-sm text-amber-600">Unable to connect to backend server. Showing cached/empty data.</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleRefresh} className="ml-auto">
+            Retry
+          </Button>
+        </div>
+      )}
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -208,7 +259,7 @@ export function AuditLogs() {
               </div>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleExportLogs}>
+              <Button variant="outline" size="sm" onClick={handleExportLogs} disabled={apiError !== null}>
                 <Download className="h-4 w-4 mr-2" />
                 Export Logs
               </Button>
@@ -321,7 +372,7 @@ export function AuditLogs() {
                 {filteredLogs.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No audit logs found
+                      {apiError ? 'Unable to load audit logs. Please ensure the backend server is running.' : 'No audit logs found'}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -329,26 +380,26 @@ export function AuditLogs() {
                     <TableRow key={log._id || Math.random().toString()}>
                       <TableCell>
                         <Badge className={getStatusColor(log.status)}>
-                          {log.status || 'success'}
+                          {formatValue(log.status) || 'success'}
                         </Badge>
                       </TableCell>
                       <TableCell className="font-medium">
-                        {log.userName || log.userId || 'System'}
+                        {formatValue(log.userName || log.userId) || 'System'}
                       </TableCell>
                       <TableCell>{formatAction(log.action)}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{log.resource || 'N/A'}</Badge>
+                        <Badge variant="outline">{formatValue(log.resource) || 'N/A'}</Badge>
                       </TableCell>
                       <TableCell className="max-w-xs">
                         <p className="truncate text-sm">
-                          {log.details ? JSON.stringify(log.details) : log.resourceId || '-'}
+                          {log.details ? formatValue(log.details) : formatValue(log.resourceId) || '-'}
                         </p>
                       </TableCell>
                       <TableCell className="text-sm whitespace-nowrap">
                         {formatTimestamp(log.timestamp)}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {log.ip || '-'}
+                        {formatValue(log.ip) || '-'}
                       </TableCell>
                     </TableRow>
                   ))
