@@ -94,17 +94,32 @@ export function OrderManagement() {
       const result = await ordersApi.list();
       const ordersData = (result as any)?.data || result || [];
       if (Array.isArray(ordersData)) {
-        // Transform API data to match Order interface
-        const transformedOrders = ordersData.map((order: any) => ({
-          ...order,
-          total: order.totalAmount || order.total || 0,
-          items: (Array.isArray(order.items) ? order.items : []).map((item: any) => ({
-            ...item,
-            price: item.price || 0,
-            quantity: item.quantity || 0,
-            name: item.name || item.menuItemName || 'Unknown Item'
-          }))
-        }));
+        // Transform API data to match Order interface - extract values from nested objects
+        const transformedOrders = ordersData.map((order: any) => {
+          // Handle cases where total/orderNumber might be objects
+          let orderTotal = 0;
+          if (typeof order.total === 'number') {
+            orderTotal = order.total;
+          } else if (order.total && typeof order.total === 'object') {
+            orderTotal = order.total.total || order.total.amount || 0;
+          } else if (typeof order.totalAmount === 'number') {
+            orderTotal = order.totalAmount;
+          } else if (order.totalAmount && typeof order.totalAmount === 'object') {
+            orderTotal = order.totalAmount.total || order.totalAmount.amount || 0;
+          }
+          
+          return {
+            ...order,
+            total: orderTotal,
+            orderNumber: typeof order.orderNumber === 'string' ? order.orderNumber : order.id?.slice(-6),
+            items: (Array.isArray(order.items) ? order.items : []).map((item: any) => ({
+              ...item,
+              price: typeof item.price === 'number' ? item.price : (item.price?.total || item.price?.amount || 0),
+              quantity: item.quantity || 0,
+              name: item.name || item.menuItemName || 'Unknown Item'
+            }))
+          };
+        });
         setOrders(transformedOrders as any);
       }
     } catch (error) {
