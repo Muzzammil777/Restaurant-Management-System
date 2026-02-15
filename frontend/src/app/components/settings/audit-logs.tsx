@@ -7,7 +7,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { FileText, Download, RefreshCcw, Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { auditApi } from '@/utils/api';
 
 interface AuditLog {
   _id: string;
@@ -19,7 +18,8 @@ interface AuditLog {
   details?: Record<string, unknown>;
   status?: string;
   ip?: string;
-  timestamp: string;
+  timestamp?: string;
+  createdAt?: string;
 }
 
 export function AuditLogs() {
@@ -30,36 +30,46 @@ export function AuditLogs() {
   const [moduleFilter, setModuleFilter] = useState('all');
   const [timeFilter, setTimeFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [stats, setStats] = useState<{ total: number; actions: string[]; resources: string[] }>({
-    total: 0,
-    actions: [],
-    resources: [],
-  });
+  const [resources, setResources] = useState<string[]>([]);
+  const [totalLogs, setTotalLogs] = useState(0);
 
-  // Load audit logs from backend API
+  // Fetch from API - with fallback to localStorage
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // Try to fetch from API
+      const API_URL = import.meta.env.VITE_API_URL || 'https://restaurant-management-system-24c2.onrender.com/api';
+      
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+
+      // Fetch audit logs
+      const logsResponse = await fetch(`${API_URL}/audit?limit=500`, { headers });
+      const logsResult = logsResponse.ok ? await logsResponse.json() : { data: [], total: 0 };
+      
+      // Fetch unique resources
+      const resourcesResponse = await fetch(`${API_URL}/audit/resources`, { headers });
+      const resourcesResult = resourcesResponse.ok ? await resourcesResponse.json() : [];
+
+      const logs = Array.isArray(logsResult.data) ? logsResult.data : [];
+      
+      setAuditLogs(logs);
+      setFilteredLogs(logs);
+      setResources(Array.isArray(resourcesResult) ? resourcesResult : []);
+      setTotalLogs(logsResult.total || logs.length);
+    } catch (error) {
+      console.error('Failed to fetch from API, using empty state:', error);
+      setAuditLogs([]);
+      setFilteredLogs([]);
+      setResources([]);
+      setTotalLogs(0);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [logsData, actionsData, resourcesData] = await Promise.all([
-          auditApi.list({ limit: 500 }).catch(() => ({ data: [], total: 0 })),
-          auditApi.getActions().catch(() => []),
-          auditApi.getResources().catch(() => []),
-        ]);
-        
-        const logs = logsData.data || [];
-        setAuditLogs(logs);
-        setFilteredLogs(logs);
-        setStats({
-          total: logsData.total || logs.length,
-          actions: actionsData || [],
-          resources: resourcesData || [],
-        });
-      } catch (error) {
-        console.error('Failed to load audit logs:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, []);
 
@@ -69,10 +79,11 @@ export function AuditLogs() {
 
     // User filter
     if (userFilter !== 'all') {
-      filtered = filtered.filter(log => 
-        log.userName?.toLowerCase().includes(userFilter.toLowerCase()) ||
-        log.userId?.includes(userFilter)
-      );
+      filtered = filtered.filter(log => {
+        const userName = log.userName || '';
+        const userId = log.userId || '';
+        return userName.toLowerCase().includes(userFilter.toLowerCase()) || userId.includes(userFilter);
+      });
     }
 
     // Module/Resource filter
@@ -84,7 +95,10 @@ export function AuditLogs() {
     if (timeFilter !== 'all') {
       const now = new Date();
       filtered = filtered.filter(log => {
-        const logDate = new Date(log.timestamp);
+        const timestamp = log.timestamp || log.createdAt;
+        if (!timestamp) return true; // Skip logs without timestamp
+        const logDate = new Date(timestamp);
+        if (isNaN(logDate.getTime())) return true; // Skip invalid dates
         const diffDays = Math.floor((now.getTime() - logDate.getTime()) / (1000 * 60 * 60 * 24));
         
         if (timeFilter === 'today') return diffDays === 0;
@@ -97,12 +111,17 @@ export function AuditLogs() {
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(log => 
-        log.action?.toLowerCase().includes(query) ||
-        log.resource?.toLowerCase().includes(query) ||
-        log.userName?.toLowerCase().includes(query) ||
-        JSON.stringify(log.details)?.toLowerCase().includes(query)
-      );
+      filtered = filtered.filter(log => {
+        const actionStr = String(log.action || '');
+        const resourceStr = String(log.resource || '');
+        const userNameStr = String(log.userName || '');
+        const detailsStr = log.details ? JSON.stringify(log.details) : '';
+        
+        return actionStr.toLowerCase().includes(query) ||
+               resourceStr.toLowerCase().includes(query) ||
+               userNameStr.toLowerCase().includes(query) ||
+               detailsStr.toLowerCase().includes(query);
+      });
     }
 
     setFilteredLogs(filtered);
@@ -110,34 +129,33 @@ export function AuditLogs() {
 
   const handleExportLogs = async () => {
     try {
-      const data = await auditApi.export({ format: 'json', limit: 1000 });
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success('Audit logs exported successfully');
+      const API_URL = import.meta.env.VITE_API_URL || 'https://restaurant-management-system-24c2.onrender.com/api';
+      const response = await fetch(`${API_URL}/audit/export?format=json&limit=1000`, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success('Audit logs exported successfully');
+      } else {
+        toast.error('Failed to export logs');
+      }
     } catch (error) {
-      console.error('Failed to export logs:', error);
+      console.error('Export error:', error);
       toast.error('Failed to export logs');
     }
   };
 
-  const handleRefresh = async () => {
-    setLoading(true);
-    try {
-      const logsData = await auditApi.list({ limit: 500 }).catch(() => ({ data: [], total: 0 }));
-      setAuditLogs(logsData.data || []);
-      setFilteredLogs(logsData.data || []);
-      toast.success('Audit logs refreshed');
-    } catch (error) {
-      console.error('Failed to refresh logs:', error);
-      toast.error('Failed to refresh logs');
-    } finally {
-      setLoading(false);
-    }
+  const handleRefresh = () => {
+    fetchData();
+    toast.success('Audit logs refreshed');
   };
 
   const getStatusColor = (status?: string) => {
@@ -153,10 +171,20 @@ export function AuditLogs() {
     }
   };
 
-  const formatAction = (action: string) => {
+  const formatAction = (action?: string) => {
+    if (!action) return 'Unknown';
     return action.split('_').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
+  };
+
+  const formatTimestamp = (timestamp?: string) => {
+    if (!timestamp) return '-';
+    try {
+      return new Date(timestamp).toLocaleString();
+    } catch {
+      return '-';
+    }
   };
 
   if (loading) {
@@ -227,9 +255,9 @@ export function AuditLogs() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Modules</SelectItem>
-                      {stats.resources.map(resource => (
-                        <SelectItem key={resource} value={resource}>
-                          {resource.charAt(0).toUpperCase() + resource.slice(1)}
+                      {resources.map(resource => (
+                        <SelectItem key={String(resource)} value={String(resource)}>
+                          {String(resource).charAt(0).toUpperCase() + String(resource).slice(1)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -271,7 +299,7 @@ export function AuditLogs() {
           <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
             <p className="text-sm text-muted-foreground">
               Showing <span className="font-semibold text-foreground">{filteredLogs.length}</span> of{' '}
-              <span className="font-semibold text-foreground">{stats.total}</span> audit logs
+              <span className="font-semibold text-foreground">{totalLogs}</span> audit logs
             </p>
           </div>
 
@@ -293,18 +321,20 @@ export function AuditLogs() {
                 {filteredLogs.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No audit logs found matching your filters
+                      No audit logs found
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredLogs.map(log => (
-                    <TableRow key={log._id}>
+                    <TableRow key={log._id || Math.random().toString()}>
                       <TableCell>
                         <Badge className={getStatusColor(log.status)}>
                           {log.status || 'success'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-medium">{log.userName || log.userId || 'System'}</TableCell>
+                      <TableCell className="font-medium">
+                        {log.userName || log.userId || 'System'}
+                      </TableCell>
                       <TableCell>{formatAction(log.action)}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{log.resource || 'N/A'}</Badge>
@@ -315,9 +345,11 @@ export function AuditLogs() {
                         </p>
                       </TableCell>
                       <TableCell className="text-sm whitespace-nowrap">
-                        {log.timestamp ? new Date(log.timestamp).toLocaleString() : '-'}
+                        {formatTimestamp(log.timestamp)}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{log.ip || '-'}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {log.ip || '-'}
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
