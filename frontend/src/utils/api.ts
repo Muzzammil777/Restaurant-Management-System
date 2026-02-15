@@ -588,12 +588,44 @@ export const ordersApi = {
   }),
 
   // Update status
-  updateStatus: (id: string, status: string) => fetchApi<any>(`/orders/${id}/status?status=${status}`, {
-    method: 'PATCH',
+  updateStatus: (id: string, status: string, deductInventory: boolean = true) => 
+    fetchApi<any>(`/orders/${id}/status?status=${status}&deduct_inventory=${deductInventory}`, {
+      method: 'PATCH',
+    }),
+
+  // Kitchen queue (legacy)
+  getKitchenQueue: () => fetchApi<any[]>('/orders/kitchen/queue'),
+
+  // ===== KITCHEN WORKFLOW ENDPOINTS =====
+  
+  // Get active orders for kitchen display
+  getKitchenActiveOrders: () => fetchApi<any[]>('/orders/kitchen/active-orders'),
+  
+  // Get kitchen statistics
+  getKitchenStats: () => fetchApi<any>('/orders/kitchen/stats'),
+  
+  // Start preparing - triggers inventory deduction
+  startPreparing: (id: string) => fetchApi<any>(`/orders/kitchen/start-preparing/${id}`, {
+    method: 'POST',
+  }),
+  
+  // Mark as ready - notifies waiters
+  markReady: (id: string) => fetchApi<any>(`/orders/kitchen/mark-ready/${id}`, {
+    method: 'POST',
+  }),
+  
+  // Complete serving
+  completeServing: (id: string) => fetchApi<any>(`/orders/kitchen/complete/${id}`, {
+    method: 'POST',
   }),
 
-  // Kitchen queue
-  getKitchenQueue: () => fetchApi<any[]>('/orders/kitchen/queue'),
+  // ===== UNIFIED WORKFLOW =====
+  
+  // Process order through workflow
+  processWorkflow: (data: { orderId: string; action: string }) => fetchApi<any>('/orders/workflow/process-order', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
 
   // Update item status
   updateItemStatus: (orderId: string, itemIndex: number, status: string) =>
@@ -1016,6 +1048,25 @@ export const billingApi = {
       method: 'POST',
     });
   },
+
+  // ===== ORDER-BILLING INTEGRATION =====
+  
+  // Process payment for an order
+  processOrderPayment: (data: { orderId: string; method: string; amount: number; tips?: number }) => 
+    fetchApi<any>('/billing/process-order-payment', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  // Get payment for an order
+  getOrderPayment: (orderId: string) => fetchApi<any>(`/billing/order/${orderId}/payment`),
+  
+  // Complete checkout (payment + order completion)
+  checkout: (data: { orderId: string; method: string; amount: number; tips?: number }) =>
+    fetchApi<any>('/billing/checkout', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
   // Invoices
   listInvoices: (params?: { date_from?: string; date_to?: string }) => {
