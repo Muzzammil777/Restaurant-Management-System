@@ -233,80 +233,80 @@ function AppContent() {
         <div className="border-b bg-white sticky top-[73px] z-40">
           <TabsList className="w-full justify-start overflow-x-auto flex-nowrap h-auto p-1 bg-transparent border-0 rounded-none">
             {hasPermission('dashboard') && (
-              <TabsTrigger value="dashboard" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                <LayoutDashboard className="h-4 w-4" />
+              <TabsTrigger value="dashboard" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 text-black">
+                <LayoutDashboard className="h-4 w-4 text-black" />
                 Dashboard
               </TabsTrigger>
             )}
             {hasPermission('menu') && (
-              <TabsTrigger value="menu" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                <UtensilsCrossed className="h-4 w-4" />
+              <TabsTrigger value="menu" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 text-black">
+                <UtensilsCrossed className="h-4 w-4 text-black" />
                 Menu Management
               </TabsTrigger>
             )}
             {hasPermission('orders') && (
-              <TabsTrigger value="orders" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                <ShoppingCart className="h-4 w-4" />
+              <TabsTrigger value="orders" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 text-black">
+                <ShoppingCart className="h-4 w-4 text-black" />
                 Orders
               </TabsTrigger>
             )}
             {hasPermission('kitchen') && (
-              <TabsTrigger value="kitchen" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                <ChefHat className="h-4 w-4" />
+              <TabsTrigger value="kitchen" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 text-black">
+                <ChefHat className="h-4 w-4 text-black" />
                 Kitchen
               </TabsTrigger>
             )}
             {hasPermission('tables') && (
-              <TabsTrigger value="tables" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                <Users className="h-4 w-4" />
+              <TabsTrigger value="tables" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 text-black">
+                <Users className="h-4 w-4 text-black" />
                 Tables
               </TabsTrigger>
             )}
             {hasPermission('inventory') && (
-              <TabsTrigger value="inventory" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                <Package className="h-4 w-4" />
+              <TabsTrigger value="inventory" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 text-black">
+                <Package className="h-4 w-4 text-black" />
                 Inventory
               </TabsTrigger>
             )}
             {hasPermission('staff') && (
-              <TabsTrigger value="staff" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                <UserCog className="h-4 w-4" />
+              <TabsTrigger value="staff" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 text-black">
+                <UserCog className="h-4 w-4 text-black" />
                 Staff
               </TabsTrigger>
             )}
             {hasPermission('billing') && (
-              <TabsTrigger value="billing" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                <CreditCard className="h-4 w-4" />
+              <TabsTrigger value="billing" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 text-black">
+                <CreditCard className="h-4 w-4 text-black" />
                 Billing
               </TabsTrigger>
             )}
             {hasPermission('delivery') && (
-              <TabsTrigger value="delivery" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                <Truck className="h-4 w-4" />
+              <TabsTrigger value="delivery" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 text-black">
+                <Truck className="h-4 w-4 text-black" />
                 Delivery
               </TabsTrigger>
             )}
             {hasPermission('offers') && (
-              <TabsTrigger value="offers" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                <Tag className="h-4 w-4" />
+              <TabsTrigger value="offers" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 text-black">
+                <Tag className="h-4 w-4 text-black" />
                 Offers & Loyalty
               </TabsTrigger>
             )}
             {hasPermission('reports') && (
-              <TabsTrigger value="reports" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                <BarChart3 className="h-4 w-4" />
+              <TabsTrigger value="reports" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 text-black">
+                <BarChart3 className="h-4 w-4 text-black" />
                 Reports
               </TabsTrigger>
             )}
             {hasPermission('notifications') && (
-              <TabsTrigger value="notifications" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                <BellRing className="h-4 w-4" />
+              <TabsTrigger value="notifications" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 text-black">
+                <BellRing className="h-4 w-4 text-black" />
                 Notifications
               </TabsTrigger>
             )}
             {hasPermission('settings') && (
-              <TabsTrigger value="settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                <Settings className="h-4 w-4" />
+              <TabsTrigger value="settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4 text-black">
+                <Settings className="h-4 w-4 text-black" />
                 Settings
               </TabsTrigger>
             )}
