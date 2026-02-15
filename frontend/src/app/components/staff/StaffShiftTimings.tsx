@@ -98,6 +98,10 @@ interface StaffMember {
   salary?: number;
 }
 
+interface StaffShiftTimingsProps {
+  globalSearch?: string;
+}
+
 interface ShiftForm {
   staffId: string;
   date: string;
@@ -107,7 +111,7 @@ interface ShiftForm {
   notes: string;
 }
 
-export function StaffShiftTimings() {
+export function StaffShiftTimings({ globalSearch = '' }: StaffShiftTimingsProps) {
   const [shifts, setShifts] = useState<ShiftAssignment[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -301,12 +305,21 @@ export function StaffShiftTimings() {
     setRateMode(mode);
   };
 
+  // Filter shifts by global search
+  const filteredShifts = globalSearch 
+    ? shifts.filter((shift: ShiftAssignment) => {
+        const staffInfo = getStaffInfo(shift.staffId);
+        return staffInfo.name.toLowerCase().includes(globalSearch.toLowerCase()) ||
+               staffInfo.role.toLowerCase().includes(globalSearch.toLowerCase());
+      })
+    : shifts;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-semibold tracking-tight text-[#2D2D2D]">Shift Timings & Allocation</h2>
-          <p className="text-muted-foreground">Manage mandatory shifts and customize financial rates per employee.</p>
+          <h2 className="text-3xl font-semibold tracking-tight text-white">Shift Timings & Allocation</h2>
+          <p className="text-gray-300">Manage mandatory shifts and customize financial rates per employee.</p>
         </div>
         <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
           <DialogTrigger asChild>
@@ -481,7 +494,7 @@ export function StaffShiftTimings() {
             <span className="text-[10px] font-bold tracking-tighter leading-none">RATE</span>
           </div>
           <div className="px-4 py-2 flex flex-col items-start leading-tight">
-            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Global Mode</span>
+            <span className="text-[10px] text-gray-600 font-bold uppercase tracking-tight">Global Mode</span>
             <span className="text-sm font-semibold">Standard View</span>
           </div>
         </div>
@@ -492,7 +505,7 @@ export function StaffShiftTimings() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-[#FDFCFB]/50">
-                <tr className="text-left text-gray-400 uppercase tracking-wider text-[11px] font-bold border-b border-gray-100">
+                <tr className="text-left text-gray-600 uppercase tracking-wider text-[11px] font-bold border-b border-gray-100">
                   <th className="px-6 py-4 w-12 text-center">
                     <Checkbox className="rounded" />
                   </th>
@@ -519,14 +532,14 @@ export function StaffShiftTimings() {
                       {error}
                     </td>
                   </tr>
-                ) : shifts.length === 0 ? (
+                ) : filteredShifts.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
-                      No shifts scheduled for this week
+                      {globalSearch ? 'No matching shifts found' : 'No shifts scheduled for this week'}
                     </td>
                   </tr>
                 ) : (
-                  shifts.map((shift: ShiftAssignment) => {
+                  filteredShifts.map((shift: ShiftAssignment) => {
                     const staffInfo = getStaffInfo(shift.staffId);
                     const hourlyRate = (staffInfo.salary || 30000) / 30 / 8;
                     const totalHours = calculateHours(shift.startTime, shift.endTime);
@@ -541,13 +554,13 @@ export function StaffShiftTimings() {
                         </td>
                         <td className="px-6 py-6">
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 font-semibold text-xs border border-white shadow-sm">
+                            <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-semibold text-xs border border-white shadow-sm">
                               {staffInfo.name.split(' ').map(n => n[0]).join('')}
                             </div>
                             <div>
                               <div className="font-bold text-gray-800">{staffInfo.name}</div>
                               <div className="flex items-center gap-2 mt-1">
-                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{staffInfo.role}</span>
+                                <span className="text-[10px] font-bold text-gray-600 uppercase tracking-tighter">{staffInfo.role}</span>
                                 <Badge className="bg-orange-50 text-orange-600 border-none font-bold text-[9px] px-2 py-0">RATE: ₹{Math.round(hourlyRate)}/h</Badge>
                               </div>
                             </div>

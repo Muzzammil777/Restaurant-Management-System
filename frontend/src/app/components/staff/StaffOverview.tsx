@@ -13,7 +13,7 @@ import {
   AreaChart,
   Area
 } from 'recharts';
-import { Users, UserCheck, Calendar, Clock, ArrowUpRight, ArrowDownRight, Loader2 } from 'lucide-react';
+import { Users, UserCheck, Calendar, Clock, ArrowUpRight, ArrowDownRight, Loader2, ChefHat, User, CreditCard, ShieldCheck } from 'lucide-react';
 import { staffApi, attendanceApi } from '@/utils/api';
 
 const attendanceData = [
@@ -79,8 +79,8 @@ export function StaffOverview() {
   return (
     <div className="space-y-6">
       <div className="mb-6">
-        <h2 className="text-3xl font-semibold tracking-tight text-[#2D2D2D]">Dashboard Overview</h2>
-        <p className="text-muted-foreground">Real-time tracking of restaurant operations and personnel metrics.</p>
+        <h2 className="text-3xl font-semibold tracking-tight text-white">Dashboard Overview</h2>
+        <p className="text-gray-300">Real-time tracking of restaurant operations and personnel metrics.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -198,29 +198,54 @@ export function StaffOverview() {
 
         <Card className="border-none shadow-lg bg-[#1A1A1A] text-white">
           <CardHeader>
-            <CardTitle className="text-xl font-semibold">Upcoming Shift</CardTitle>
-            <p className="text-gray-400 text-sm">Floor Management Training</p>
+            <CardTitle className="text-xl font-semibold">Staff by Role</CardTitle>
+            <p className="text-gray-400 text-sm">Team composition breakdown</p>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center gap-4">
-              <div className="bg-[#8B5A2B] rounded-xl p-3 text-center min-w-[60px]">
-                <div className="text-xs uppercase font-bold text-[#D4B896]">OCT</div>
-                <div className="text-2xl font-bold leading-none">24</div>
+          <CardContent className="space-y-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
               </div>
-              <div>
-                <div className="text-lg font-semibold">14:00 - 16:30</div>
-                <div className="text-gray-400 text-sm flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  Main Dining Hall
+            ) : (
+              <>
+                <div className="flex items-center justify-between py-2 border-b border-gray-800">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                      <ChefHat className="h-4 w-4 text-orange-400" />
+                    </div>
+                    <span className="text-sm font-medium">Chefs</span>
+                  </div>
+                  <span className="text-lg font-bold">{stats?.byRole?.chef || 0}</span>
                 </div>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-gray-800">
-              <Button className="w-full bg-[#8B5A2B] hover:bg-[#724923] text-white border-none py-6 rounded-xl text-lg font-medium">
-                View Schedule
-              </Button>
-            </div>
+                <div className="flex items-center justify-between py-2 border-b border-gray-800">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                      <User className="h-4 w-4 text-blue-400" />
+                    </div>
+                    <span className="text-sm font-medium">Waiters</span>
+                  </div>
+                  <span className="text-lg font-bold">{stats?.byRole?.waiter || 0}</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-gray-800">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-green-500/20 flex items-center justify-center">
+                      <CreditCard className="h-4 w-4 text-green-400" />
+                    </div>
+                    <span className="text-sm font-medium">Cashiers</span>
+                  </div>
+                  <span className="text-lg font-bold">{stats?.byRole?.cashier || 0}</span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                      <ShieldCheck className="h-4 w-4 text-purple-400" />
+                    </div>
+                    <span className="text-sm font-medium">Managers</span>
+                  </div>
+                  <span className="text-lg font-bold">{stats?.byRole?.manager || 0}</span>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

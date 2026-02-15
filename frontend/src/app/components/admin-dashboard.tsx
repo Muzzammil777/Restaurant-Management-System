@@ -141,7 +141,7 @@ export function AdminDashboard() {
             <IndianRupee className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" style={{ color: '#000000' }}>₹{analytics?.totalRevenue.toFixed(2) || '0.00'}</div>
+            <div className="text-2xl font-bold" style={{ color: '#000000' }}>₹{(analytics?.totalRevenue ?? 0).toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               {analytics?.completedOrders || 0} completed orders
             </p>
@@ -165,7 +165,7 @@ export function AdminDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" style={{ color: '#000000' }}>₹{analytics?.avgOrderValue.toFixed(2) || '0.00'}</div>
+            <div className="text-2xl font-bold" style={{ color: '#000000' }}>₹{(analytics?.avgOrderValue ?? 0).toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">Per completed order</p>
           </CardContent>
         </Card>
@@ -176,7 +176,7 @@ export function AdminDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" style={{ color: '#000000' }}>{analytics?.tableOccupancy.toFixed(0) || 0}%</div>
+            <div className="text-2xl font-bold" style={{ color: '#000000' }}>{(analytics?.tableOccupancy ?? 0).toFixed(0)}%</div>
             <p className="text-xs text-muted-foreground">Current capacity</p>
           </CardContent>
         </Card>
@@ -355,7 +355,7 @@ export function AdminDashboard() {
                             </Badge>
                           </td>
                           <td className="p-3 text-center font-semibold" style={{ color: '#8B5A2B' }}>
-                            ₹{item.revenue.toFixed(2)}
+                            ₹{(item.revenue ?? 0).toFixed(2)}
                           </td>
                           <td className="p-3 text-center">
                             <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground">
