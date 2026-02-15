@@ -348,7 +348,7 @@ useEffect(() => {
         {/* Header Section with Buttons */}
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h1 className="text-4xl font-bold text-[#2D2D2D] tracking-tight" style={{ fontFamily: 'Poppins, sans-serif' }}>
+            <h1 className="text-4xl font-bold text-white drop-shadow-lg" style={{ fontFamily: 'Poppins, sans-serif' }}>
               Restaurant Menu
             </h1>
             <p className="text-base text-[#6B6B6B] mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>

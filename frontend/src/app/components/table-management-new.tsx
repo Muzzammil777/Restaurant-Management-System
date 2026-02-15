@@ -781,8 +781,8 @@ export function TableManagement() {
                 <Armchair className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900">Table Management</h1>
-                <p className="text-sm text-gray-500">Floor Dashboard</p>
+                <h1 className="text-2xl font-semibold text-white drop-shadow-lg">Table Management</h1>
+                <p className="text-sm text-gray-200">Floor Dashboard</p>
               </div>
             </div>
             

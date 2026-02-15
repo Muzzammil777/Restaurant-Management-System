@@ -510,8 +510,8 @@ export function TableManagementComprehensive() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Table Management</h1>
-          <p className="text-gray-600 mt-1">Monitor and manage restaurant floor</p>
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">Table Management</h1>
+          <p className="text-gray-200 mt-1">Monitor and manage restaurant floor</p>
         </div>
         <div className="flex gap-3">
           <Button

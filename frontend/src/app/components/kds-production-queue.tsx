@@ -298,7 +298,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                 <ChefHat className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-[#2D2D2D]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                <h1 className="text-2xl font-bold text-white drop-shadow-lg" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   {station} STATION
                 </h1>
                 <p className="text-sm text-[#6B6B6B]" style={{ fontFamily: 'Inter, sans-serif' }}>
