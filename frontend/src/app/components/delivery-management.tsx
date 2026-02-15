@@ -110,6 +110,65 @@ export function DeliveryManagement() {
   const [selectedOrder, setSelectedOrder] = useState<DeliveryOrder | null>(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch riders and orders from MongoDB via backend
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [ridersRes, ordersRes] = await Promise.all([
+          fetch('http://localhost:8000/api/delivery/riders'),
+          fetch('http://localhost:8000/api/delivery/orders'),
+        ]);
+
+        if (ridersRes.ok) {
+          const ridersData = await ridersRes.json();
+          if (ridersData.length > 0) {
+            setRiders(ridersData.map((r: any) => ({
+              id: r._id,
+              name: r.name,
+              avatar: r.avatar || '',
+              phone: r.phone || '',
+              status: r.status || 'Available',
+              vehicleNumber: r.vehicleNumber || 'N/A',
+              rating: r.rating || 5.0,
+              totalDeliveries: r.totalDeliveries || 0,
+            })));
+          }
+        }
+
+        if (ordersRes.ok) {
+          const ordersData = await ordersRes.json();
+          if (ordersData.length > 0) {
+            setOrders(ordersData.map((o: any) => ({
+              id: o._id,
+              orderNumber: o.orderNumber || '#ORD-' + o._id?.substring(0, 4).toUpperCase(),
+              customerName: o.customerName || 'Customer',
+              customerAddress: o.customerAddress || 'Address pending',
+              totalAmount: o.totalAmount || 0,
+              status: o.deliveryStatus || 'cooking',
+              riderId: o.riderId,
+              placedTime: new Date(o.createdAt).toLocaleTimeString() || '12:00 PM',
+              eta: o.eta || '1:00 PM',
+              items: o.items || ['Item'],
+              destinationId: Math.floor(Math.random() * 4) + 1,
+            })));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch delivery data:', error);
+        toast.error("Failed to load delivery data. Using demo data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+    // Refresh every 10 seconds
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Stats
   const stats = useMemo(() => ({
@@ -120,13 +179,27 @@ export function DeliveryManagement() {
   }), [orders]);
 
   // Actions
-  const handleAssignRider = (riderId: string) => {
+  const handleAssignRider = async (riderId: string) => {
     if (!selectedOrder) return;
     
-    setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: 'on_the_way', riderId } : o));
-    setRiders(prev => prev.map(r => r.id === riderId ? { ...r, status: 'On Delivery' } : r));
-    
-    toast.success("Rider Assigned", { description: `${riders.find(r => r.id === riderId)?.name} is now delivering Order ${selectedOrder.orderNumber}` });
+    try {
+      const res = await fetch(`http://localhost:8000/api/delivery/orders/${selectedOrder.id}/assign`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rider_id: riderId }),
+      });
+
+      if (res.ok) {
+        setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: 'on_the_way', riderId } : o));
+        setRiders(prev => prev.map(r => r.id === riderId ? { ...r, status: 'On Delivery' } : r));
+        toast.success("Rider Assigned", { description: `${riders.find(r => r.id === riderId)?.name} is now delivering Order ${selectedOrder.orderNumber}` });
+      } else {
+        toast.error("Failed to assign rider");
+      }
+    } catch (error) {
+      console.error('Assignment error:', error);
+      toast.error("Error assigning rider");
+    }
     setIsAssignModalOpen(false);
   };
 
