@@ -51,6 +51,23 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/app/components/ui/utils';
 
+// Tier styling helpers - moved outside component for better performance
+const getTierIcon = (tier: string) => {
+  switch (tier) {
+    case 'gold': return <Crown className="h-6 w-6" />;
+    case 'platinum': return <Trophy className="h-6 w-6" />;
+    default: return <Star className="h-6 w-6" />;
+  }
+};
+
+const getTierColors = (tier: string) => {
+  switch (tier) {
+    case 'gold': return { color: 'text-yellow-600', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-300' };
+    case 'platinum': return { color: 'text-purple-600', bgColor: 'bg-purple-50', borderColor: 'border-purple-300' };
+    default: return { color: 'text-gray-600', bgColor: 'bg-gray-50', borderColor: 'border-gray-300' };
+  }
+};
+
 interface Coupon {
   id: string;
   _id?: string;
@@ -130,6 +147,7 @@ export function OffersLoyalty() {
 
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   // Membership Plans State
   const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]);
@@ -144,23 +162,6 @@ export function OffersLoyalty() {
     expiryMonths: 12,
     autoExpiryEnabled: true,
   });
-
-  // Tier styling helpers
-  const getTierIcon = (tier: string) => {
-    switch (tier) {
-      case 'gold': return <Crown className="h-6 w-6" />;
-      case 'platinum': return <Trophy className="h-6 w-6" />;
-      default: return <Star className="h-6 w-6" />;
-    }
-  };
-
-  const getTierColors = (tier: string) => {
-    switch (tier) {
-      case 'gold': return { color: 'text-yellow-600', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-300' };
-      case 'platinum': return { color: 'text-purple-600', bgColor: 'bg-purple-50', borderColor: 'border-purple-300' };
-      default: return { color: 'text-gray-600', bgColor: 'bg-gray-50', borderColor: 'border-gray-300' };
-    }
-  };
 
   // Fetch coupons from API
   const fetchCoupons = useCallback(async () => {
@@ -205,11 +206,33 @@ export function OffersLoyalty() {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchCoupons(), fetchMemberships(), fetchLoyaltyConfig()]);
-      setLoading(false);
+      setLoadError(false);
+      try {
+        await Promise.all([fetchCoupons(), fetchMemberships(), fetchLoyaltyConfig()]);
+      } catch (err) {
+        setLoadError(true);
+        toast.error('Failed to load data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
     };
     loadData();
   }, [fetchCoupons, fetchMemberships, fetchLoyaltyConfig]);
+
+  // Retry loading data
+  const retryLoadData = async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      await Promise.all([fetchCoupons(), fetchMemberships(), fetchLoyaltyConfig()]);
+      toast.success('Data loaded successfully');
+    } catch (err) {
+      setLoadError(true);
+      toast.error('Failed to load data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Check if coupon is expired based on date
   const isCouponExpired = (validTo: string): boolean => {
@@ -268,6 +291,11 @@ export function OffersLoyalty() {
       return;
     }
 
+    if (new Date(formData.valid_from) >= new Date(formData.valid_to)) {
+      toast.error('End date must be after start date');
+      return;
+    }
+
     try {
       const payload = {
         code: formData.code.toUpperCase(),
@@ -308,6 +336,11 @@ export function OffersLoyalty() {
   const handleUpdateCoupon = async () => {
     if (!editingCoupon) return;
 
+    if (new Date(formData.valid_from) >= new Date(formData.valid_to)) {
+      toast.error('End date must be after start date');
+      return;
+    }
+
     try {
       const payload = {
         code: formData.code.toUpperCase(),
@@ -332,6 +365,12 @@ export function OffersLoyalty() {
   const toggleCouponStatus = async (couponId: string) => {
     const coupon = coupons.find(c => c.id === couponId);
     if (!coupon) return;
+    
+    if (coupon.status === 'expired') {
+      toast.error('Cannot toggle expired coupons. Please edit the coupon dates to reactivate.');
+      return;
+    }
+    
     const newStatus = (coupon.status === 'active') ? 'disabled' : 'active';
     try {
       await offersApi.updateCoupon(couponId, { status: newStatus });
@@ -458,6 +497,26 @@ export function OffersLoyalty() {
     return (
       <div className="p-6 flex items-center justify-center">
         <div className="text-muted-foreground">Loading offers &amp; loyalty data...</div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Failed to Load Data</h2>
+            <p className="text-muted-foreground mb-4 text-center">
+              Unable to load offers and loyalty data. Please check your connection and try again.
+            </p>
+            <Button onClick={retryLoadData} className="gap-2">
+              <RotateCcw className="h-4 w-4" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
