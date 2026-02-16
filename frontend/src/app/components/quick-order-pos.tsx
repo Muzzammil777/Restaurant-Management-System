@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import React from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
@@ -23,6 +22,7 @@ import { API_BASE_URL } from '@/utils/supabase/info';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/app/components/ui/dialog';
 import { restaurantState } from '@/app/services/restaurant-state';
 import { menuApi } from '@/utils/api';
+import { mockApi } from '@/app/services/mock-api';
 import { Switch } from '@/app/components/ui/switch';
 import { Progress } from '@/app/components/ui/progress';
 import { motion, AnimatePresence } from 'motion/react';
@@ -275,14 +275,12 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
       const menuResult = await menuApi.list();
       const menuItems = menuResult.data || menuResult || [];
       
-      console.log('Fetched menu items from database:', menuItems.length);
       setMenuItems(menuItems);
       
       // Fetch real combo meals from database
       const comboResult = await menuApi.listCombos();
       const comboMeals = comboResult || [];
       
-      console.log('Fetched combo meals from database:', comboMeals.length);
       setComboMeals(comboMeals);
       
     } catch (error) {
