@@ -42,7 +42,7 @@ export function CustomerView() {
     if (USE_MOCK_DATA) {
       const itemsWithPrepTime = mockMenuItems.map((item) => ({
         ...item,
-        prepTime: item.prepTime || Math.floor(Math.random() * 20) + 10,
+        prepTime: 'prepTime' in item ? (item as any).prepTime : Math.floor(Math.random() * 20) + 10,
       }));
       setMenuItems(itemsWithPrepTime.filter((item) => item.available));
       setLoading(false);

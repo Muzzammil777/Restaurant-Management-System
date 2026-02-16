@@ -78,7 +78,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1697155836252-d7f969108b5a?w=400',
       available: true,
       customizations: [
-        { id: 'c1', name: 'Sauce', options: ['Mint Chutney', 'Tamarind Chutney', 'Both'] }
+        { id: 'c1', name: 'Sauce', type: 'other', options: ['Mint Chutney', 'Tamarind Chutney', 'Both'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 10,
@@ -93,7 +93,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1768701544400-dfa8ca509d10?w=400',
       available: true,
       customizations: [
-        { id: 'c2', name: 'Quantity', options: ['4 pcs', '6 pcs', '8 pcs'] }
+        { id: 'c2', name: 'Quantity', type: 'other', options: ['4 pcs', '6 pcs', '8 pcs'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 15,
@@ -109,8 +109,8 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1600891964532-839fb6407dd1?w=400',
       available: true,
       customizations: [
-        { id: 'c3', name: 'Sauce', options: ['Buffalo', 'BBQ', 'Honey Garlic'] },
-        { id: 'c4', name: 'Quantity', options: ['6 pcs', '9 pcs', '12 pcs'] }
+        { id: 'c3', name: 'Sauce', type: 'other', options: ['Buffalo', 'BBQ', 'Honey Garlic'] },
+        { id: 'c4', name: 'Quantity', type: 'other', options: ['6 pcs', '9 pcs', '12 pcs'] }
       ],
       spiceLevel: 'hot',
       preparationTime: 20,
@@ -125,7 +125,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=400',
       available: true,
       customizations: [
-        { id: 'c5', name: 'Spice Level', options: ['Mild', 'Medium', 'Spicy'] }
+        { id: 'c5', name: 'Spice Level', type: 'spicelevel', options: ['Mild', 'Medium', 'Spicy'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 18,
@@ -141,7 +141,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1626200419199-391ae4be7a41?w=400',
       available: true,
       customizations: [
-        { id: 'c6', name: 'Dip', options: ['Tartar Sauce', 'Garlic Mayo', 'Both'] }
+        { id: 'c6', name: 'Dip', type: 'other', options: ['Tartar Sauce', 'Garlic Mayo', 'Both'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 15,
@@ -169,7 +169,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1562967914-608f82629710?w=400',
       available: true,
       customizations: [
-        { id: 'c7', name: 'Quantity', options: ['6 pcs', '9 pcs', '12 pcs'] }
+        { id: 'c7', name: 'Quantity', type: 'other', options: ['6 pcs', '9 pcs', '12 pcs'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 15,
@@ -198,7 +198,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=400',
       available: true,
       customizations: [
-        { id: 'c8', name: 'Sauce', options: ['Soy Sauce', 'Sweet Chili', 'Wasabi Mayo'] }
+        { id: 'c8', name: 'Sauce', type: 'other', options: ['Soy Sauce', 'Sweet Chili', 'Wasabi Mayo'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 18,
@@ -227,7 +227,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?w=400',
       available: true,
       customizations: [
-        { id: 'c9', name: 'Portion', options: ['Quarter', 'Half', 'Full'] }
+        { id: 'c9', name: 'Portion', type: 'other', options: ['Quarter', 'Half', 'Full'] }
       ],
       spiceLevel: 'hot',
       preparationTime: 25,
@@ -255,7 +255,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1626200419199-391ae4be7a41?w=400',
       available: true,
       customizations: [
-        { id: 'c10', name: 'Spice', options: ['Mild', 'Medium', 'Extra Spicy'] }
+        { id: 'c10', name: 'Spice', type: 'spicelevel', options: ['Mild', 'Medium', 'Extra Spicy'] }
       ],
       spiceLevel: 'hot',
       preparationTime: 20,
@@ -270,7 +270,7 @@ export function MenuManagement() {
       image: 'https://www.indianveggiedelight.com/wp-content/uploads/2017/06/gobi-manchurian-featured.jpg',
       available: true,
       customizations: [
-        { id: 'c11', name: 'Sauce Level', options: ['Light', 'Medium', 'Extra'] }
+        { id: 'c11', name: 'Sauce Level', type: 'other', options: ['Light', 'Medium', 'Extra'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 15,
@@ -299,8 +299,8 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1604908376022-ce3f0115e4c8?w=400',
       available: true,
       customizations: [
-        { id: 'c12', name: 'Style', options: ['Steamed', 'Fried', 'Pan Fried'] },
-        { id: 'c13', name: 'Quantity', options: ['6 pcs', '8 pcs', '10 pcs'] }
+        { id: 'c12', name: 'Style', type: 'other', options: ['Steamed', 'Fried', 'Pan Fried'] },
+        { id: 'c13', name: 'Quantity', type: 'other', options: ['6 pcs', '8 pcs', '10 pcs'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 15,
@@ -315,8 +315,8 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1496116218417-1a781b1c416c?w=400',
       available: true,
       customizations: [
-        { id: 'c14', name: 'Style', options: ['Steamed', 'Fried', 'Pan Fried'] },
-        { id: 'c15', name: 'Quantity', options: ['6 pcs', '8 pcs', '10 pcs'] }
+        { id: 'c14', name: 'Style', type: 'other', options: ['Steamed', 'Fried', 'Pan Fried'] },
+        { id: 'c15', name: 'Quantity', type: 'other', options: ['6 pcs', '8 pcs', '10 pcs'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 15,
@@ -331,7 +331,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1639024471283-03518883512d?w=400',
       available: true,
       customizations: [
-        { id: 'c16', name: 'Dip', options: ['Ketchup', 'Mayo', 'Ranch', 'All'] }
+        { id: 'c16', name: 'Dip', type: 'other', options: ['Ketchup', 'Mayo', 'Ranch', 'All'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 10,
@@ -375,8 +375,8 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=400',
       available: true,
       customizations: [
-        { id: 'c17', name: 'Bread', options: ['Naan', 'Roti', 'Paratha', 'Rice'] },
-        { id: 'c18', name: 'Extra', options: ['Extra Gravy', 'Extra Chicken', 'Extra Butter'] }
+        { id: 'c17', name: 'Bread', type: 'other', options: ['Naan', 'Roti', 'Paratha', 'Rice'] },
+        { id: 'c18', name: 'Extra', type: 'addon', options: ['Extra Gravy', 'Extra Chicken', 'Extra Butter'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 25,
@@ -391,8 +391,8 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1666190092689-e3968aa0c32c?w=400',
       available: true,
       customizations: [
-        { id: 'c19', name: 'Side', options: ['Raita', 'Salan', 'Both'] },
-        { id: 'c20', name: 'Portion', options: ['Regular', 'Large', 'Family Pack'] }
+        { id: 'c19', name: 'Side', type: 'other', options: ['Raita', 'Salan', 'Both'] },
+        { id: 'c20', name: 'Portion', type: 'other', options: ['Regular', 'Large', 'Family Pack'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 30,
@@ -408,7 +408,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1743517894265-c86ab035adef?w=400',
       available: true,
       customizations: [
-        { id: 'c21', name: 'Accompaniments', options: ['Sambhar', 'Coconut Chutney', 'Both', 'All Three'] }
+        { id: 'c21', name: 'Accompaniments', type: 'other', options: ['Sambhar', 'Coconut Chutney', 'Both', 'All Three'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 20,
@@ -423,9 +423,9 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=400',
       available: true,
       customizations: [
-        { id: 'c22', name: 'Size', options: ['Small 8"', 'Medium 10"', 'Large 12"'] },
-        { id: 'c23', name: 'Crust', options: ['Thin Crust', 'Regular', 'Thick Crust', 'Cheese Burst'] },
-        { id: 'c24', name: 'Extra Toppings', options: ['Extra Cheese', 'Olives', 'Mushrooms', 'Bell Peppers'] }
+        { id: 'c22', name: 'Size', type: 'other', options: ['Small 8"', 'Medium 10"', 'Large 12"'] },
+        { id: 'c23', name: 'Crust', type: 'other', options: ['Thin Crust', 'Regular', 'Thick Crust', 'Cheese Burst'] },
+        { id: 'c24', name: 'Extra Toppings', type: 'addon', options: ['Extra Cheese', 'Olives', 'Mushrooms', 'Bell Peppers'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 25,
@@ -441,8 +441,8 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1588013273468-315fd88ea34c?w=400',
       available: true,
       customizations: [
-        { id: 'c25', name: 'Pasta Type', options: ['Spaghetti', 'Penne', 'Fettuccine'] },
-        { id: 'c26', name: 'Add-ons', options: ['Extra Bacon', 'Grilled Chicken', 'Mushrooms'] }
+        { id: 'c25', name: 'Pasta Type', type: 'other', options: ['Spaghetti', 'Penne', 'Fettuccine'] },
+        { id: 'c26', name: 'Add-ons', type: 'addon', options: ['Extra Bacon', 'Grilled Chicken', 'Mushrooms'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 20,
@@ -457,7 +457,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=400',
       available: true,
       customizations: [
-        { id: 'c27', name: 'Bread', options: ['Naan', 'Roti', 'Paratha', 'Rice'] }
+        { id: 'c27', name: 'Bread', type: 'other', options: ['Naan', 'Roti', 'Paratha', 'Rice'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 22,
@@ -472,7 +472,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1626200419199-391ae4be7a41?w=400',
       available: true,
       customizations: [
-        { id: 'c28', name: 'Side', options: ['Rice', 'Naan', 'Appam'] }
+        { id: 'c28', name: 'Side', type: 'other', options: ['Rice', 'Naan', 'Appam'] }
       ],
       spiceLevel: 'hot',
       preparationTime: 28,
@@ -488,7 +488,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400',
       available: true,
       customizations: [
-        { id: 'c29', name: 'Bread', options: ['Naan', 'Roti', 'Paratha', 'Rice'] }
+        { id: 'c29', name: 'Bread', type: 'other', options: ['Naan', 'Roti', 'Paratha', 'Rice'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 30,
@@ -503,7 +503,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1603360946369-dc9bb6258143?w=400',
       available: true,
       customizations: [
-        { id: 'c30', name: 'Bread', options: ['Naan', 'Roti', 'Paratha', 'Rice'] }
+        { id: 'c30', name: 'Bread', type: 'other', options: ['Naan', 'Roti', 'Paratha', 'Rice'] }
       ],
       spiceLevel: 'hot',
       preparationTime: 35,
@@ -518,7 +518,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400',
       available: true,
       customizations: [
-        { id: 'c31', name: 'Side', options: ['Raita', 'Salan', 'Both'] }
+        { id: 'c31', name: 'Side', type: 'other', options: ['Raita', 'Salan', 'Both'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 28,
@@ -533,8 +533,8 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1603360946369-dc9bb6258143?w=400',
       available: true,
       customizations: [
-        { id: 'c32', name: 'Side', options: ['Mashed Potatoes', 'French Fries', 'Grilled Veggies', 'Rice'] },
-        { id: 'c33', name: 'Sauce', options: ['Mushroom', 'Pepper', 'BBQ', 'None'] }
+        { id: 'c32', name: 'Side', type: 'other', options: ['Mashed Potatoes', 'French Fries', 'Grilled Veggies', 'Rice'] },
+        { id: 'c33', name: 'Sauce', type: 'other', options: ['Mushroom', 'Pepper', 'BBQ', 'None'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 30,
@@ -549,7 +549,7 @@ export function MenuManagement() {
       image: 'https://www.happy-tummy.co.in/wp-content/uploads/2020/07/Chole-Bhature-scaled.jpg',
       available: true,
       customizations: [
-        { id: 'c34', name: 'Quantity', options: ['2 Bhature', '3 Bhature', '4 Bhature'] }
+        { id: 'c34', name: 'Quantity', type: 'other', options: ['2 Bhature', '3 Bhature', '4 Bhature'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 20,
@@ -565,7 +565,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=400',
       available: true,
       customizations: [
-        { id: 'c35', name: 'Side', options: ['Rice', 'Naan', 'Appam'] }
+        { id: 'c35', name: 'Side', type: 'other', options: ['Rice', 'Naan', 'Appam'] }
       ],
       spiceLevel: 'hot',
       preparationTime: 25,
@@ -580,7 +580,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=400',
       available: true,
       customizations: [
-        { id: 'c36', name: 'Bread', options: ['Naan', 'Roti', 'Paratha', 'Rice'] }
+        { id: 'c36', name: 'Bread', type: 'other', options: ['Naan', 'Roti', 'Paratha', 'Rice'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 22,
@@ -595,7 +595,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=400',
       available: true,
       customizations: [
-        { id: 'c37', name: 'Bread', options: ['Naan', 'Roti', 'Paratha', 'Rice'] }
+        { id: 'c37', name: 'Bread', type: 'other', options: ['Naan', 'Roti', 'Paratha', 'Rice'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 25,
@@ -610,7 +610,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1555126634-323283e090fa?w=400',
       available: true,
       customizations: [
-        { id: 'c38', name: 'Spice', options: ['Mild', 'Medium', 'Spicy'] }
+        { id: 'c38', name: 'Spice', type: 'spicelevel', options: ['Mild', 'Medium', 'Spicy'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 18,
@@ -625,7 +625,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400',
       available: true,
       customizations: [
-        { id: 'c39', name: 'Spice', options: ['Mild', 'Medium', 'Spicy'] }
+        { id: 'c39', name: 'Spice', type: 'spicelevel', options: ['Mild', 'Medium', 'Spicy'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 20,
@@ -641,7 +641,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400',
       available: true,
       customizations: [
-        { id: 'c40', name: 'Spice', options: ['Mild', 'Medium', 'Spicy'] }
+        { id: 'c40', name: 'Spice', type: 'spicelevel', options: ['Mild', 'Medium', 'Spicy'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 15,
@@ -656,7 +656,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400',
       available: true,
       customizations: [
-        { id: 'c41', name: 'Spice', options: ['Mild', 'Medium', 'Spicy'] }
+        { id: 'c41', name: 'Spice', type: 'spicelevel', options: ['Mild', 'Medium', 'Spicy'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 15,
@@ -671,7 +671,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400',
       available: true,
       customizations: [
-        { id: 'c42', name: 'Portion', options: ['Regular', 'Large'] }
+        { id: 'c42', name: 'Portion', type: 'other', options: ['Regular', 'Large'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 25,
@@ -688,8 +688,8 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1666190092159-3171cf0fbb12?w=400',
       available: true,
       customizations: [
-        { id: 'c43', name: 'Quantity', options: ['2 pcs', '4 pcs', '6 pcs'] },
-        { id: 'c44', name: 'Temperature', options: ['Warm', 'Room Temperature'] }
+        { id: 'c43', name: 'Quantity', type: 'other', options: ['2 pcs', '4 pcs', '6 pcs'] },
+        { id: 'c44', name: 'Temperature', type: 'other', options: ['Warm', 'Room Temperature'] }
       ],
       preparationTime: 5,
       dietType: 'veg'
@@ -703,8 +703,8 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1570145820259-b5b80c5c8bd6?w=400',
       available: true,
       customizations: [
-        { id: 'c45', name: 'Add-ons', options: ['Vanilla Ice Cream', 'Chocolate Sauce', 'Both', 'None'] },
-        { id: 'c46', name: 'Serve', options: ['Warm', 'Cold'] }
+        { id: 'c45', name: 'Add-ons', type: 'addon', options: ['Vanilla Ice Cream', 'Chocolate Sauce', 'Both', 'None'] },
+        { id: 'c46', name: 'Serve', type: 'other', options: ['Warm', 'Cold'] }
       ],
       preparationTime: 10,
       dietType: 'veg',
@@ -719,8 +719,8 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1657225953401-5f95007fc8e0?w=400',
       available: true,
       customizations: [
-        { id: 'c47', name: 'Flavors', options: ['Vanilla', 'Chocolate', 'Strawberry', 'Butterscotch', 'Mixed'] },
-        { id: 'c48', name: 'Toppings', options: ['Chocolate Chips', 'Nuts', 'Sprinkles', 'Fresh Fruits', 'All'] }
+        { id: 'c47', name: 'Flavors', type: 'other', options: ['Vanilla', 'Chocolate', 'Strawberry', 'Butterscotch', 'Mixed'] },
+        { id: 'c48', name: 'Toppings', type: 'other', options: ['Chocolate Chips', 'Nuts', 'Sprinkles', 'Fresh Fruits', 'All'] }
       ],
       preparationTime: 8,
       dietType: 'veg'
@@ -734,7 +734,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1707528903686-91cbbe2f2985?w=400',
       available: true,
       customizations: [
-        { id: 'c49', name: 'Topping', options: ['Berry Compote', 'Caramel', 'Chocolate', 'Plain'] }
+        { id: 'c49', name: 'Topping', type: 'other', options: ['Berry Compote', 'Caramel', 'Chocolate', 'Plain'] }
       ],
       preparationTime: 5,
       dietType: 'veg'
@@ -748,7 +748,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=400',
       available: true,
       customizations: [
-        { id: 'c50', name: 'Quantity', options: ['2 pcs', '4 pcs', '6 pcs'] }
+        { id: 'c50', name: 'Quantity', type: 'other', options: ['2 pcs', '4 pcs', '6 pcs'] }
       ],
       preparationTime: 5,
       dietType: 'veg',
@@ -775,7 +775,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1585664811087-47f65abbad64?w=400',
       available: true,
       customizations: [
-        { id: 'c51', name: 'Temperature', options: ['Warm', 'Chilled'] }
+        { id: 'c51', name: 'Temperature', type: 'other', options: ['Warm', 'Chilled'] }
       ],
       preparationTime: 5,
       dietType: 'veg'
@@ -789,7 +789,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1535920527002-b35e96722eb9?w=400',
       available: true,
       customizations: [
-        { id: 'c52', name: 'Add-on', options: ['Vanilla Ice Cream', 'Whipped Cream', 'Both', 'None'] }
+        { id: 'c52', name: 'Add-on', type: 'addon', options: ['Vanilla Ice Cream', 'Whipped Cream', 'Both', 'None'] }
       ],
       preparationTime: 10,
       dietType: 'veg'
@@ -803,7 +803,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1624353365286-3f8d62daad51?w=400',
       available: true,
       customizations: [
-        { id: 'c53', name: 'Add-on', options: ['Vanilla Ice Cream', 'Chocolate Sauce', 'Both'] }
+        { id: 'c53', name: 'Add-on', type: 'addon', options: ['Vanilla Ice Cream', 'Chocolate Sauce', 'Both'] }
       ],
       preparationTime: 12,
       dietType: 'veg',
@@ -818,7 +818,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1626200419199-391ae4be7a41?w=400',
       available: true,
       customizations: [
-        { id: 'c54', name: 'Temperature', options: ['Warm', 'Room Temperature'] }
+        { id: 'c54', name: 'Temperature', type: 'other', options: ['Warm', 'Room Temperature'] }
       ],
       preparationTime: 5,
       dietType: 'veg'
@@ -832,7 +832,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=400',
       available: true,
       customizations: [
-        { id: 'c55', name: 'Quantity', options: ['3 pcs', '6 pcs', '9 pcs'] }
+        { id: 'c55', name: 'Quantity', type: 'other', options: ['3 pcs', '6 pcs', '9 pcs'] }
       ],
       preparationTime: 5,
       dietType: 'veg'
@@ -846,7 +846,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400',
       available: true,
       customizations: [
-        { id: 'c56', name: 'Flavor', options: ['Vanilla', 'Strawberry', 'Mango'] }
+        { id: 'c56', name: 'Flavor', type: 'other', options: ['Vanilla', 'Strawberry', 'Mango'] }
       ],
       preparationTime: 5,
       dietType: 'veg'
@@ -860,7 +860,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=400',
       available: true,
       customizations: [
-        { id: 'c57', name: 'Temperature', options: ['Warm', 'Room Temperature'] }
+        { id: 'c57', name: 'Temperature', type: 'other', options: ['Warm', 'Room Temperature'] }
       ],
       preparationTime: 5,
       dietType: 'veg',
@@ -887,7 +887,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1570145820259-b5b80c5c8bd6?w=400',
       available: true,
       customizations: [
-        { id: 'c58', name: 'Flavor', options: ['Malai', 'Mango', 'Pista', 'Kesar'] }
+        { id: 'c58', name: 'Flavor', type: 'other', options: ['Malai', 'Mango', 'Pista', 'Kesar'] }
       ],
       preparationTime: 3,
       dietType: 'veg'
@@ -913,7 +913,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1585664811087-47f65abbad64?w=400',
       available: true,
       customizations: [
-        { id: 'c59', name: 'Flavor', options: ['Plain', 'Mango', 'Kesar'] }
+        { id: 'c59', name: 'Flavor', type: 'other', options: ['Plain', 'Mango', 'Kesar'] }
       ],
       preparationTime: 5,
       dietType: 'veg'
@@ -927,7 +927,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1564093497595-593b96d80180?w=400',
       available: true,
       customizations: [
-        { id: 'c60', name: 'Add-on', options: ['Ice Cream', 'Whipped Cream', 'Both', 'None'] }
+        { id: 'c60', name: 'Add-on', type: 'addon', options: ['Ice Cream', 'Whipped Cream', 'Both', 'None'] }
       ],
       preparationTime: 8,
       dietType: 'veg'
@@ -941,7 +941,7 @@ export function MenuManagement() {
       image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRyblkJnog4KsaYdt49le8s6spr_rtDB6d-lQ&s',
       available: true,
       customizations: [
-        { id: 'c61', name: 'Serve', options: ['Warm', 'Cold'] }
+        { id: 'c61', name: 'Serve', type: 'other', options: ['Warm', 'Cold'] }
       ],
       preparationTime: 10,
       dietType: 'veg',
@@ -970,8 +970,8 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1655074084308-901ea6b88fd3?w=400',
       available: true,
       customizations: [
-        { id: 'c62', name: 'Size', options: ['Regular', 'Large'] },
-        { id: 'c63', name: 'Sweetness', options: ['Less Sweet', 'Normal', 'Extra Sweet'] }
+        { id: 'c62', name: 'Size', type: 'other', options: ['Regular', 'Large'] },
+        { id: 'c63', name: 'Sweetness', type: 'other', options: ['Less Sweet', 'Normal', 'Extra Sweet'] }
       ],
       preparationTime: 5,
       dietType: 'veg'
@@ -985,8 +985,8 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1707569517904-92b134ff5f69?w=400',
       available: true,
       customizations: [
-        { id: 'c64', name: 'Fruit', options: ['Orange', 'Apple', 'Watermelon', 'Pineapple', 'Mixed Fruit'] },
-        { id: 'c65', name: 'Size', options: ['Regular', 'Large'] }
+        { id: 'c64', name: 'Fruit', type: 'other', options: ['Orange', 'Apple', 'Watermelon', 'Pineapple', 'Mixed Fruit'] },
+        { id: 'c65', name: 'Size', type: 'other', options: ['Regular', 'Large'] }
       ],
       preparationTime: 5,
       dietType: 'veg',
@@ -1001,9 +1001,9 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1611564494260-6f21b80af7ea?w=400',
       available: true,
       customizations: [
-        { id: 'c66', name: 'Size', options: ['Small', 'Medium', 'Large'] },
-        { id: 'c67', name: 'Milk', options: ['Regular', 'Skim', 'Almond', 'Soy'] },
-        { id: 'c68', name: 'Flavor', options: ['None', 'Vanilla', 'Caramel', 'Hazelnut'] }
+        { id: 'c66', name: 'Size', type: 'other', options: ['Small', 'Medium', 'Large'] },
+        { id: 'c67', name: 'Milk', type: 'other', options: ['Regular', 'Skim', 'Almond', 'Soy'] },
+        { id: 'c68', name: 'Flavor', type: 'other', options: ['None', 'Vanilla', 'Caramel', 'Hazelnut'] }
       ],
       preparationTime: 8,
       dietType: 'veg'
@@ -1017,8 +1017,8 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1698619952010-3bc850cbcb3b?w=400',
       available: true,
       customizations: [
-        { id: 'c69', name: 'Type', options: ['Regular', 'Strong', 'Light'] },
-        { id: 'c70', name: 'Sweetness', options: ['No Sugar', 'Less Sweet', 'Normal', 'Extra Sweet'] }
+        { id: 'c69', name: 'Type', type: 'other', options: ['Regular', 'Strong', 'Light'] },
+        { id: 'c70', name: 'Sweetness', type: 'other', options: ['No Sugar', 'Less Sweet', 'Normal', 'Extra Sweet'] }
       ],
       preparationTime: 5,
       dietType: 'veg'
@@ -1032,7 +1032,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?w=400',
       available: true,
       customizations: [
-        { id: 'c71', name: 'Size', options: ['Regular', 'Large'] }
+        { id: 'c71', name: 'Size', type: 'other', options: ['Regular', 'Large'] }
       ],
       preparationTime: 8,
       dietType: 'veg',
@@ -1047,7 +1047,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400',
       available: true,
       customizations: [
-        { id: 'c72', name: 'Flavor', options: ['Plain', 'Lemon', 'Honey', 'Mint'] }
+        { id: 'c72', name: 'Flavor', type: 'other', options: ['Plain', 'Lemon', 'Honey', 'Mint'] }
       ],
       preparationTime: 5,
       dietType: 'veg'
@@ -1061,7 +1061,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1551538827-9c037cb4f32a?w=400',
       available: true,
       customizations: [
-        { id: 'c73', name: 'Flavor', options: ['Classic', 'Strawberry', 'Blue Curacao', 'Watermelon'] }
+        { id: 'c73', name: 'Flavor', type: 'other', options: ['Classic', 'Strawberry', 'Blue Curacao', 'Watermelon'] }
       ],
       preparationTime: 7,
       dietType: 'veg'
@@ -1075,7 +1075,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=400',
       available: true,
       customizations: [
-        { id: 'c74', name: 'Size', options: ['Small', 'Medium', 'Large'] }
+        { id: 'c74', name: 'Size', type: 'other', options: ['Small', 'Medium', 'Large'] }
       ],
       preparationTime: 8,
       dietType: 'veg'
@@ -1089,7 +1089,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1505252585461-04db1eb84625?w=400',
       available: true,
       customizations: [
-        { id: 'c75', name: 'Flavor', options: ['Mango', 'Strawberry', 'Mixed Berry', 'Banana'] }
+        { id: 'c75', name: 'Flavor', type: 'other', options: ['Mango', 'Strawberry', 'Mixed Berry', 'Banana'] }
       ],
       preparationTime: 6,
       dietType: 'veg',
@@ -1104,7 +1104,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?w=400',
       available: true,
       customizations: [
-        { id: 'c76', name: 'Type', options: ['Sweet', 'Salted'] }
+        { id: 'c76', name: 'Type', type: 'other', options: ['Sweet', 'Salted'] }
       ],
       preparationTime: 5,
       dietType: 'veg'
@@ -1118,7 +1118,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?w=400',
       available: true,
       customizations: [
-        { id: 'c77', name: 'Type', options: ['Single Shot', 'Double Shot'] }
+        { id: 'c77', name: 'Type', type: 'other', options: ['Single Shot', 'Double Shot'] }
       ],
       preparationTime: 5,
       dietType: 'veg'
@@ -1132,8 +1132,8 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1542990253-0d0f5be5f0ed?w=400',
       available: true,
       customizations: [
-        { id: 'c78', name: 'Size', options: ['Small', 'Medium', 'Large'] },
-        { id: 'c79', name: 'Add-on', options: ['Marshmallows', 'Whipped Cream', 'Both'] }
+        { id: 'c78', name: 'Size', type: 'other', options: ['Small', 'Medium', 'Large'] },
+        { id: 'c79', name: 'Add-on', type: 'addon', options: ['Marshmallows', 'Whipped Cream', 'Both'] }
       ],
       preparationTime: 8,
       dietType: 'veg'
@@ -1147,7 +1147,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400',
       available: true,
       customizations: [
-        { id: 'c80', name: 'Flavor', options: ['Lemon', 'Peach', 'Green Tea'] }
+        { id: 'c80', name: 'Flavor', type: 'other', options: ['Lemon', 'Peach', 'Green Tea'] }
       ],
       preparationTime: 5,
       dietType: 'veg'
@@ -1161,7 +1161,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=400',
       available: true,
       customizations: [
-        { id: 'c81', name: 'Flavor', options: ['Chocolate', 'Vanilla', 'Strawberry', 'Butterscotch', 'Oreo'] }
+        { id: 'c81', name: 'Flavor', type: 'other', options: ['Chocolate', 'Vanilla', 'Strawberry', 'Butterscotch', 'Oreo'] }
       ],
       preparationTime: 8,
       dietType: 'veg',
@@ -1176,7 +1176,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1523677011781-c91d1bbe2f1b?w=400',
       available: true,
       customizations: [
-        { id: 'c82', name: 'Type', options: ['Sweet', 'Salted', 'Mint'] }
+        { id: 'c82', name: 'Type', type: 'other', options: ['Sweet', 'Salted', 'Mint'] }
       ],
       preparationTime: 5,
       dietType: 'veg'
@@ -1190,7 +1190,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400',
       available: true,
       customizations: [
-        { id: 'c83', name: 'Size', options: ['Small', 'Medium', 'Large'] }
+        { id: 'c83', name: 'Size', type: 'other', options: ['Small', 'Medium', 'Large'] }
       ],
       preparationTime: 6,
       dietType: 'veg'
@@ -1228,7 +1228,7 @@ export function MenuManagement() {
       image: 'https://img-cdn.publive.online/fit-in/1200x675/sanjeev-kapoor/media/post_banners/7a6f82b8f824f5dae6cf7a515e0b498e189267778f63fe7742d1fca6da678df6.jpg',
       available: true,
       customizations: [
-        { id: 'c84', name: 'Temperature', options: ['Hot', 'Cold'] }
+        { id: 'c84', name: 'Temperature', type: 'other', options: ['Hot', 'Cold'] }
       ],
       preparationTime: 6,
       dietType: 'veg',
@@ -1243,7 +1243,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?w=400',
       available: true,
       customizations: [
-        { id: 'c85', name: 'Temperature', options: ['Chilled', 'Room Temperature'] }
+        { id: 'c85', name: 'Temperature', type: 'other', options: ['Chilled', 'Room Temperature'] }
       ],
       preparationTime: 7,
       dietType: 'veg'
@@ -1259,8 +1259,8 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1687020835890-b0b8c6a04613?w=400',
       available: true,
       customizations: [
-        { id: 'c86', name: 'Accompaniments', options: ['Naan', 'Mint Chutney', 'Onion Salad', 'All'] },
-        { id: 'c87', name: 'Portion', options: ['Regular (Serves 2)', 'Large (Serves 4)'] }
+        { id: 'c86', name: 'Accompaniments', type: 'other', options: ['Naan', 'Mint Chutney', 'Onion Salad', 'All'] },
+        { id: 'c87', name: 'Portion', type: 'other', options: ['Regular (Serves 2)', 'Large (Serves 4)'] }
       ],
       spiceLevel: 'hot',
       preparationTime: 35,
@@ -1276,8 +1276,8 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1763647738062-d83e44328a6f?w=400',
       available: true,
       customizations: [
-        { id: 'c88', name: 'Preparation', options: ['Grilled', 'Fried', 'Mixed'] },
-        { id: 'c89', name: 'Side', options: ['French Fries', 'Garlic Bread', 'Lemon Rice', 'All'] }
+        { id: 'c88', name: 'Preparation', type: 'other', options: ['Grilled', 'Fried', 'Mixed'] },
+        { id: 'c89', name: 'Side', type: 'other', options: ['French Fries', 'Garlic Bread', 'Lemon Rice', 'All'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 40,
@@ -1292,7 +1292,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=400',
       available: true,
       customizations: [
-        { id: 'c90', name: 'Type', options: ['Veg Thali', 'Non-Veg Thali'] }
+        { id: 'c90', name: 'Type', type: 'other', options: ['Veg Thali', 'Non-Veg Thali'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 30,
@@ -1308,7 +1308,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=400',
       available: true,
       customizations: [
-        { id: 'c91', name: 'Side', options: ['Coleslaw', 'French Fries', 'Corn', 'All'] }
+        { id: 'c91', name: 'Side', type: 'other', options: ['Coleslaw', 'French Fries', 'Corn', 'All'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 45,
@@ -1323,7 +1323,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1625943553852-781c6dd46faa?w=400',
       available: true,
       customizations: [
-        { id: 'c92', name: 'Side', options: ['Garlic Bread', 'Rice', 'Vegetables'] }
+        { id: 'c92', name: 'Side', type: 'other', options: ['Garlic Bread', 'Rice', 'Vegetables'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 50,
@@ -1339,7 +1339,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=400',
       available: true,
       customizations: [
-        { id: 'c93', name: 'Accompaniments', options: ['Naan', 'Mint Chutney', 'Salad', 'All'] }
+        { id: 'c93', name: 'Accompaniments', type: 'other', options: ['Naan', 'Mint Chutney', 'Salad', 'All'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 30,
@@ -1354,7 +1354,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=400',
       available: true,
       customizations: [
-        { id: 'c94', name: 'Type', options: ['Vegetarian', 'Non-Veg', 'Mixed'] }
+        { id: 'c94', name: 'Type', type: 'other', options: ['Vegetarian', 'Non-Veg', 'Mixed'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 35,
@@ -1370,8 +1370,8 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1666190092689-e3968aa0c32c?w=400',
       available: true,
       customizations: [
-        { id: 'c95', name: 'Type', options: ['Chicken', 'Mutton', 'Veg'] },
-        { id: 'c96', name: 'Side', options: ['Raita', 'Salan', 'Boiled Egg', 'All'] }
+        { id: 'c95', name: 'Type', type: 'other', options: ['Chicken', 'Mutton', 'Veg'] },
+        { id: 'c96', name: 'Side', type: 'other', options: ['Raita', 'Salan', 'Boiled Egg', 'All'] }
       ],
       spiceLevel: 'hot',
       preparationTime: 45,
@@ -1413,8 +1413,8 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1558030006-450675393462?w=400',
       available: true,
       customizations: [
-        { id: 'c97', name: 'Doneness', options: ['Rare', 'Medium Rare', 'Medium', 'Well Done'] },
-        { id: 'c98', name: 'Side', options: ['Mashed Potatoes', 'Grilled Veggies', 'French Fries'] }
+        { id: 'c97', name: 'Doneness', type: 'other', options: ['Rare', 'Medium Rare', 'Medium', 'Well Done'] },
+        { id: 'c98', name: 'Side', type: 'other', options: ['Mashed Potatoes', 'Grilled Veggies', 'French Fries'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 35,
@@ -1429,7 +1429,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1496116218417-1a781b1c416c?w=400',
       available: true,
       customizations: [
-        { id: 'c99', name: 'Type', options: ['Veg', 'Chicken', 'Prawn', 'Mixed'] }
+        { id: 'c99', name: 'Type', type: 'other', options: ['Veg', 'Chicken', 'Prawn', 'Mixed'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 25,
@@ -1444,7 +1444,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1574894709920-11b28e7367e3?w=400',
       available: true,
       customizations: [
-        { id: 'c100', name: 'Type', options: ['Veg', 'Chicken'] }
+        { id: 'c100', name: 'Type', type: 'other', options: ['Veg', 'Chicken'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 30,
@@ -1460,8 +1460,8 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400',
       available: true,
       customizations: [
-        { id: 'c101', name: 'Patty', options: ['Chicken', 'Veg', 'Mutton'] },
-        { id: 'c102', name: 'Cheese', options: ['None', 'Single', 'Double'] }
+        { id: 'c101', name: 'Patty', type: 'other', options: ['Chicken', 'Veg', 'Mutton'] },
+        { id: 'c102', name: 'Cheese', type: 'other', options: ['None', 'Single', 'Double'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 20,
@@ -1476,7 +1476,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400',
       available: true,
       customizations: [
-        { id: 'c103', name: 'Protein', options: ['Chicken', 'Prawn', 'Tofu', 'Mixed'] }
+        { id: 'c103', name: 'Protein', type: 'other', options: ['Chicken', 'Prawn', 'Tofu', 'Mixed'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 30,
@@ -1505,7 +1505,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1534080564583-6be75777b70a?w=400',
       available: true,
       customizations: [
-        { id: 'c104', name: 'Type', options: ['Seafood', 'Chicken', 'Vegetarian'] }
+        { id: 'c104', name: 'Type', type: 'other', options: ['Seafood', 'Chicken', 'Vegetarian'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 40,
@@ -1520,7 +1520,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1558507652-2d9626c4e67a?w=400',
       available: true,
       customizations: [
-        { id: 'c105', name: 'Portion', options: ['Half', 'Full'] }
+        { id: 'c105', name: 'Portion', type: 'other', options: ['Half', 'Full'] }
       ],
       spiceLevel: 'mild',
       preparationTime: 50,
@@ -1536,7 +1536,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1582169296194-e4d644c48063?w=400',
       available: true,
       customizations: [
-        { id: 'c106', name: 'Add-on', options: ['Jalapenos', 'Sour Cream', 'Chicken', 'All'] }
+        { id: 'c106', name: 'Add-on', type: 'addon', options: ['Jalapenos', 'Sour Cream', 'Chicken', 'All'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 15,
@@ -1551,7 +1551,7 @@ export function MenuManagement() {
       image: 'https://images.unsplash.com/photo-1626200419199-391ae4be7a41?w=400',
       available: true,
       customizations: [
-        { id: 'c107', name: 'Side', options: ['Appam', 'Rice', 'Parotta'] }
+        { id: 'c107', name: 'Side', type: 'other', options: ['Appam', 'Rice', 'Parotta'] }
       ],
       spiceLevel: 'medium',
       preparationTime: 32,

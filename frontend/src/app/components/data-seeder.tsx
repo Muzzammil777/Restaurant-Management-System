@@ -99,6 +99,7 @@ export function DataSeeder() {
           phone: '555-0101',
           email: 'john.smith@restaurant.com',
           shift: 'morning',
+          password: 'password123',
         },
         {
           name: 'Sarah Johnson',
@@ -106,6 +107,7 @@ export function DataSeeder() {
           phone: '555-0102',
           email: 'sarah.johnson@restaurant.com',
           shift: 'afternoon',
+          password: 'password123',
         },
         {
           name: 'Mike Davis',
@@ -113,6 +115,7 @@ export function DataSeeder() {
           phone: '555-0103',
           email: 'mike.davis@restaurant.com',
           shift: 'evening',
+          password: 'password123',
         },
         {
           name: 'Emily Wilson',
@@ -120,6 +123,7 @@ export function DataSeeder() {
           phone: '555-0104',
           email: 'emily.wilson@restaurant.com',
           shift: 'morning',
+          password: 'password123',
         },
       ];
 
