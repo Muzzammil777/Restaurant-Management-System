@@ -299,8 +299,8 @@ export function OrderManagement() {
         // Remove microseconds and check for existing timezone indicator
         const cleanTime = statusTime.split('.')[0]; // Remove microseconds
         // Only add 'Z' if there's no timezone indicator already
-        // Check for 'Z' or timezone offset pattern like +05:30 or -08:00
-        const hasTimezone = statusTime.includes('Z') || /[+-]\d{2}:\d{2}/.test(statusTime);
+        // Check for 'Z' or timezone offset pattern at end like +05:30 or -08:00
+        const hasTimezone = statusTime.includes('Z') || /[+-]\d{2}:\d{2}(?:\d{2})?$/.test(statusTime);
         orderTime = new Date(hasTimezone ? statusTime : cleanTime + 'Z');
       } else {
         orderTime = new Date(statusTime);
