@@ -3,24 +3,19 @@ import { TableStoreProvider } from "@/app/contexts/table-store";
 import { AdminDashboard } from "@/app/components/admin-dashboard";
 import { MenuManagement } from "@/app/components/menu-management";
 import { OrderManagement } from "@/app/components/order-management";
-import { TableManagementEnhanced } from "@/app/components/table-management-enhanced";
 import { CustomerView } from "@/app/components/customer-view";
 import { CustomerManagement } from "@/app/components/customer-management";
 import { InventoryManagement } from "@/app/components/inventory-management";
 import { StaffManagement } from "@/app/components/staff-management";
-import { BillingModule } from "@/app/components/billing";
 import { SecuritySettings } from "@/app/components/security-settings";
 import { DeliveryManagement } from "@/app/components/delivery-management";
 import { OffersLoyalty } from "@/app/components/offers-loyalty";
 import { ReportsAnalytics } from "@/app/components/reports-analytics";
 import { NotificationManagement } from "@/app/components/notification-management";
-import { IntegratedOrderView } from "@/app/components/integrated-order-view";
 import { NotificationPanel } from "@/app/components/notification-panel";
 
 // Import comprehensive modules
-import { TableManagementComprehensive } from "@/app/components/table-management-comprehensive";
 import { TableManagement } from "@/app/components/table-management-new";
-import { OrderManagementComprehensive } from "@/app/components/order-management-comprehensive";
 import { BillingPaymentComprehensive } from "@/app/components/billing-payment-comprehensive";
 import { MochaKDS } from "@/app/components/mocha-kds";
 

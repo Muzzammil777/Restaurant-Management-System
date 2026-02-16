@@ -296,34 +296,23 @@ export function OrderManagement() {
       
       if (statusTime.includes('T')) {
         // ISO format: 2026-02-16T10:53:11.219000
-        // Remove microseconds and handle timezone
+        // Remove microseconds and check for existing timezone indicator
         const cleanTime = statusTime.split('.')[0]; // Remove microseconds
-        orderTime = new Date(cleanTime + 'Z'); // Add Z for UTC
+        // Only add 'Z' if there's no timezone indicator already
+        const hasTimezone = statusTime.includes('Z') || statusTime.includes('+') || statusTime.includes('-');
+        orderTime = new Date(hasTimezone ? statusTime : cleanTime + 'Z');
       } else {
         orderTime = new Date(statusTime);
       }
       
       // Check if date is valid
       if (isNaN(orderTime.getTime())) {
-        console.log('Invalid date, using current time');
         return 1;
       }
       
       // Calculate time difference in minutes
       const timeDiffMs = now.getTime() - orderTime.getTime();
       const ageInMinutes = Math.floor(Math.abs(timeDiffMs) / 60000);
-      
-      // Debug logging with more details
-      console.log('Exact Time Calculation:', {
-        orderId: order.id?.slice(-6),
-        rawStatusTime: statusTime,
-        cleanedTime: statusTime.includes('T') ? statusTime.split('.')[0] + 'Z' : statusTime,
-        orderTimeObj: orderTime.toString(),
-        nowTime: now.toString(),
-        timeDiffMs,
-        ageInMinutes,
-        orderStatus: order.status
-      });
       
       // Return the calculated age (minimum 1 minute)
       return Math.max(ageInMinutes, 1);
@@ -371,14 +360,6 @@ export function OrderManagement() {
     });
     
     const mostRecentOrder = sortedOrders[0];
-    
-    console.log('Priority Debug:', {
-      orderId: order.id?.slice(-6),
-      isMostRecent: mostRecentOrder?.id === order.id,
-      mostRecentId: mostRecentOrder?.id?.slice(-6),
-      orderCreatedAt: order.createdAt,
-      mostRecentCreatedAt: mostRecentOrder?.createdAt
-    });
     
     // Only the single most recent order gets "New" badge
     if (mostRecentOrder && mostRecentOrder.id === order.id) {
@@ -835,10 +816,22 @@ export function OrderManagement() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            if (window.confirm(`Are you sure you want to delete order ${generateOrderDisplayId(order.id)}?`)) {
-                              // TODO: Implement delete order functionality
-                              toast.info('Delete order feature coming soon!');
+                          onClick={async () => {
+                            const confirmed = window.confirm(
+                              `Are you sure you want to delete order ${generateOrderDisplayId(order.id)}?`
+                            );
+                            if (!confirmed) {
+                              return;
+                            }
+                            try {
+                              await ordersApi.delete(order.id);
+                              toast.success('Order deleted successfully.');
+                              // Refresh orders to reflect deletion
+                              fetchOrders();
+                            } catch (error) {
+                              // Log error for debugging and inform the user
+                              console.error('Failed to delete order', error);
+                              toast.error('Failed to delete order. Please try again.');
                             }
                           }}
                           className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"

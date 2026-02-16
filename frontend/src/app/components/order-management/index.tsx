@@ -98,12 +98,6 @@ export function OrderManagement() {
           ? (result as any)
           : [];
       
-      // Debug: Log the raw order data
-      console.log('Raw orders from API:', rawOrders);
-      if (rawOrders.length > 0) {
-        console.log('First order items:', rawOrders[0].items);
-      }
-      
       setOrders(rawOrders.map((order: any) => ({
         ...order,
         total: order.total || order.totalAmount || 0,
