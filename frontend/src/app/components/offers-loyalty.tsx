@@ -225,7 +225,6 @@ export function OffersLoyalty() {
     setLoadError(false);
     try {
       await Promise.all([fetchCoupons(), fetchMemberships(), fetchLoyaltyConfig()]);
-      toast.success('Data loaded successfully');
     } catch (err) {
       setLoadError(true);
       toast.error('Failed to load data. Please try again.');
