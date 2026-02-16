@@ -9,7 +9,30 @@ import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Textarea } from '@/app/components/ui/textarea';
 import { ScrollArea } from '@/app/components/ui/scroll-area';
-import { Clock, Package, CheckCircle, XCircle, Plus, CreditCard, Eye, IndianRupee, UtensilsCrossed, Zap, Minus, Search, Repeat, Flame, AlertCircle, TrendingUp, Activity, ChefHat, Coffee, Timer, Undo2, Gauge, MoveRight, MoveLeft, Ban, Sparkles, Pizza, ShoppingBag } from 'lucide-react';
+import { 
+  Clock, 
+  Package, 
+  AlertCircle, 
+  CheckCircle, 
+  Truck, 
+  XCircle, 
+  Search, 
+  Filter,
+  TrendingUp,
+  Activity,
+  Gauge,
+  Zap,
+  Trash2,
+  Undo2,
+  Timer,
+  UtensilsCrossed,
+  IndianRupee,
+  CreditCard,
+  MoveRight,
+  Ban,
+  Eye,
+  Repeat
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { ordersApi, menuApi } from '@/utils/api';
 import { PaymentDialog } from '@/app/components/payment-dialog';
@@ -25,7 +48,7 @@ interface Order {
     price: number;
   }>;
   total: number;
-  status: 'placed' | 'preparing' | 'ready' | 'served' | 'completed' | 'cancelled';
+  status: 'placed' | 'preparing' | 'ready' | 'served' | 'delivered' | 'completed' | 'cancelled';
   type: 'dine-in' | 'takeaway' | 'delivery';
   createdAt: string;
   paymentMethod?: 'cash' | 'upi' | 'card';
@@ -84,11 +107,29 @@ export function OrderManagement() {
     const rawItems = Array.isArray(rawOrder?.items) ? rawOrder.items : [];
     return {
       ...rawOrder,
-      items: rawItems.map((item: any) => ({
-        name: item?.name || 'Unknown Item',
-        quantity: Number(item?.quantity) || 0,
-        price: Number(item?.price) || 0,
-      })),
+      id: rawOrder?.id || rawOrder?._id?.toString() || 'unknown',
+      items: rawItems.map((item: any) => {
+        // Handle different item structures
+        let name = 'Unknown Item';
+        let quantity = 1;
+        let price = 0;
+        
+        if (typeof item === 'object' && item !== null) {
+          // Try different possible name fields
+          name = item?.name || item?.dishName || item?.itemName || item?.title || 'Unknown Item';
+          quantity = Number(item?.quantity || item?.qty || 1);
+          price = Number(item?.price || item?.amount || 0);
+        } else if (typeof item === 'string') {
+          // If item is just a string, use it as name
+          name = item;
+        }
+        
+        return {
+          name,
+          quantity,
+          price,
+        };
+      }),
       total: Number(rawOrder?.total) || 0,
       createdAt: rawOrder?.createdAt || new Date().toISOString(),
     };
@@ -128,7 +169,7 @@ export function OrderManagement() {
           : [];
       setOrders(rawOrders.map(normalizeOrder));
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      console.error('❌ Error fetching orders:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to fetch orders. Please check your connection.');
       setOrders([]);
     } finally {
@@ -201,7 +242,11 @@ export function OrderManagement() {
       case 'preparing':
         return <Package className="h-4 w-4" />;
       case 'ready':
+        return <AlertCircle className="h-4 w-4" />;
       case 'served':
+        return <CheckCircle className="h-4 w-4" />;
+      case 'delivered':
+        return <Truck className="h-4 w-4" />;
       case 'completed':
         return <CheckCircle className="h-4 w-4" />;
       case 'cancelled':
@@ -218,6 +263,9 @@ export function OrderManagement() {
       case 'ready':
         return 'bg-purple-100 text-purple-700';
       case 'served':
+        return 'bg-green-100 text-green-700';
+      case 'delivered':
+        return 'bg-teal-100 text-teal-700';
       case 'completed':
         return 'bg-green-100 text-green-700';
       case 'cancelled':
@@ -239,34 +287,117 @@ export function OrderManagement() {
   // Innovation #4: Calculate order aging
   const getOrderAge = (order: Order) => {
     const statusTime = order.statusUpdatedAt || order.createdAt;
-    const ageInMinutes = Math.floor((Date.now() - new Date(statusTime).getTime()) / 60000);
-    return ageInMinutes;
-  };
-
-  // Innovation #4 & #5: Get delay level for visual highlighting and bottleneck detection
-  const getDelayLevel = (ageInMinutes: number, status: Order['status']) => {
-    if (status === 'served' || status === 'completed' || status === 'cancelled') return null;
     
-    // Innovation #5: Kitchen bottleneck - orders stuck in preparing
-    if (status === 'preparing' && ageInMinutes > 20) return 'bottleneck';
-    if (ageInMinutes > 30) return 'critical';
-    if (ageInMinutes > 15) return 'warning';
-    return null;
+    try {
+      const now = new Date();
+      
+      // Parse timestamp more robustly
+      let orderTime: Date;
+      
+      if (statusTime.includes('T')) {
+        // ISO format: 2026-02-16T10:53:11.219000
+        // Remove microseconds and handle timezone
+        const cleanTime = statusTime.split('.')[0]; // Remove microseconds
+        orderTime = new Date(cleanTime + 'Z'); // Add Z for UTC
+      } else {
+        orderTime = new Date(statusTime);
+      }
+      
+      // Check if date is valid
+      if (isNaN(orderTime.getTime())) {
+        console.log('Invalid date, using current time');
+        return 1;
+      }
+      
+      // Calculate time difference in minutes
+      const timeDiffMs = now.getTime() - orderTime.getTime();
+      const ageInMinutes = Math.floor(Math.abs(timeDiffMs) / 60000);
+      
+      // Debug logging with more details
+      console.log('Exact Time Calculation:', {
+        orderId: order.id?.slice(-6),
+        rawStatusTime: statusTime,
+        cleanedTime: statusTime.includes('T') ? statusTime.split('.')[0] + 'Z' : statusTime,
+        orderTimeObj: orderTime.toString(),
+        nowTime: now.toString(),
+        timeDiffMs,
+        ageInMinutes,
+        orderStatus: order.status
+      });
+      
+      // Return the calculated age (minimum 1 minute)
+      return Math.max(ageInMinutes, 1);
+      
+    } catch (error) {
+      console.error('Time calculation error:', error);
+      return 1;
+    }
   };
 
-  // Innovation #3: Auto-assign priority based on tags and waiting time
-  const getOrderPriority = (order: Order) => {
+  // Innovation #3: Auto-assign priority based on time and order recency
+  const getOrderPriority = (order: Order, allOrders: Order[]) => {
     const ageInMinutes = getOrderAge(order);
     const hasPriorityTag = order.tags?.includes('Priority');
     const isVIP = order.notes?.toLowerCase().includes('vip');
     const isUrgent = order.notes?.toLowerCase().includes('urgent');
-
-    if (hasPriorityTag || isVIP || isUrgent || ageInMinutes > 30) {
+    
+    // Explicit urgent tags
+    if (hasPriorityTag || isVIP || isUrgent) {
       return { level: 'high', badge: '🔴 Urgent', color: 'bg-red-500 text-white' };
-    } else if (ageInMinutes > 15) {
-      return { level: 'medium', badge: '🟡 Normal', color: 'bg-yellow-500 text-white' };
     }
+    
+    // Time-based priority progression
+    if (ageInMinutes > 45) {
+      return { level: 'high', badge: '🔴 Urgent', color: 'bg-red-500 text-white' };
+    } else if (ageInMinutes > 30) {
+      return { level: 'medium', badge: '🟡 Normal', color: 'bg-yellow-500 text-white' };
+    } else if (ageInMinutes > 15) {
+      return { level: 'low', badge: '🟢 Low', color: 'bg-green-500 text-white' };
+    }
+    
+    // For very recent orders (0-15 minutes), check if it's the most recent
+    const activeOrders = allOrders.filter(o => 
+      o.status !== 'completed' && 
+      o.status !== 'cancelled' && 
+      o.status !== 'served' && 
+      o.status !== 'delivered'
+    );
+    
+    // Sort by creation time (newest first)
+    const sortedOrders = activeOrders.sort((a, b) => {
+      const timeA = new Date(a.createdAt).getTime();
+      const timeB = new Date(b.createdAt).getTime();
+      return timeB - timeA; // Newest first
+    });
+    
+    const mostRecentOrder = sortedOrders[0];
+    
+    console.log('Priority Debug:', {
+      orderId: order.id?.slice(-6),
+      isMostRecent: mostRecentOrder?.id === order.id,
+      mostRecentId: mostRecentOrder?.id?.slice(-6),
+      orderCreatedAt: order.createdAt,
+      mostRecentCreatedAt: mostRecentOrder?.createdAt
+    });
+    
+    // Only the single most recent order gets "New" badge
+    if (mostRecentOrder && mostRecentOrder.id === order.id) {
+      return { level: 'low', badge: '🟢 New', color: 'bg-green-500 text-white' };
+    }
+    
+    // All other recent orders (0-15 minutes) get "Low" badge
     return { level: 'low', badge: '🟢 Low', color: 'bg-green-500 text-white' };
+  };
+
+  // Innovation #4 & #5: Get delay level for visual highlighting and bottleneck detection
+  const getDelayLevel = (ageInMinutes: number, status: Order['status']) => {
+    if (status === 'served' || status === 'delivered' || status === 'completed' || status === 'cancelled') return null;
+    
+    // Innovation #5: Kitchen bottleneck - orders stuck in preparing
+    if (status === 'preparing' && ageInMinutes > 25) return 'bottleneck';
+    if (ageInMinutes > 45) return 'critical';
+    if (ageInMinutes > 30) return 'warning';
+    return null;
   };
 
   // Innovation #6: Parse and highlight smart notes
@@ -317,7 +448,7 @@ export function OrderManagement() {
   });
 
   // Calculate statistics
-  const activeOrders = orders.filter(o => !['served', 'completed', 'cancelled'].includes(o.status)).length;
+  const activeOrders = orders.filter(o => !['served', 'delivered', 'completed', 'cancelled'].includes(o.status)).length;
   const servedToday = orders.filter(o => {
     const orderDate = new Date(o.createdAt);
     const today = new Date();
@@ -542,10 +673,10 @@ export function OrderManagement() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {sortedOrders.map((order) => {
             const orderItems = Array.isArray(order.items) ? order.items : [];
-            const totalItems = orderItems.reduce((sum, item) => sum + item.quantity, 0);
+            const totalItems = orderItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
             const ageInMinutes = getOrderAge(order);
             const delayLevel = getDelayLevel(ageInMinutes, order.status);
-            const priority = getOrderPriority(order);
+            const priority = getOrderPriority(order, orders);
             const smartNotes = parseSmartNotes(order.notes);
             
             return (
@@ -623,25 +754,25 @@ export function OrderManagement() {
                         <span>Placed</span>
                       </div>
                       <div className="flex-1 h-0.5 mx-1 bg-muted" />
-                      <div className={`flex flex-col items-center gap-1 ${order.status === 'preparing' ? 'text-foreground font-medium' : ['ready', 'served', 'completed'].includes(order.status) ? 'text-muted-foreground/50' : 'text-muted-foreground/30'}`}>
+                      <div className={`flex flex-col items-center gap-1 ${order.status === 'preparing' ? 'text-foreground font-medium' : ['ready', 'served', 'delivered', 'completed'].includes(order.status) ? 'text-muted-foreground/50' : 'text-muted-foreground/30'}`}>
                         <Package className="h-3.5 w-3.5" />
                         <span>Preparing</span>
                       </div>
                       <div className="flex-1 h-0.5 mx-1 bg-muted" />
-                      <div className={`flex flex-col items-center gap-1 ${order.status === 'ready' ? 'text-foreground font-medium' : ['served', 'completed'].includes(order.status) ? 'text-muted-foreground/50' : 'text-muted-foreground/30'}`}>
+                      <div className={`flex flex-col items-center gap-1 ${order.status === 'ready' ? 'text-foreground font-medium' : ['served', 'delivered', 'completed'].includes(order.status) ? 'text-muted-foreground/50' : 'text-muted-foreground/30'}`}>
                         <AlertCircle className="h-3.5 w-3.5" />
                         <span>Ready</span>
                       </div>
                       <div className="flex-1 h-0.5 mx-1 bg-muted" />
-                      <div className={`flex flex-col items-center gap-1 ${['served', 'completed'].includes(order.status) ? 'text-foreground font-medium' : 'text-muted-foreground/30'}`}>
-                        <CheckCircle className="h-3.5 w-3.5" />
-                        <span>Served</span>
+                      <div className={`flex flex-col items-center gap-1 ${order.type === 'delivery' ? (order.status === 'delivered' ? 'text-foreground font-medium' : ['completed'].includes(order.status) ? 'text-muted-foreground/50' : 'text-muted-foreground/30') : (order.status === 'served' ? 'text-foreground font-medium' : ['completed'].includes(order.status) ? 'text-muted-foreground/50' : 'text-muted-foreground/30')}`}>
+                        {order.type === 'delivery' ? <Truck className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                        <span>{order.type === 'delivery' ? 'Delivered' : 'Served'}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Innovation #4: Order Aging Indicator */}
-                  {!['served', 'completed', 'cancelled'].includes(order.status) && (
+                  {!['served', 'delivered', 'completed', 'cancelled'].includes(order.status) && (
                     <div className={`mt-2 p-2 rounded-md text-xs font-medium flex items-center gap-2 ${
                       delayLevel === 'critical' ? 'bg-red-100 text-red-700' :
                       delayLevel === 'warning' ? 'bg-yellow-100 text-yellow-700' :
@@ -679,17 +810,20 @@ export function OrderManagement() {
                       ORDER ITEMS ({totalItems} {totalItems === 1 ? 'item' : 'items'})
                     </p>
                     <ul className="text-sm space-y-1.5">
-                      {orderItems.map((item, idx) => (
-                        <li key={idx} className="flex justify-between">
-                          <span className="text-muted-foreground">
-                            {item.quantity}x {item.name}
-                          </span>
-                          <span className="flex items-center gap-0.5 font-medium">
-                            <IndianRupee className="h-3 w-3" />
-                            {(item.price * item.quantity).toFixed(2)}
-                          </span>
-                        </li>
-                      ))}
+                      {orderItems.map((item: any, idx) => {
+                        const itemName = item.name || item.dishName || item.itemName || `Item ${idx + 1}`;
+                        return (
+                          <li key={idx} className="flex justify-between">
+                            <span className="text-muted-foreground">
+                              {item.quantity}x {itemName}
+                            </span>
+                            <span className="flex items-center gap-0.5 font-medium">
+                              <IndianRupee className="h-3 w-3" />
+                              {(item.price * item.quantity).toFixed(2)}
+                            </span>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
 
@@ -697,10 +831,25 @@ export function OrderManagement() {
                   <div className="pt-3 border-t space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-semibold">Total Amount</span>
-                      <span className="text-lg font-bold flex items-center gap-0.5">
-                        <IndianRupee className="h-4 w-4" />
-                        {order.total.toFixed(2)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (window.confirm(`Are you sure you want to delete order ${generateOrderDisplayId(order.id)}?`)) {
+                              // TODO: Implement delete order functionality
+                              toast.info('Delete order feature coming soon!');
+                            }
+                          }}
+                          className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                        <span className="text-lg font-bold flex items-center gap-0.5">
+                          <IndianRupee className="h-4 w-4" />
+                          {order.total.toFixed(2)}
+                        </span>
+                      </div>
                     </div>
                     
                     <div className="flex justify-between text-xs text-muted-foreground">
@@ -763,11 +912,11 @@ export function OrderManagement() {
                     {order.status === 'ready' && (
                       <Button
                         size="sm"
-                        onClick={() => updateOrderStatus(order.id, 'served')}
+                        onClick={() => updateOrderStatus(order.id, order.type === 'delivery' ? 'delivered' : 'served')}
                         className="w-full gap-2"
                       >
-                        <UtensilsCrossed className="h-4 w-4" />
-                        Mark as Served
+                        {order.type === 'delivery' ? <Truck className="h-4 w-4" /> : <UtensilsCrossed className="h-4 w-4" />}
+                        Mark as {order.type === 'delivery' ? 'Delivered' : 'Served'}
                       </Button>
                     )}
                     
@@ -823,15 +972,17 @@ export function OrderManagement() {
                             <div>
                               <p className="text-sm font-medium mb-2">Items</p>
                               <ul className="space-y-2">
-                                {(Array.isArray(order.items) ? order.items : []).map((item, idx) => (
+                                {(Array.isArray(order.items) ? order.items : []).map((item: any, idx) => {
+                                  const itemName = item.name || item.dishName || item.itemName || `Item ${idx + 1}`;
+                                  return (
                                   <li key={idx} className="flex justify-between text-sm">
-                                    <span>{item.quantity}x {item.name}</span>
+                                    <span>{item.quantity}x {itemName}</span>
                                     <span className="flex items-center gap-0.5">
                                       <IndianRupee className="h-3 w-3" />
                                       {(item.price * item.quantity).toFixed(2)}
                                     </span>
                                   </li>
-                                ))}
+                                )})}
                               </ul>
                             </div>
                             <div className="pt-3 border-t">
@@ -848,7 +999,7 @@ export function OrderManagement() {
                       </Dialog>
                       
                       {/* Duplicate Order Feature */}
-                      {['served', 'completed'].includes(order.status) && (
+                      {['served', 'delivered', 'completed'].includes(order.status) && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -858,7 +1009,7 @@ export function OrderManagement() {
                         </Button>
                       )}
                       
-                      {order.status !== 'completed' && order.status !== 'cancelled' && order.status !== 'served' && (
+                      {order.status !== 'completed' && order.status !== 'cancelled' && order.status !== 'served' && order.status !== 'delivered' && (
                         <Button
                           size="sm"
                           variant="outline"

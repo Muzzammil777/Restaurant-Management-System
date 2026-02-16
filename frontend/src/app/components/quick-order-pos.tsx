@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import React from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
@@ -21,12 +22,11 @@ import { toast } from 'sonner';
 import { API_BASE_URL } from '@/utils/supabase/info';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/app/components/ui/dialog';
 import { restaurantState } from '@/app/services/restaurant-state';
-import { mockApi } from '@/app/services/mock-api';
+import { menuApi } from '@/utils/api';
 import { Switch } from '@/app/components/ui/switch';
 import { Progress } from '@/app/components/ui/progress';
 import { motion, AnimatePresence } from 'motion/react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/app/components/ui/collapsible';
-import { mockMenuItems } from '@/utils/mock-data';
 
 // ==================== INTERFACES ====================
 
@@ -266,202 +266,30 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
     setGroupedItems(grouped);
   }, [orderItems]);
 
-  // ========== DATA FETCHING ==========
-
+  // Fetch menu items and combos from database
   const fetchMenuData = async () => {
     setLoading(true);
     
-    // Mock data with cooking stations
-    const mockMenuItems: MenuItem[] = [
-      {
-        id: '1',
-        name: 'Paneer Tikka',
-        category: 'appetizers',
-        price: 280,
-        description: 'Grilled cottage cheese with spices',
-        image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=400',
-        available: true,
-        dietType: 'veg',
-        spiceLevel: 'medium',
-        calories: 350,
-        preparationTime: 15
-      },
-      {
-        id: '2',
-        name: 'Butter Chicken',
-        category: 'main-course',
-        price: 350,
-        description: 'Creamy tomato-based chicken curry',
-        image: 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=400',
-        available: true,
-        dietType: 'non-veg',
-        spiceLevel: 'mild',
-        calories: 520,
-        preparationTime: 25
-      },
-      {
-        id: '3',
-        name: 'Dal Makhani',
-        category: 'main-course',
-        price: 220,
-        description: 'Creamy black lentils',
-        image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400',
-        available: true,
-        dietType: 'veg',
-        spiceLevel: 'mild',
-        calories: 280,
-        preparationTime: 20
-      },
-      {
-        id: '4',
-        name: 'Butter Naan',
-        category: 'breads',
-        price: 50,
-        description: 'Soft flatbread with butter',
-        image: 'https://images.unsplash.com/photo-1586444248902-2f64eddc13df?w=400',
-        available: true,
-        dietType: 'veg',
-        calories: 150,
-        preparationTime: 5
-      },
-      {
-        id: '5',
-        name: 'Gulab Jamun',
-        category: 'desserts',
-        price: 80,
-        description: 'Sweet milk dumplings in syrup',
-        image: 'https://images.unsplash.com/photo-1610192244261-3f33de3f55e4?w=400',
-        available: true,
-        dietType: 'veg',
-        calories: 200,
-        preparationTime: 5
-      },
-      {
-        id: '6',
-        name: 'Biryani',
-        category: 'main-course',
-        price: 320,
-        description: 'Fragrant rice with spices',
-        image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400',
-        available: true,
-        dietType: 'non-veg',
-        spiceLevel: 'hot',
-        calories: 450,
-        preparationTime: 30
-      },
-      {
-        id: '7',
-        name: 'Masala Dosa',
-        category: 'main-course',
-        price: 180,
-        description: 'Crispy rice crepe with potato filling',
-        image: 'https://images.unsplash.com/photo-1630383249896-424e482df921?w=400',
-        available: true,
-        dietType: 'veg',
-        spiceLevel: 'medium',
-        calories: 320,
-        preparationTime: 15
-      },
-      {
-        id: '8',
-        name: 'Chicken Tikka',
-        category: 'appetizers',
-        price: 320,
-        description: 'Grilled chicken marinated in spices',
-        image: 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=400',
-        available: true,
-        dietType: 'non-veg',
-        spiceLevel: 'hot',
-        calories: 280,
-        preparationTime: 20
-      }
-    ];
-
-    const mockCombos: ComboMeal[] = [
-      {
-        id: 'combo1',
-        name: 'Family Feast',
-        description: 'Butter Chicken + Biryani + 4 Naan + Gulab Jamun',
-        items: ['2', '6', '4', '5'],
-        originalPrice: 1200,
-        discountedPrice: 999,
-        image: 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=400',
-        available: true,
-        calories: 1400
-      },
-      {
-        id: 'combo2',
-        name: 'Veg Delight',
-        description: 'Paneer Tikka + Dal Makhani + 3 Naan',
-        items: ['1', '3', '4'],
-        originalPrice: 700,
-        discountedPrice: 599,
-        image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=400',
-        available: true,
-        calories: 780
-      }
-    ];
-
     try {
-      // Try fetching from API first
-      let menuFetched = false;
-      let comboFetched = false;
-
-      try {
-        const menuResponse = await fetch(
-          `${API_BASE_URL}/menu`,
-        );
-
-        if (menuResponse.ok) {
-          const menuResult = await menuResponse.json();
-          if (menuResult.success && menuResult.data) {
-            const availableItems = menuResult.data.filter((item: MenuItem) => item.available);
-            setMenuItems(availableItems);
-            menuFetched = true;
-          }
-        }
-      } catch (menuError) {
-        console.log('Menu API not available, using mock data');
-      }
-
-      try {
-        const comboResponse = await fetch(
-          `${API_BASE_URL}/menu/combos`,
-        );
-
-        if (comboResponse.ok) {
-          const comboResult = await comboResponse.json();
-          if (comboResult.success && comboResult.data) {
-            const availableCombos = comboResult.data.filter((combo: ComboMeal) => combo.available);
-            setComboMeals(availableCombos);
-            comboFetched = true;
-          }
-        }
-      } catch (comboError) {
-        console.log('Combo API not available, using mock data');
-      }
-
-      // Use mock data if API fetch failed
-      if (!menuFetched) {
-        console.log('Loading mock menu items:', mockMenuItems.length);
-        setMenuItems(mockMenuItems);
-      }
-      if (!comboFetched) {
-        console.log('Loading mock combos:', mockCombos.length);
-        setComboMeals(mockCombos);
-      }
-
-      // Feature #7: Menu Sync - Show sync badge
-      if (menuFetched && comboFetched) {
-        toast.success('✓ Menu synced', { duration: 2000 });
-      }
-
+      // Fetch real menu items from database
+      const menuResult = await menuApi.list();
+      const menuItems = menuResult.data || menuResult || [];
+      
+      console.log('Fetched menu items from database:', menuItems.length);
+      setMenuItems(menuItems);
+      
+      // Fetch real combo meals from database
+      const comboResult = await menuApi.listCombos();
+      const comboMeals = comboResult || [];
+      
+      console.log('Fetched combo meals from database:', comboMeals.length);
+      setComboMeals(comboMeals);
+      
     } catch (error) {
       console.error('Error fetching menu data:', error);
-      console.log('Using mock data fallback - menu items:', mockMenuItems.length, 'combos:', mockCombos.length);
-      setMenuItems(mockMenuItems);
-      setComboMeals(mockCombos);
-      toast.info('Using sample menu data');
+      toast.error('Failed to load menu items');
+      setMenuItems([]);
+      setComboMeals([]);
     } finally {
       setLoading(false);
     }
@@ -558,7 +386,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
   // Feature #6: Add combo to order with split select capability
   const addComboToOrder = (combo: ComboMeal) => {
-    const comboItemsDetails = combo.items.map(itemId => 
+    const comboItemsDetails = (combo.items || []).map(itemId => 
       menuItems.find(mi => mi.id === itemId)
     ).filter(Boolean) as MenuItem[];
 
@@ -1121,12 +949,21 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                                     <div className="flex gap-4">
                                       {/* Combo Image */}
                                       <div className="w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-orange-100 to-amber-100 relative">
-                                        <img
-                                          src={combo.image}
-                                          alt={combo.name}
-                                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                                          style={{ aspectRatio: '1', objectFit: 'cover' }}
-                                        />
+                                        {combo.image && combo.image !== "" ? (
+                                          <img
+                                            src={combo.image}
+                                            alt={combo.name}
+                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                            style={{ aspectRatio: '1', objectFit: 'cover' }}
+                                            onError={(e) => {
+                                              e.currentTarget.style.display = 'none';
+                                            }}
+                                          />
+                                        ) : (
+                                          <div className="w-full h-full flex items-center justify-center">
+                                            <Package className="h-8 w-8 text-orange-400" />
+                                          </div>
+                                        )}
                                         {combo.calories && (
                                           <div className="absolute bottom-1 right-1 bg-black/70 text-[#FF7F50] text-xs px-2 py-0.5 rounded">
                                             {combo.calories} cal
@@ -1173,15 +1010,15 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                                         className="w-full text-xs"
                                       >
                                         {isExpanded ? (
-                                          <>
+                                          <div key="expanded" className="flex items-center">
                                             <ChevronUp className="h-3 w-3 mr-1" />
                                             Hide Items
-                                          </>
+                                          </div>
                                         ) : (
-                                          <>
+                                          <div key="collapsed" className="flex items-center">
                                             <ChevronDown className="h-3 w-3 mr-1" />
-                                            View Items ({combo.items.length})
-                                          </>
+                                            View Items ({combo.items?.length || 0})
+                                          </div>
                                         )}
                                       </Button>
 
@@ -1194,7 +1031,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                                             className="overflow-hidden"
                                           >
                                             <div className="border rounded p-2 space-y-1 text-xs bg-gray-50">
-                                              {combo.items.map(itemId => {
+                                              {(combo.items || []).map(itemId => {
                                                 const item = menuItems.find(mi => mi.id === itemId);
                                                 return item ? (
                                                   <div key={itemId} className="flex justify-between">
@@ -1204,7 +1041,12 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                                                       {item.price}
                                                     </span>
                                                   </div>
-                                                ) : null;
+                                                ) : (
+                                                  <div key={itemId} className="flex justify-between text-gray-400">
+                                                    <span>• Item not found</span>
+                                                    <span>-</span>
+                                                  </div>
+                                                );
                                               })}
                                             </div>
                                           </motion.div>
@@ -1301,7 +1143,8 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                         </div>
                       ) : (
                         <ScrollArea className="h-[450px] pr-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">\n                            {filteredMenuItems.map((item) => (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
+                            {filteredMenuItems.map((item) => (
                               <Card
                                 key={item.id}
                                 className="cursor-pointer hover:shadow-lg transition-shadow duration-150 border-2 hover:border-[#8B5E34]/50 group active:scale-[0.98]"
