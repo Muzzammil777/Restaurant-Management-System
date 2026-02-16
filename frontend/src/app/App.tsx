@@ -63,14 +63,13 @@ function AppContent() {
 
   // DEV MODE: Auto-set admin user for API calls (replace with real login later)
   useEffect(() => {
-    if (!localStorage.getItem('rms_current_user')) {
-      localStorage.setItem('rms_current_user', JSON.stringify({
-        id: '698b3cf2420708d34704575f',
-        name: 'Test Admin',
-        email: 'admin@example.com',
-        role: 'admin'
-      }));
-    }
+    // Force set admin user from team's MongoDB
+    localStorage.setItem('rms_current_user', JSON.stringify({
+      id: '698dbe49d643e9d1ee2826d3',
+      name: 'Admin User',
+      email: 'admin@example.com',
+      role: 'admin'
+    }));
   }, []);
 
   // Listen for stock management navigation event from Kitchen
