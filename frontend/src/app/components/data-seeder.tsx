@@ -98,6 +98,7 @@ export function DataSeeder() {
           role: 'chef',
           phone: '555-0101',
           email: 'john.smith@restaurant.com',
+          password: 'password123',
           shift: 'morning',
         },
         {
@@ -105,6 +106,7 @@ export function DataSeeder() {
           role: 'waiter',
           phone: '555-0102',
           email: 'sarah.johnson@restaurant.com',
+          password: 'password123',
           shift: 'afternoon',
         },
         {
@@ -112,6 +114,7 @@ export function DataSeeder() {
           role: 'cashier',
           phone: '555-0103',
           email: 'mike.davis@restaurant.com',
+          password: 'password123',
           shift: 'evening',
         },
         {
@@ -119,6 +122,7 @@ export function DataSeeder() {
           role: 'manager',
           phone: '555-0104',
           email: 'emily.wilson@restaurant.com',
+          password: 'password123',
           shift: 'morning',
         },
       ];
