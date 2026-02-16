@@ -64,7 +64,7 @@ function AppContent() {
   // DEV MODE: Auto-set admin user for API calls (replace with real login later)
   useEffect(() => {
     // Only set admin user in development if not already set
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       const existingUser = localStorage.getItem('rms_current_user');
       if (!existingUser) {
         localStorage.setItem('rms_current_user', JSON.stringify({

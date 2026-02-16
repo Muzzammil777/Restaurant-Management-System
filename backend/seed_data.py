@@ -92,43 +92,43 @@ async def seed():
         },
     ]
     
-    print("\n=== SEEDING ROLES ===")
-    for role in roles:
-        result = await db.roles.update_one(
-            {'_id': role['_id']},
-            {'$set': role},
-            upsert=True
-        )
-        status = "updated" if result.modified_count else "created/exists"
-        print(f"  {role['_id']}: {status}")
-    
-    # Check for existing admin staff or create one
-    print("\n=== CHECKING ADMIN STAFF ===")
-    admin = await db.staff.find_one({'role': 'admin'})
-    
-    if admin:
-        print(f"  Admin exists: {admin['_id']} - {admin.get('name', 'N/A')}")
-        admin_id = str(admin['_id'])
-    else:
-        result = await db.staff.insert_one({
-            'name': 'Test Admin',
-            'email': 'admin@example.com',
-            'role': 'admin',
-            'active': True,
-            'createdAt': datetime.utcnow().isoformat()
-        })
-        admin_id = str(result.inserted_id)
-        print(f"  Created admin: {admin_id}")
-    
-    # Show all staff
-    print("\n=== ALL STAFF ===")
-    async for s in db.staff.find():
-        print(f"  {s['_id']} | {s.get('name', 'N/A')} | role: {s.get('role', 'N/A')}")
-    
-    print(f"\n=== DONE ===")
-    print(f"Use this admin ID in frontend localStorage:")
-    print(f"  {admin_id}")
-    
+        print("\n=== SEEDING ROLES ===")
+        for role in roles:
+            result = await db.roles.update_one(
+                {'_id': role['_id']},
+                {'$set': role},
+                upsert=True
+            )
+            status = "updated" if result.modified_count else "created/exists"
+            print(f"  {role['_id']}: {status}")
+        
+        # Check for existing admin staff or create one
+        print("\n=== CHECKING ADMIN STAFF ===")
+        admin = await db.staff.find_one({'role': 'admin'})
+        
+        if admin:
+            print(f"  Admin exists: {admin['_id']} - {admin.get('name', 'N/A')}")
+            admin_id = str(admin['_id'])
+        else:
+            result = await db.staff.insert_one({
+                'name': 'Test Admin',
+                'email': 'admin@example.com',
+                'role': 'admin',
+                'active': True,
+                'createdAt': datetime.utcnow().isoformat()
+            })
+            admin_id = str(result.inserted_id)
+            print(f"  Created admin: {admin_id}")
+        
+        # Show all staff
+        print("\n=== ALL STAFF ===")
+        async for s in db.staff.find():
+            print(f"  {s['_id']} | {s.get('name', 'N/A')} | role: {s.get('role', 'N/A')}")
+        
+        print(f"\n=== DONE ===")
+        print(f"Use this admin ID in frontend localStorage:")
+        print(f"  {admin_id}")
+        
     except Exception as e:
         print(f"ERROR: Failed to seed database: {e}")
         traceback.print_exc()
