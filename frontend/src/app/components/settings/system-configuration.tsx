@@ -113,8 +113,8 @@ export function SystemConfiguration() {
             <div className="flex items-center gap-2">
               <Wrench className="h-5 w-5 text-primary" />
               <div>
-                <CardTitle>System Configuration</CardTitle>
-                <CardDescription>Configure restaurant details and system preferences</CardDescription>
+                <CardTitle className="text-black">System Configuration</CardTitle>
+                <CardDescription className="text-black">Configure restaurant details and system preferences</CardDescription>
               </div>
             </div>
             <Button onClick={handleSave} disabled={saving}>

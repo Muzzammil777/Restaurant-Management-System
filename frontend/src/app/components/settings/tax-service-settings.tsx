@@ -178,8 +178,8 @@ export function TaxServiceSettings() {
           <div className="flex items-center gap-2">
             <Percent className="h-5 w-5 text-primary" />
             <div>
-              <CardTitle>GST / VAT Configuration</CardTitle>
-              <CardDescription>Configure tax rates for billing</CardDescription>
+              <CardTitle className="text-black">GST / VAT Configuration</CardTitle>
+              <CardDescription className="text-black">Configure tax rates for billing</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -246,8 +246,8 @@ export function TaxServiceSettings() {
           <div className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-primary" />
             <div>
-              <CardTitle>Service & Additional Charges</CardTitle>
-              <CardDescription>Configure service and packaging charges</CardDescription>
+              <CardTitle className="text-black">Service & Additional Charges</CardTitle>
+              <CardDescription className="text-black">Configure service and packaging charges</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -321,8 +321,8 @@ export function TaxServiceSettings() {
             <div className="flex items-center gap-2">
               <Tag className="h-5 w-5 text-primary" />
               <div>
-                <CardTitle>Default Discount Rules</CardTitle>
-                <CardDescription>Manage automatic discount policies</CardDescription>
+                <CardTitle className="text-black">Default Discount Rules</CardTitle>
+                <CardDescription className="text-black">Manage automatic discount policies</CardDescription>
               </div>
             </div>
             <Dialog open={isAddDiscountOpen} onOpenChange={setIsAddDiscountOpen}>

@@ -207,8 +207,8 @@ export function RoleBasedAccessControl() {
             <div className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-primary" />
               <div>
-                <CardTitle>Role-Based Access Control</CardTitle>
-                <CardDescription>Manage user roles and module access permissions</CardDescription>
+                <CardTitle className="text-black">Role-Based Access Control</CardTitle>
+                <CardDescription className="text-black">Manage user roles and module access permissions</CardDescription>
               </div>
             </div>
             <Dialog open={isAddRoleOpen} onOpenChange={setIsAddRoleOpen}>

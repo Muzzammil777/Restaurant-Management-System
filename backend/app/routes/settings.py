@@ -474,6 +474,7 @@ async def get_backup_config():
             '_id': 'backup_settings',
             'autoBackupEnabled': True,
             'frequency': 'daily',
+            'backupTime': '02:00',
             'retentionDays': 30,
             'backupLocation': 'local',
             'googleDriveEnabled': False,
@@ -505,6 +506,13 @@ async def update_backup_config(config: BackupConfig, request: Request):
         userName=request.headers.get('x-user-name'),
         ip=request.client.host if request.client else None
     )
+    
+    # Update the scheduler with new configuration
+    try:
+        from ..scheduler import update_backup_schedule
+        await update_backup_schedule()
+    except Exception as e:
+        print(f"[Settings] Warning: Could not update scheduler: {e}")
     
     return serialize_doc(await coll.find_one({'_id': 'backup_settings'}))
 

@@ -179,6 +179,7 @@ class BackupCreate(BaseModel):
 class BackupConfig(BaseModel):
     autoBackupEnabled: bool = True
     frequency: Optional[str] = "daily"  # hourly, daily, weekly, monthly
+    backupTime: Optional[str] = "02:00"  # HH:MM format for scheduled backups
     retentionDays: int = 30
     backupLocation: Optional[str] = "local"  # local, google_drive, both
     googleDriveFolderId: Optional[str] = None

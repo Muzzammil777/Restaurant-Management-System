@@ -254,8 +254,8 @@ export function AuditLogs() {
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
               <div>
-                <CardTitle>Audit Logs</CardTitle>
-                <CardDescription>System activity and user action tracking</CardDescription>
+                <CardTitle className="text-black">Audit Logs</CardTitle>
+                <CardDescription className="text-black">System activity and user action tracking</CardDescription>
               </div>
             </div>
             <div className="flex gap-2">

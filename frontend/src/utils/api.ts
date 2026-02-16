@@ -399,6 +399,7 @@ export const backupApi = {
   updateConfig: (data: {
     autoBackupEnabled: boolean;
     frequency: string;
+    backupTime?: string;
     retentionDays: number;
     backupLocation?: string;
     googleDriveEnabled?: boolean;

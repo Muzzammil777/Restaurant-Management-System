@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -176,10 +176,10 @@ export function AccountAuthentication() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Lock className="h-5 w-5 text-primary" />
-            <div>
-              <CardTitle>Change Password</CardTitle>
-              <CardDescription>Update your account password for enhanced security</CardDescription>
-            </div>
+              <div>
+                <CardTitle className="text-black">Change Password</CardTitle>
+                <CardDescription className="text-black">Update your account password for enhanced security</CardDescription>
+              </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -263,8 +263,8 @@ export function AccountAuthentication() {
             <div className="flex items-center gap-2">
               <User className="h-5 w-5 text-primary" />
               <div>
-                <CardTitle>User Accounts</CardTitle>
-                <CardDescription>Activate, deactivate, and manage user accounts</CardDescription>
+                <CardTitle className="text-black">User Accounts</CardTitle>
+                <CardDescription className="text-black">Activate, deactivate, and manage user accounts</CardDescription>
               </div>
             </div>
             <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>

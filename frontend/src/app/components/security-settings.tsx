@@ -103,8 +103,8 @@ export function SecuritySettings() {
       {/* Header */}
       <div className="module-container flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-foreground">Settings</h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h2 className="text-2xl font-semibold tracking-tight text-white">Settings</h2>
+          <p className="text-sm text-white mt-1">
             Manage system configuration, security, and preferences
           </p>
         </div>

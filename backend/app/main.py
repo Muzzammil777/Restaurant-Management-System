@@ -10,6 +10,7 @@ load_dotenv(BASE_DIR / '.env')
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .db import init_db, get_db
+from .scheduler import start_scheduler, shutdown_scheduler
 
 # Import all route modules
 from .routes import settings as settings_router
@@ -45,9 +46,16 @@ async def startup():
         from .db import init_db
         init_db()
         print("✅ MongoDB connected successfully")
+        # Start the backup scheduler
+        await start_scheduler()
     except Exception as e:
         print(f"⚠️  MongoDB connection warning: {e}")
         print("📝 API will work in read-only mode or with mock data")
+
+
+@app.on_event('shutdown')
+async def shutdown():
+    shutdown_scheduler()
 
 
 # Settings & Security

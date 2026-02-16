@@ -544,6 +544,60 @@ export function OffersLoyalty() {
     resetPlanForm();
   };
 
+  const handleAddPlan = () => {
+    if (!planFormData.name || !planFormData.monthlyPrice) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+
+    const tierConfig = {
+      silver: {
+        icon: <Star className="h-6 w-6" />,
+        color: "text-gray-600",
+        bgColor: "bg-gray-50",
+        borderColor: "border-gray-300",
+      },
+      gold: {
+        icon: <Crown className="h-6 w-6" />,
+        color: "text-yellow-600",
+        bgColor: "bg-yellow-50",
+        borderColor: "border-yellow-300",
+      },
+      platinum: {
+        icon: <Trophy className="h-6 w-6" />,
+        color: "text-purple-600",
+        bgColor: "bg-purple-50",
+        borderColor: "border-purple-300",
+      },
+    };
+
+    const config = tierConfig[planFormData.tier];
+
+    const newPlan: MembershipPlan = {
+      id: Date.now().toString(),
+      name: planFormData.name,
+      tier: planFormData.tier,
+      icon: config.icon,
+      color: config.color,
+      bgColor: config.bgColor,
+      borderColor: config.borderColor,
+      monthlyPrice: Number(planFormData.monthlyPrice),
+      billingCycle: "/monthly",
+      status: "active",
+      benefits: {
+        loyaltyBonus: Number(planFormData.loyaltyBonus) || 0,
+        exclusiveCoupons: planFormData.exclusiveCoupons,
+        freeDelivery: planFormData.freeDelivery,
+        prioritySupport: planFormData.prioritySupport,
+      },
+    };
+
+    setMembershipPlans([...membershipPlans, newPlan]);
+    toast.success(`${planFormData.name} created successfully!`);
+    setPlanDialogOpen(false);
+    resetPlanForm();
+  };
+
   const togglePlanStatus = (planId: string) => {
     setMembershipPlans(
       membershipPlans.map((plan) => {
@@ -1177,6 +1231,13 @@ export function OffersLoyalty() {
                 Manage subscription plans for customers
               </p>
             </div>
+            <Button onClick={() => {
+              resetPlanForm();
+              setPlanDialogOpen(true);
+            }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Membership Plan
+            </Button>
           </div>
 
           {/* Plan Cards */}
@@ -1332,7 +1393,7 @@ export function OffersLoyalty() {
             ))}
           </div>
 
-          {/* Edit Plan Dialog */}
+          {/* Edit/Add Plan Dialog */}
           <Dialog
             open={planDialogOpen}
             onOpenChange={(open) => {
@@ -1342,24 +1403,64 @@ export function OffersLoyalty() {
           >
             <DialogContent className="sm:max-w-[600px]">
               <DialogHeader>
-                <DialogTitle>Edit Membership Plan</DialogTitle>
+                <DialogTitle>{editingPlan ? 'Edit Membership Plan' : 'Add Membership Plan'}</DialogTitle>
                 <DialogDescription>
-                  Update plan details and benefits
+                  {editingPlan ? 'Update plan details and benefits' : 'Create a new membership plan for customers'}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Plan Name *</Label>
-                  <Input
-                    placeholder="e.g., Gold Plan"
-                    value={planFormData.name}
-                    onChange={(e) =>
-                      setPlanFormData({
-                        ...planFormData,
-                        name: e.target.value,
-                      })
-                    }
-                  />
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Plan Name *</Label>
+                    <Input
+                      placeholder="e.g., Gold Plan"
+                      value={planFormData.name}
+                      onChange={(e) =>
+                        setPlanFormData({
+                          ...planFormData,
+                          name: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Plan Tier *</Label>
+                    <Select
+                      value={planFormData.tier}
+                      onValueChange={(value: "silver" | "gold" | "platinum") =>
+                        setPlanFormData({
+                          ...planFormData,
+                          tier: value,
+                        })
+                      }
+                      disabled={!!editingPlan}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select tier" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="silver">
+                          <div className="flex items-center gap-2">
+                            <Star className="h-4 w-4 text-gray-600" />
+                            Silver
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="gold">
+                          <div className="flex items-center gap-2">
+                            <Crown className="h-4 w-4 text-yellow-600" />
+                            Gold
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="platinum">
+                          <div className="flex items-center gap-2">
+                            <Trophy className="h-4 w-4 text-purple-600" />
+                            Platinum
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
@@ -1464,9 +1565,9 @@ export function OffersLoyalty() {
                 >
                   Cancel
                 </Button>
-                <Button onClick={handleUpdatePlan}>
+                <Button onClick={editingPlan ? handleUpdatePlan : handleAddPlan}>
                   <Save className="h-4 w-4 mr-2" />
-                  Save Changes
+                  {editingPlan ? 'Save Changes' : 'Create Plan'}
                 </Button>
               </DialogFooter>
             </DialogContent>

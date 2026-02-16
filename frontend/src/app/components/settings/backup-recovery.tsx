@@ -7,7 +7,8 @@ import { Switch } from '@/app/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
 import { Separator } from '@/app/components/ui/separator';
-import { Database, Download, Upload, RefreshCcw, Check, AlertCircle, Calendar, Clock, HardDrive, Loader2 } from 'lucide-react';
+import { Input } from '@/app/components/ui/input';
+import { Database, Download, Upload, RefreshCcw, Check, AlertCircle, Calendar, Clock, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { backupApi } from '@/utils/api';
 
@@ -25,6 +26,7 @@ interface Backup {
 interface BackupConfig {
   autoBackupEnabled: boolean;
   frequency: string;
+  backupTime: string;
   retentionDays: number;
   backupLocation: string;
   googleDriveEnabled: boolean;
@@ -35,6 +37,7 @@ export function BackupRecovery() {
   const [config, setConfig] = useState<BackupConfig>({
     autoBackupEnabled: true,
     frequency: 'daily',
+    backupTime: '02:00',
     retentionDays: 30,
     backupLocation: 'local',
     googleDriveEnabled: false,
@@ -57,6 +60,7 @@ export function BackupRecovery() {
           setConfig({
             autoBackupEnabled: configData.autoBackupEnabled ?? true,
             frequency: configData.frequency ?? 'daily',
+            backupTime: configData.backupTime ?? '02:00',
             retentionDays: configData.retentionDays ?? 30,
             backupLocation: configData.backupLocation ?? 'local',
             googleDriveEnabled: configData.googleDriveEnabled ?? false,
@@ -185,8 +189,8 @@ export function BackupRecovery() {
             <div className="flex items-center gap-2">
               <Database className="h-5 w-5 text-primary" />
               <div>
-                <CardTitle>Backup Actions</CardTitle>
-                <CardDescription>Create and manage backups</CardDescription>
+                <CardTitle className="text-black">Backup Actions</CardTitle>
+                <CardDescription className="text-black">Create and manage backups</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -228,12 +232,25 @@ export function BackupRecovery() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="hourly">Every Hour</SelectItem>
-                      <SelectItem value="daily">Daily (2:00 AM)</SelectItem>
-                      <SelectItem value="weekly">Weekly (Sunday 2:00 AM)</SelectItem>
-                      <SelectItem value="monthly">Monthly (1st, 2:00 AM)</SelectItem>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly (Sunday)</SelectItem>
+                      <SelectItem value="monthly">Monthly (1st)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
+                {config.frequency !== 'hourly' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="backup-time">Backup Time</Label>
+                    <Input
+                      id="backup-time"
+                      type="time"
+                      value={config.backupTime}
+                      onChange={(e) => setConfig({ ...config, backupTime: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">Set the time for automatic backups</p>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="retention">Retention Period (Days)</Label>
@@ -271,8 +288,8 @@ export function BackupRecovery() {
             <div className="flex items-center gap-2">
               <Check className="h-5 w-5 text-green-500" />
               <div>
-                <CardTitle>Backup Status</CardTitle>
-                <CardDescription>Latest backup information</CardDescription>
+                <CardTitle className="text-black">Backup Status</CardTitle>
+                <CardDescription className="text-black">Latest backup information</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -282,8 +299,8 @@ export function BackupRecovery() {
                 <Check className="h-5 w-5 text-white" />
               </div>
               <div className="flex-1">
-                <p className="font-medium">Last Backup Successful</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="font-medium text-green-800 dark:text-green-200">Last Backup Successful</p>
+                <p className="text-sm text-green-700 dark:text-green-300">
                   {backups.length > 0 ? `${backups[0].date} at ${backups[0].time}` : 'No backups yet'}
                 </p>
               </div>
@@ -296,7 +313,7 @@ export function BackupRecovery() {
                   <span className="text-sm">Next Scheduled</span>
                 </div>
                 <span className="font-medium">
-                  {config.autoBackupEnabled ? 'Tomorrow 02:00 AM' : 'Disabled'}
+                  {config.autoBackupEnabled ? `Next ${config.frequency === 'hourly' ? 'hour' : `at ${config.backupTime}`}` : 'Disabled'}
                 </span>
               </div>
 
@@ -306,14 +323,6 @@ export function BackupRecovery() {
                   <span className="text-sm">Retention Period</span>
                 </div>
                 <span className="font-medium">{config.retentionDays} Days</span>
-              </div>
-
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-2">
-                  <HardDrive className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Storage Location</span>
-                </div>
-                <span className="font-medium">{config.backupLocation}</span>
               </div>
             </div>
           </CardContent>
@@ -326,8 +335,8 @@ export function BackupRecovery() {
           <div className="flex items-center gap-2">
             <Database className="h-5 w-5 text-primary" />
             <div>
-              <CardTitle>Backup History</CardTitle>
-              <CardDescription>Previous backups available for restore</CardDescription>
+              <CardTitle className="text-black">Backup History</CardTitle>
+              <CardDescription className="text-black">Previous backups available for restore</CardDescription>
             </div>
           </div>
         </CardHeader>
