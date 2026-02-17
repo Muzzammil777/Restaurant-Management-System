@@ -1,149 +1,414 @@
-/* Background images for different modules - cooking and kitchen themed */
+/* ============================================================
+   BACKGROUND IMAGES & PATTERNS FOR ALL MODULES
+   Restaurant Management System - Enhanced Visual Identity
+   ============================================================ */
 
-/* Login Page - Chef in kitchen background */
+/* ============================================
+   LOGIN PAGE - Animated Carousel Background
+   ============================================ */
 .bg-login-module {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.6) 100%), 
-              url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1920&q=80') center/cover no-repeat;
-  min-height: 100vh;
   position: relative;
+  background: linear-gradient(135deg, #8B5A2B 0%, #D4B896 50%, #E8D5C4 100%);
+  overflow: hidden;
 }
 
-/* Admin Dashboard - Modern kitchen equipment */
+.bg-login-module::before {
+  content: '';
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><defs><pattern id="food" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="30" cy="30" r="8" fill="%23ffffff" opacity="0.1"/><path d="M 50 20 L 60 40 L 40 40 Z" fill="%23ffffff" opacity="0.08"/><circle cx="70" cy="60" r="6" fill="%23ffffff" opacity="0.1"/><path d="M 20 70 Q 30 65 40 70" stroke="%23ffffff" stroke-width="1" fill="none" opacity="0.08"/></pattern></defs><rect width="400" height="400" fill="none"/><rect width="400" height="400" fill="url(%23food)"/></svg>') repeat;
+  animation: float-bg 20s ease-in-out infinite;
+  opacity: 0.15;
+}
+
+.bg-login-module::after {
+  content: '';
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><defs><pattern id="utensils" x="0" y="0" width="120" height="120" patternUnits="userSpaceOnUse"><g opacity="0.12"><path d="M 30 20 L 30 80" stroke="%23ffffff" stroke-width="2" fill="none"/><path d="M 20 30 L 40 30" stroke="%23ffffff" stroke-width="2" fill="none"/><path d="M 60 20 L 60 80" stroke="%23ffffff" stroke-width="2" fill="none"/><path d="M 60 35 L 70 30 L 70 70 L 60 65" stroke="%23ffffff" stroke-width="1.5" fill="none"/><circle cx="90" cy="50" r="15" stroke="%23ffffff" stroke-width="1.5" fill="none"/></g></pattern></defs><rect width="300" height="300" fill="url(%23utensils)"/></svg>') repeat;
+  animation: float-bg-reverse 25s ease-in-out infinite;
+  opacity: 0.1;
+}
+
+@keyframes float-bg {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(30px, -30px); }
+}
+
+@keyframes float-bg-reverse {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-40px, 40px); }
+}
+
+/* ============================================
+   ADMIN DASHBOARD
+   ============================================ */
 .bg-admin-module {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.4) 100%), 
-              url('https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1920&q=80') center/cover no-repeat fixed;
-  min-height: 100%;
+  background: linear-gradient(135deg, #FAF8F5 0%, #E8D5C4 50%, #D4B896 100%);
   position: relative;
+  overflow: hidden;
 }
 
-/* Kitchen Display System - Professional kitchen */
+.bg-admin-module::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid-admin" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><rect x="0" y="0" width="20" height="20" fill="none" stroke="%238B5A2B" stroke-width="0.5" opacity="0.08"/><circle cx="10" cy="10" r="1.5" fill="%238B5A2B" opacity="0.05"/><path d="M 10 2 L 10 18 M 2 10 L 18 10" stroke="%238B5A2B" stroke-width="0.3" opacity="0.04"/></pattern></defs><rect width="100" height="100" fill="url(%23grid-admin)"/></svg>') repeat;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* ============================================
+   MENU MANAGEMENT - Food & Dishes Theme
+   ============================================ */
+.bg-menu-module {
+  background: linear-gradient(135deg, #FFF5E6 0%, #FFE8CC 50%, #FFD699 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.bg-menu-module::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><defs><pattern id="dishes" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse"><g opacity="0.14"><circle cx="30" cy="30" r="17" fill="none" stroke="%23D4691E" stroke-width="1.2" opacity="0.9"/><circle cx="30" cy="30" r="11" fill="%23D4691E" opacity="0.09"/><path d="M 70 20 Q 76 25 70 30" stroke="%23D4691E" stroke-width="1.2" fill="none" opacity="0.12"/><path d="M 65 40 L 85 45 L 80 55 ZM 70 50 L 75 50" stroke="%23D4691E" stroke-width="1" fill="none" opacity="0.15"/><circle cx="50" cy="70" r="6" fill="%23D4691E" opacity="0.09"/><path d="M 20 80 Q 30 75 40 80" stroke="%23D4691E" stroke-width="0.8" fill="none" opacity="0.1"/></g></pattern></defs><rect width="200" height="200" fill="url(%23dishes)"/></svg>') repeat;
+  pointer-events: none;
+  opacity: 0.88;
+}
+
+/* ============================================
+   ORDER MANAGEMENT - Shopping/Cart Theme
+   ============================================ */
+.bg-order-module {
+  background: linear-gradient(135deg, #F0E6D2 0%, #E8D5C4 50%, #DFC2A0 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.bg-order-module::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150"><defs><pattern id="orders-pattern" x="0" y="0" width="75" height="75" patternUnits="userSpaceOnUse"><g opacity="0.13"><path d="M 20 15 L 30 35 L 50 35 L 35 48 L 42 68 L 20 55 L 20 15" fill="%238B5A2B"/><circle cx="55" cy="40" r="10" fill="none" stroke="%238B5A2B" stroke-width="1"/><rect x="60" y="20" width="12" height="30" fill="%238B5A2B" opacity="0.12"/><path d="M 20 70 Q 30 68 40 70 Q 35 75 20 75 Z" fill="%238B5A2B" opacity="0.08"/></g></pattern></defs><rect width="150" height="150" fill="url(%23orders-pattern)"/></svg>') repeat;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+/* ============================================
+   KITCHEN DISPLAY - Chef/Cooking Theme
+   ============================================ */
+.bg-kitchen-module,
 .bg-kitchen-display-module {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0.5) 100%), 
-              url('https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=1920&q=80') center/cover no-repeat fixed;
-  min-height: 100%;
+  background: linear-gradient(135deg, #FFF8F0 0%, #FFE8D6 50%, #FFD4B3 100%);
   position: relative;
+  overflow: hidden;
 }
 
-/* Order Management - Busy restaurant kitchen */
-.bg-order-management-module {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.5) 100%), 
-              url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1920&q=80') center/cover no-repeat fixed;
-  min-height: 100%;
-  position: relative;
+.bg-kitchen-module::before,
+.bg-kitchen-display-module::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180"><defs><pattern id="kitchen" x="0" y="0" width="90" height="90" patternUnits="userSpaceOnUse"><g opacity="0.12"><path d="M 30 20 L 35 50 L 25 50 Z" fill="%238B5A2B"/><path d="M 50 30 L 55 60 L 45 60 Z" fill="%23D4691E"/><path d="M 70 25 L 75 55 L 65 55 Z" fill="%238B5A2B"/><rect x="25" y="55" width="50" height="15" fill="%238B5A2B" opacity="0.15"/><circle cx="35" cy="75" r="2.5" fill="%238B5A2B"/><circle cx="55" cy="75" r="2.5" fill="%238B5A2B"/><circle cx="75" cy="75" r="2.5" fill="%238B5A2B"/><path d="M 45 25 Q 50 30 45 35" stroke="%23D4691E" stroke-width="0.8" fill="none" opacity="0.1"/></g></pattern></defs><rect width="180" height="180" fill="url(%23kitchen)"/></svg>') repeat;
+  pointer-events: none;
+  opacity: 0.85;
 }
 
-/* Menu Management - Food presentation and plating */
-.bg-menu-management-module {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.45) 100%), 
-              url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1920&q=80') center/cover no-repeat fixed;
-  min-height: 100%;
-  position: relative;
-}
-
-/* Inventory Management - Restaurant pantry */
-.bg-inventory-module {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.5) 100%), 
-              url('https://images.unsplash.com/photo-1542838132-92c53300491e?w=1920&q=80') center/cover no-repeat fixed;
-  min-height: 100%;
-  position: relative;
-}
-
-/* Delivery Management - Kitchen efficiency and delivery */
+/* ============================================
+   DELIVERY MANAGEMENT - Truck/Logistics Theme
+   ============================================ */
 .bg-delivery-module {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.5) 100%), 
-              url('https://images.unsplash.com/photo-1521305916504-4a1121188589?w=1920&q=80') center/cover no-repeat fixed;
-  min-height: 100%;
+  background: linear-gradient(135deg, #E6F3FF 0%, #D4E8FF 50%, #B3D9FF 100%);
   position: relative;
+  overflow: hidden;
 }
 
-/* Billing Management - Restaurant counter/cash */
+.bg-delivery-module::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><defs><pattern id="delivery" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse"><g opacity="0.14"><path d="M 20 40 L 50 40 L 55 55 L 15 55 Z" fill="%231E40AF"/><rect x="20" y="40" width="15" height="20" fill="%231E40AF"/><circle cx="28" cy="60" r="4" fill="%231E40AF"/><circle cx="47" cy="60" r="4" fill="%231E40AF"/><path d="M 55 35 L 65 40 L 65 50 L 55 45 Z" fill="%231E40AF" opacity="0.18"/><path d="M 65 42 Q 75 42 75 50 Q 75 58 65 55" stroke="%231E40AF" stroke-width="1" fill="none" opacity="0.1"/><path d="M 20 55 L 60 55 L 58 65 L 22 65 Z" fill="%231E40AF" opacity="0.08"/></g></pattern></defs><rect width="200" height="200" fill="url(%23delivery)"/></svg>') repeat;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+/* ============================================
+   INVENTORY MANAGEMENT - Storage/Package Theme
+   ============================================ */
+.bg-inventory-module {
+  background: linear-gradient(135deg, #F5E6D3 0%, #EDD5C4 50%, #E8C4B3 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.bg-inventory-module::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160"><defs><pattern id="inventory" x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse"><g opacity="0.13"><rect x="15" y="20" width="18" height="25" fill="%238B5A2B" stroke="%238B5A2B" stroke-width="0.5"/><rect x="38" y="20" width="18" height="25" fill="%238B5A2B" opacity="0.85" stroke="%238B5A2B" stroke-width="0.5"/><rect x="61" y="20" width="18" height="25" fill="%238B5A2B" opacity="0.65" stroke="%238B5A2B" stroke-width="0.5"/><rect x="15" y="50" width="18" height="25" fill="%238B5A2B" opacity="0.75" stroke="%238B5A2B" stroke-width="0.5"/><rect x="38" y="50" width="18" height="25" fill="%238B5A2B" stroke="%238B5A2B" stroke-width="0.5"/><rect x="61" y="50" width="18" height="25" fill="%238B5A2B" opacity="0.8" stroke="%238B5A2B" stroke-width="0.5"/><circle cx="24" cy="15" r="2" fill="%238B5A2B" opacity="0.1"/></g></pattern></defs><rect width="160" height="160" fill="url(%23inventory)"/></svg>') repeat;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+/* ============================================
+   BILLING/PAYMENT - Financial/Money Theme
+   ============================================ */
 .bg-billing-module {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.45) 100%), 
-              url('https://images.unsplash.com/photo-1421622548261-c45bfe178854?w=1920&q=80') center/cover no-repeat fixed;
-  min-height: 100%;
+  background: linear-gradient(135deg, #F0F5E6 0%, #E8F0D5 50%, #DFE8BA 100%);
   position: relative;
+  overflow: hidden;
 }
 
-/* Staff Management - Team working in kitchen */
-.bg-staff-module {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.5) 100%), 
-              url('https://images.unsplash.com/photo-1541542684-4f99a1415b5e?w=1920&q=80') center/cover no-repeat fixed;
-  min-height: 100%;
-  position: relative;
+.bg-billing-module::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140"><defs><pattern id="billing" x="0" y="0" width="70" height="70" patternUnits="userSpaceOnUse"><g opacity="0.15"><circle cx="20" cy="25" r="7" fill="%23657E15" stroke="%23657E15" stroke-width="1"/><rect x="32" y="18" width="22" height="14" fill="none" stroke="%23657E15" stroke-width="1.2"/><line x1="32" y1="21" x2="54" y2="21" stroke="%23657E15" stroke-width="0.7"/><line x1="32" y1="25" x2="54" y2="25" stroke="%23657E15" stroke-width="0.7"/><circle cx="25" cy="50" r="5" fill="%23657E15" opacity="0.13"/><rect x="40" y="45" width="20" height="10" fill="none" stroke="%23657E15" stroke-width="1"/><path d="M 58 20 L 62 20 L 62 32 L 58 32 Z" stroke="%23657E15" stroke-width="0.8" fill="none" opacity="0.1"/></g></pattern></defs><rect width="140" height="140" fill="url(%23billing)"/></svg>') repeat;
+  pointer-events: none;
+  opacity: 0.88;
 }
 
-/* Table Management - Restaurant dining area */
-.bg-table-management-module {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.45) 100%), 
-              url('https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1920&q=80') center/cover no-repeat fixed;
-  min-height: 100%;
-  position: relative;
-}
-
-/* Customer Management - Restaurant hospitality */
+/* ============================================
+   CUSTOMER MANAGEMENT - People/Customer Theme
+   ============================================ */
 .bg-customer-module {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.45) 100%), 
-              url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1920&q=80') center/cover no-repeat fixed;
-  min-height: 100%;
+  background: linear-gradient(135deg, #FFE6F0 0%, #FFD4E8 50%, #FFC2DC 100%);
   position: relative;
+  overflow: hidden;
 }
 
-/* Analytics/Reports - Data visualization kitchen metrics */
-.bg-analytics-module {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.5) 100%), 
-              url('https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1920&q=80') center/cover no-repeat fixed;
-  min-height: 100%;
-  position: relative;
+.bg-customer-module::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 170 170"><defs><pattern id="customers" x="0" y="0" width="85" height="85" patternUnits="userSpaceOnUse"><g opacity="0.14"><circle cx="25" cy="20" r="6.5" fill="%23BE184D"/><path d="M 15 30 L 35 30 L 33 40 Q 25 42 17 40 Z" fill="%23BE184D" opacity="0.9"/><circle cx="60" cy="25" r="5.5" fill="%23BE184D"/><path d="M 52 35 L 68 35 L 66 45 Q 60 46 54 45 Z" fill="%23BE184D" opacity="0.85"/><path d="M 30 55 Q 20 50 15 60" stroke="%23BE184D" stroke-width="1" fill="none" opacity="0.12"/><circle cx="50" cy="65" r="3" fill="%23BE184D" opacity="0.2"/></g></pattern></defs><rect width="170" height="170" fill="url(%23customers)"/></svg>') repeat;
+  pointer-events: none;
+  opacity: 0.9;
 }
 
-/* Offers & Loyalty - Restaurant promotions */
+/* ============================================
+   STAFF MANAGEMENT - Team/People Theme
+   ============================================ */
+.bg-staff-module {
+  background: linear-gradient(135deg, #E6F5FF 0%, #D4E8FF 50%, #C2DBFF 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.bg-staff-module::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><defs><pattern id="staff" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse"><g opacity="0.13"><circle cx="25" cy="20" r="5.5" fill="%231E40AF"/><rect x="20" y="28" width="10" height="14" fill="%231E40AF"/><path d="M 20 43 L 30 43 L 28 54 Q 25 55 22 54 Z" fill="%231E40AF" opacity="0.85"/><circle cx="65" cy="22" r="6" fill="%231E40AF"/><rect x="58" y="31" width="14" height="15" fill="%231E40AF" opacity="0.9"/><path d="M 58 48 L 72 48 L 70 61 Q 65 62 60 61 Z" fill="%231E40AF" opacity="0.8"/><line x1="30" y1="35" x2="45" y2="30" stroke="%231E40AF" stroke-width="0.8" opacity="0.08"/><circle cx="50" cy="65" r="2.5" fill="%231E40AF" opacity="0.15"/></g></pattern></defs><rect width="200" height="200" fill="url(%23staff)"/></svg>') repeat;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* ============================================
+   OFFERS/LOYALTY - Gift/Discount Theme
+   ============================================ */
 .bg-offers-module {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.45) 100%), 
-              url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1920&q=80') center/cover no-repeat fixed;
-  min-height: 100%;
+  background: linear-gradient(135deg, #FFF0E6 0%, #FFE6D9 50%, #FFDCC2 100%);
   position: relative;
+  overflow: hidden;
 }
 
-/* Settings - Restaurant administration */
-.bg-settings-module {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.5) 100%), 
-              url('https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1920&q=80') center/cover no-repeat fixed;
-  min-height: 100%;
-  position: relative;
+.bg-offers-module::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180"><defs><pattern id="offers" x="0" y="0" width="90" height="90" patternUnits="userSpaceOnUse"><g opacity="0.14"><rect x="15" y="20" width="30" height="30" fill="none" stroke="%23EA580C" stroke-width="1.5" rx="3"/><path d="M 25 20 L 25 17 M 35 20 L 35 17" stroke="%23EA580C" stroke-width="1.2"/><path d="M 15 35 L 12 35 M 45 35 L 48 35" stroke="%23EA580C" stroke-width="1.2"/><path d="M 20 25 L 40 45 M 40 25 L 20 45" stroke="%23EA580C" stroke-width="1" opacity="0.7"/><circle cx="70" cy="45" r="11" fill="none" stroke="%23EA580C" stroke-width="1.3"/><path d="M 70 33 L 70 27 M 70 57 L 70 63" stroke="%23EA580C" stroke-width="1.2"/><line x1="60" y1="45" x2="80" y2="45" stroke="%23EA580C" stroke-width="1" opacity="0.08"/></g></pattern></defs><rect width="180" height="180" fill="url(%23offers)"/></svg>') repeat;
+  pointer-events: none;
+  opacity: 0.9;
 }
 
-/* Notifications - Kitchen alerts */
+/* ============================================
+   REPORTS/ANALYTICS - Chart/Data Theme
+   ============================================ */
+.bg-analytics-module {
+  background: linear-gradient(135deg, #E8E6F5 0%, #D8D5ED 50%, #C8C2E0 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.bg-analytics-module::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><defs><pattern id="analytics" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse"><g opacity="0.14"><rect x="20" y="50" width="8" height="30" fill="%235B21B6" stroke="%235B21B6" stroke-width="0.5"/><rect x="35" y="35" width="8" height="45" fill="%235B21B6" opacity="0.85" stroke="%235B21B6" stroke-width="0.5"/><rect x="50" y="45" width="8" height="35" fill="%235B21B6" opacity="0.9" stroke="%235B21B6" stroke-width="0.5"/><rect x="65" y="55" width="8" height="25" fill="%235B21B6" opacity="0.75" stroke="%235B21B6" stroke-width="0.5"/><line x1="18" y1="80" x2="75" y2="80" stroke="%235B21B6" stroke-width="1.2" opacity="0.15"/><circle cx="30" cy="35" r="1.5" fill="%235B21B6" opacity="0.2"/></g></pattern></defs><rect width="200" height="200" fill="url(%23analytics)"/></svg>') repeat;
+  pointer-events: none;
+  opacity: 0.88;
+}
+
+/* ============================================
+   NOTIFICATIONS - Alert/Button Theme
+   ============================================ */
 .bg-notifications-module {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.45) 100%), 
-              url('https://images.unsplash.com/photo-1481931098730-318b6f776db0?w=1920&q=80') center/cover no-repeat fixed;
-  min-height: 100%;
+  background: linear-gradient(135deg, #FFF9E6 0%, #FFF4D9 50%, #FFECC2 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.bg-notifications-module::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160"><defs><pattern id="notifications" x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse"><g opacity="0.15"><path d="M 30 25 L 30 45 Q 20 50 20 55 L 40 55 Q 40 50 30 45 Z" fill="%23B45309" stroke="%23B45309" stroke-width="1"/><circle cx="35" cy="20" r="1.8" fill="%23B45309" opacity="0.8"/><rect x="32" y="58" width="6" height="3" fill="%23B45309" opacity="0.3"/><circle cx="60" cy="40" r="7.5" fill="none" stroke="%23B45309" stroke-width="1.2"/><line x1="60" y1="32" x2="60" y2="48" stroke="%23B45309" stroke-width="1" opacity="0.12"/><path d="M 50 60 L 70 60" stroke="%23B45309" stroke-width="0.8" opacity="0.1"/></g></pattern></defs><rect width="160" height="160" fill="url(%23notifications)"/></svg>') repeat;
+  pointer-events: none;
+  opacity: 0.92;
+}
+
+/* ============================================
+   SECURITY SETTINGS - Shield/Lock Theme
+   ============================================ */
+.bg-security-module,
+.bg-settings-module {
+  background: linear-gradient(135deg, #E6EEF5 0%, #D4E1ED 50%, #C2D4E5 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.bg-security-module::before,
+.bg-settings-module::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 190 190"><defs><pattern id="security" x="0" y="0" width="95" height="95" patternUnits="userSpaceOnUse"><g opacity="0.14"><path d="M 25 20 L 35 25 L 35 40 Q 30 45 25 40 L 25 25 Z" fill="%230F436E" stroke="%230F436E" stroke-width="1.2"/><circle cx="50" cy="30" r="9" fill="none" stroke="%230F436E" stroke-width="1.5"/><circle cx="50" cy="30" r="2.5" fill="%230F436E" opacity="0.8"/><line x1="50" y1="34" x2="50" y2="41" stroke="%230F436E" stroke-width="1.2" opacity="0.12"/><path d="M 70 25 L 75 28 L 75 42 Q 70 47 65 42 L 70 25 Z" fill="%230F436E" opacity="0.8" stroke="%230F436E" stroke-width="0.8"/><rect x="65" y="55" width="20" height="15" fill="none" stroke="%230F436E" stroke-width="1.2" rx="2"/><circle cx="75" cy="62" r="1.5" fill="%230F436E" opacity="0.2"/></g></pattern></defs><rect width="190" height="190" fill="url(%23security)"/></svg>') repeat;
+  pointer-events: none;
+  opacity: 0.87;
+}
+
+/* ============================================
+   TABLE MANAGEMENT - Table/Restaurant Theme
+   ============================================ */
+.bg-table-management-module {
+  background: linear-gradient(135deg, #F5E6D3 0%, #EDD5C4 50%, #E8C4B3 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.bg-table-management-module::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180"><defs><pattern id="tables-pattern" x="0" y="0" width="90" height="90" patternUnits="userSpaceOnUse"><g opacity="0.13"><circle cx="25" cy="30" r="14" fill="none" stroke="%238B5A2B" stroke-width="1.5"/><circle cx="25" cy="30" r="1.8" fill="%238B5A2B" opacity="0.8"/><path d="M 25 12 L 25 6 M 25 48 L 25 54 M 7 30 L 1 30 M 43 30 L 49 30" stroke="%238B5A2B" stroke-width="1.2" opacity="0.12"/><circle cx="65" cy="60" r="12" fill="none" stroke="%238B5A2B" stroke-width="1" opacity="0.85"/><circle cx="65" cy="60" r="1.3" fill="%238B5A2B" opacity="0.7"/><path d="M 40 75 Q 50 72 60 75" stroke="%238B5A2B" stroke-width="1" opacity="0.08"/></g></pattern></defs><rect width="180" height="180" fill="url(%23tables-pattern)"/></svg>') repeat;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+/* ============================================
+   GENERAL CONTENT AREA Background
+   ============================================ */
+.module-content {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.98), rgba(250, 248, 245, 0.98));
   position: relative;
 }
 
-/* POS/Quick Order - Fast service counter */
-.bg-pos-module {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.5) 100%), 
-              url('https://images.unsplash.com/photo-1421622548261-c45bfe178854?w=1920&q=80') center/cover no-repeat fixed;
-  min-height: 100%;
-  position: relative;
+.module-content::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 20% 50%, rgba(139, 90, 43, 0.03) 0%, transparent 50%),
+              radial-gradient(circle at 80% 80%, rgba(212, 184, 150, 0.02) 0%, transparent 50%);
+  pointer-events: none;
 }
 
-/* Audit Logs - Kitchen records */
-.bg-audit-module {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.5) 100%), 
-              url('https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1920&q=80') center/cover no-repeat fixed;
-  min-height: 100%;
-  position: relative;
-}
-
-/* Common container adjustments */
-.module-container {
+/* ============================================
+   Utility Classes for Module Containers
+   ============================================ */
+.has-module-bg {
   position: relative;
   z-index: 1;
 }
 
-/* Ensure proper stacking and visibility */
-.bg-module-base {
-  position: relative;
-  background-attachment: fixed;
+.has-module-bg::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ============================================
+   Enhanced Overlay for Better Contrast
+   ============================================ */
+.bg-admin-module::after,
+.bg-menu-module::after,
+.bg-order-management-module::after,
+.bg-kitchen-display-module::after,
+.bg-delivery-module::after,
+.bg-inventory-module::after,
+.bg-billing-module::after,
+.bg-customer-module::after,
+.bg-staff-module::after,
+.bg-offers-module::after,
+.bg-analytics-module::after,
+.bg-notifications-module::after,
+.bg-settings-module::after,
+.bg-table-management-module::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(ellipse at 20% 30%, rgba(255, 255, 255, 0.4) 0%, transparent 40%),
+    radial-gradient(ellipse at 80% 70%, rgba(255, 255, 255, 0.3) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+  .bg-login-module::before,
+  .bg-login-module::after {
+    opacity: 0.1;
+  }
+
+  .bg-admin-module::before,
+  .bg-menu-module::before,
+  .bg-order-module::before,
+  .bg-kitchen-module::before,
+  .bg-delivery-module::before,
+  .bg-inventory-module::before,
+  .bg-billing-module::before,
+  .bg-customer-module::before,
+  .bg-staff-module::before,
+  .bg-offers-module::before,
+  .bg-analytics-module::before,
+  .bg-notifications-module::before,
+  .bg-security-module::before,
+  .bg-tables-module::before {
+    opacity: 0.08;
+  }
+}
+
+/* Print styles - hide animated backgrounds */
+@media print {
+  .bg-login-module::before,
+  .bg-login-module::after {
+    display: none;
+  }
 }

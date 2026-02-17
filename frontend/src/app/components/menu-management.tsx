@@ -317,7 +317,7 @@ useEffect(() => {
   });
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB] flex justify-center" style={{ padding: '32px' }}>
+    <div className="bg-menu-module min-h-screen flex justify-center" style={{ padding: '32px' }}>
       <style>{`
         @keyframes float {
           0%, 100% { transform: translateY(0px); }
