@@ -33,9 +33,16 @@ export function KitchenDisplay() {
     try {
       const result = await ordersApi.list();
       const data = result.data || [];
-      setOrders(data.filter((order: Order) => 
-        ['placed', 'preparing', 'ready'].includes(order.status))
-      );
+      // Map _id to id for frontend compatibility and filter for kitchen orders
+      const mappedOrders = data
+        .map((order: any) => ({
+          ...order,
+          id: order._id || order.id,
+        }))
+        .filter((order: Order) => 
+          ['placed', 'preparing', 'ready'].includes(order.status)
+        );
+      setOrders(mappedOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
       setOrders([]); // Set empty array on error
@@ -46,7 +53,8 @@ export function KitchenDisplay() {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      const cleanId = orderId.replace('order:', '');
+      // Clean the order ID - remove any prefix and get raw MongoDB ID
+      const cleanId = orderId.replace('order:', '').replace(/^.*:/, '');
       await ordersApi.updateStatus(cleanId, newStatus);
       toast.success('Order updated!');
       

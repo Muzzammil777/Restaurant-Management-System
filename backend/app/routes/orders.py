@@ -20,6 +20,7 @@ def serialize_doc(doc):
     if doc is None:
         return None
     doc["_id"] = str(doc["_id"])
+    doc["id"] = doc["_id"]  # Add id field for frontend compatibility
     return doc
 
 

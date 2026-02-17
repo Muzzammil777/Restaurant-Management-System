@@ -146,8 +146,8 @@ export function OrderManagement() {
         setUndoCountdown(10);
       }
 
-      // Use real API
-      const cleanId = orderId.replace('order:', '');
+      // Use real API - clean the order ID to get raw MongoDB ID
+      const cleanId = orderId.replace('order:', '').replace(/^.*:/, '');
       await ordersApi.updateStatus(cleanId, newStatus);
       const statusText = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
       toast.success(`Order marked as ${statusText}!`);
