@@ -482,7 +482,7 @@ function BillGenerationTab({ orders, onInvoiceGenerated }: { orders: Order[], on
                    <div className="flex justify-between items-end relative z-10">
                      <div>
                        <p className="font-semibold text-gray-900 group-hover:text-[#8B5A2B] transition-colors">{order.customerName}</p>
-                       <p className="text-xs text-muted-foreground">{order.items.length} Items</p>
+                       <p className="text-xs text-muted-foreground">{order.items?.length || 0} Items</p>
                      </div>
                      <p className="font-bold text-lg text-[#000000]">₹{order.totalAmount}</p>
                    </div>

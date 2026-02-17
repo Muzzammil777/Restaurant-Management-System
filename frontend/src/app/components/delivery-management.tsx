@@ -339,7 +339,7 @@ export function DeliveryManagement() {
                        </div>
                        <div className="text-right">
                          <p className="font-bold">₹{order.totalAmount}</p>
-                         <p className="text-xs text-muted-foreground">{order.items.length} Items</p>
+                         <p className="text-xs text-muted-foreground">{order.items?.length || 0} Items</p>
                        </div>
                      </div>
                    </CardHeader>

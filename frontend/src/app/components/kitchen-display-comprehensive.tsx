@@ -259,7 +259,7 @@ function BatchView({ orders, activeTerminal }: { orders: KitchenOrder[]; activeT
   const batchItems: Record<string, BatchItem> = {};
 
   orders.forEach(order => {
-    order.items.forEach(item => {
+    (order.items || []).forEach(item => {
       if (!batchItems[item.name]) {
         batchItems[item.name] = {
           name: item.name,
@@ -442,7 +442,7 @@ export function KitchenDisplayComprehensive() {
     ? []
     : preparingOrders.filter((order) => {
         if (activeTerminal === 'HEAD_CHEF') return true;
-        return order.items.some((item) => getStationForItem(item.name) === activeTerminal);
+        return (order.items || []).some((item) => getStationForItem(item.name) === activeTerminal);
       });
 
   if (loading) {
