@@ -1064,6 +1064,24 @@ export const offersApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+
+  // Feedback
+  listFeedback: (params?: { customerId?: string; orderId?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.customerId) query.append('customer_id', params.customerId);
+    if (params?.orderId) query.append('order_id', params.orderId);
+    const queryStr = query.toString();
+    return fetchApi<any[]>(`/offers/feedback${queryStr ? `?${queryStr}` : ''}`);
+  },
+  getFeedbackStats: () => fetchApi<{ totalFeedback: number; totalPointsAwarded: number; averageRating: number }>('/offers/feedback/stats'),
+  createFeedback: (data: { customerName: string; customerId: string; orderId: string; rating: number; comment: string }) =>
+    fetchApi<any>('/offers/feedback', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deleteFeedback: (id: string) => fetchApi<{ success: boolean }>(`/offers/feedback/${id}`, {
+    method: 'DELETE',
+  }),
 };
 
 

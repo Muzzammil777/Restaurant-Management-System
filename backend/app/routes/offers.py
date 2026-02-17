@@ -347,3 +347,138 @@ async def update_loyalty_config(data: dict, request: Request):
     await log_audit("update", "loyalty_config", "loyalty_config")
     
     return {"success": True, "config": data}
+
+
+# ============ FEEDBACK ============
+
+FEEDBACK_BASE_POINTS = 50  # Points for any feedback
+FEEDBACK_DETAIL_BONUS = 25  # Bonus if comment > 50 chars
+
+
+@router.get("/feedback")
+async def list_feedback(
+    customer_id: Optional[str] = None,
+    order_id: Optional[str] = None,
+):
+    """Get all customer feedback"""
+    db = get_db()
+    query = {}
+    
+    if customer_id:
+        query["customerId"] = customer_id
+    if order_id:
+        query["orderId"] = order_id
+    
+    feedbacks = await db.feedback.find(query).sort("submittedAt", -1).to_list(200)
+    return [serialize_doc(f) for f in feedbacks]
+
+
+@router.get("/feedback/stats")
+async def get_feedback_stats():
+    """Get feedback statistics"""
+    db = get_db()
+    
+    pipeline = [
+        {
+            "$group": {
+                "_id": None,
+                "totalFeedback": {"$sum": 1},
+                "totalPointsAwarded": {"$sum": "$pointsAwarded"},
+                "averageRating": {"$avg": "$rating"},
+            }
+        }
+    ]
+    
+    result = await db.feedback.aggregate(pipeline).to_list(1)
+    
+    if result:
+        stats = result[0]
+        return {
+            "totalFeedback": stats.get("totalFeedback", 0),
+            "totalPointsAwarded": stats.get("totalPointsAwarded", 0),
+            "averageRating": round(stats.get("averageRating", 0), 1),
+        }
+    
+    return {"totalFeedback": 0, "totalPointsAwarded": 0, "averageRating": 0}
+
+
+@router.post("/feedback")
+async def create_feedback(data: dict):
+    """
+    Submit customer feedback and award loyalty points.
+    
+    Points: 50 base + 25 bonus if comment > 50 characters
+    """
+    db = get_db()
+    
+    # Validate required fields
+    required = ["customerName", "customerId", "orderId", "rating", "comment"]
+    for field in required:
+        if field not in data or not data[field]:
+            raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+    
+    # Calculate loyalty points
+    comment = data.get("comment", "")
+    points = FEEDBACK_BASE_POINTS
+    if len(comment) > 50:
+        points += FEEDBACK_DETAIL_BONUS
+    
+    # Create feedback document
+    feedback_doc = {
+        "customerName": data["customerName"],
+        "customerId": data["customerId"],
+        "orderId": data["orderId"],
+        "rating": int(data["rating"]),
+        "comment": comment,
+        "pointsAwarded": points,
+        "submittedAt": datetime.utcnow(),
+    }
+    
+    result = await db.feedback.insert_one(feedback_doc)
+    feedback_doc["_id"] = result.inserted_id
+    
+    # Award loyalty points to customer
+    await db.customers.update_one(
+        {"_id": data["customerId"]},
+        {
+            "$inc": {"loyaltyPoints": points},
+            "$push": {
+                "pointsHistory": {
+                    "type": "feedback",
+                    "points": points,
+                    "description": f"Feedback for order {data['orderId']}",
+                    "date": datetime.utcnow(),
+                }
+            }
+        },
+        upsert=False  # Only update if customer exists
+    )
+    
+    await log_audit("create", "feedback", str(result.inserted_id))
+    
+    return {
+        **serialize_doc(feedback_doc),
+        "message": f"Thank you! You earned {points} loyalty points.",
+    }
+
+
+@router.delete("/feedback/{feedback_id}")
+async def delete_feedback(feedback_id: str, request: Request):
+    """Delete feedback (admin only)"""
+    db = get_db()
+    await require_offers_permission(request)
+    
+    try:
+        obj_id = ObjectId(feedback_id)
+    except (InvalidId, TypeError):
+        obj_id = feedback_id
+    
+    result = await db.feedback.delete_one({"_id": obj_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    
+    await log_audit("delete", "feedback", feedback_id)
+    
+    return {"success": True}
+
