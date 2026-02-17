@@ -801,9 +801,17 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
       } else {
         throw new Error(result.detail || 'Failed to create order');
       }
-    } catch (error) {
+    } catch (error: any) {
+      let errorMsg = 'Failed to create order';
+      if (error instanceof Error) {
+        errorMsg = error.message;
+      } else if (typeof error === 'string') {
+        errorMsg = error;
+      } else if (error && error.detail) {
+        errorMsg = error.detail;
+      }
       console.error('Error creating order:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to create order');
+      toast.error(`Order creation failed: ${errorMsg}`);
       playSound('error', soundEnabled);
     }
   };
@@ -855,16 +863,22 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                 
                 {/* Feature #7: Menu Sync Badge + Role Warning */}
                 <div className="flex items-center gap-3">
-                  {currentRole !== 'waiter' && (
+                  {currentRole !== 'waiter' && currentRole !== 'admin' && (
                     <Badge className="bg-red-500/90 text-white border-white/30 animate-pulse">
                       <AlertTriangle className="h-3 w-3 mr-1" />
-                      Admin Mode - Cannot Create Orders
+                      {currentRole.charAt(0).toUpperCase() + currentRole.slice(1)} Mode - Cannot Create Orders
                     </Badge>
                   )}
                   {currentRole === 'waiter' && (
                     <Badge className="bg-green-500/20 text-white border-white/30">
                       <Check className="h-3 w-3 mr-1" />
                       Waiter Mode Active
+                    </Badge>
+                  )}
+                  {currentRole === 'admin' && (
+                    <Badge className="bg-yellow-500/20 text-white border-white/30">
+                      <Check className="h-3 w-3 mr-1" />
+                      Admin Mode Active
                     </Badge>
                   )}
                   <Badge className="bg-blue-500/20 text-white border-white/30">
