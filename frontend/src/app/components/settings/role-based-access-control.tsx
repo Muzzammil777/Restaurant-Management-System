@@ -10,6 +10,9 @@ import { Shield, Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { rolesApi } from '@/utils/api';
 
+// Local storage key for role permissions
+const ROLE_PERMISSIONS_STORAGE_KEY = 'rms_role_permissions';
+
 interface Role {
   _id: string;
   name: string;
@@ -45,6 +48,22 @@ const moduleNames: Record<string, string> = {
   reports: 'Reports & Analytics',
   notifications: 'Notifications',
   settings: 'Settings',
+};
+
+// Save role permissions to localStorage
+const saveRolePermissionsToStorage = (roles: Role[]): void => {
+  const permissionsMap: Record<string, string[]> = {};
+  roles.forEach(role => {
+    // Convert boolean permissions to array of allowed modules
+    const allowedModules = Object.entries(role.permissions)
+      .filter(([_, value]) => value === true)
+      .map(([key]) => key);
+    permissionsMap[role.name.toLowerCase()] = allowedModules;
+  });
+  localStorage.setItem(ROLE_PERMISSIONS_STORAGE_KEY, JSON.stringify(permissionsMap));
+  
+  // Dispatch a custom event to notify other components
+  window.dispatchEvent(new Event('role-permissions-updated'));
 };
 
 export function RoleBasedAccessControl() {
@@ -102,6 +121,11 @@ export function RoleBasedAccessControl() {
       setRoles(prev => prev.map(r => 
         r._id === roleId ? { ...r, permissions: newPermissions } : r
       ));
+      // Save to localStorage
+      const updatedRoles = roles.map(r => 
+        r._id === roleId ? { ...r, permissions: newPermissions } : r
+      );
+      saveRolePermissionsToStorage(updatedRoles);
       toast.success('Permission updated successfully');
     } catch (error) {
       console.error('Failed to update permission:', error);
@@ -126,6 +150,8 @@ export function RoleBasedAccessControl() {
       });
       
       setRoles(prev => [...prev, created]);
+      // Save to localStorage
+      saveRolePermissionsToStorage([...roles, created]);
       toast.success(`Role "${newRole.name}" created successfully!`);
       setNewRole({ name: '', description: '', permissions: {} });
       setIsAddRoleOpen(false);
@@ -160,6 +186,11 @@ export function RoleBasedAccessControl() {
       setRoles(prev => prev.map(r => 
         r._id === editingRole._id ? editingRole : r
       ));
+      // Save to localStorage
+      const updatedRoles = roles.map(r => 
+        r._id === editingRole._id ? editingRole : r
+      );
+      saveRolePermissionsToStorage(updatedRoles);
       toast.success('Role updated successfully');
       setIsEditRoleOpen(false);
       setEditingRole(null);
@@ -182,6 +213,9 @@ export function RoleBasedAccessControl() {
     try {
       await rolesApi.delete(roleId);
       setRoles(prev => prev.filter(r => r._id !== roleId));
+      // Save to localStorage
+      const updatedRoles = roles.filter(r => r._id !== roleId);
+      saveRolePermissionsToStorage(updatedRoles);
       toast.success('Role deleted successfully');
     } catch (error) {
       console.error('Failed to delete role:', error);

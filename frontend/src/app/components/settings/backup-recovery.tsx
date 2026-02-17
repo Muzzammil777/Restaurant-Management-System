@@ -8,9 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
 import { Separator } from '@/app/components/ui/separator';
 import { Input } from '@/app/components/ui/input';
-import { Database, Download, Upload, RefreshCcw, Check, AlertCircle, Calendar, Clock, Loader2 } from 'lucide-react';
+import { Database, Download, Upload, RefreshCcw, Check, AlertCircle, Calendar, Clock, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { backupApi } from '@/utils/api';
+
+// Local storage keys
+const BACKUPS_STORAGE_KEY = 'rms_backups';
+const BACKUP_CONFIG_KEY = 'rms_backup_config';
 
 interface Backup {
   _id: string;
@@ -21,6 +24,9 @@ interface Backup {
   status: 'completed' | 'failed' | 'in_progress';
   type: 'manual' | 'automatic';
   documentCounts?: Record<string, number>;
+  totalDocuments?: number;
+  collections?: string[];
+  data?: Record<string, any[]>;
 }
 
 interface BackupConfig {
@@ -31,6 +37,76 @@ interface BackupConfig {
   backupLocation: string;
   googleDriveEnabled: boolean;
 }
+
+// Local storage helper functions
+const getStoredBackups = (): Backup[] => {
+  try {
+    const stored = localStorage.getItem(BACKUPS_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveBackups = (backups: Backup[]): void => {
+  localStorage.setItem(BACKUPS_STORAGE_KEY, JSON.stringify(backups));
+};
+
+const getStoredConfig = (): BackupConfig => {
+  try {
+    const stored = localStorage.getItem(BACKUP_CONFIG_KEY);
+    return stored ? JSON.parse(stored) : {
+      autoBackupEnabled: true,
+      frequency: 'daily',
+      backupTime: '02:00',
+      retentionDays: 30,
+      backupLocation: 'local',
+      googleDriveEnabled: false,
+    };
+  } catch {
+    return {
+      autoBackupEnabled: true,
+      frequency: 'daily',
+      backupTime: '02:00',
+      retentionDays: 30,
+      backupLocation: 'local',
+      googleDriveEnabled: false,
+    };
+  }
+};
+
+const saveConfig = (config: BackupConfig): void => {
+  localStorage.setItem(BACKUP_CONFIG_KEY, JSON.stringify(config));
+};
+
+// Generate a unique ID
+const generateId = (): string => {
+  return `backup_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
+// Get mock data for backup (simulating actual data)
+const getMockBackupData = (): Record<string, any[]> => {
+  // Get data from localStorage or use empty arrays
+  const menuItems = localStorage.getItem('rms_menu_items');
+  const orders = localStorage.getItem('rms_orders');
+  const tables = localStorage.getItem('rms_tables');
+  const staff = localStorage.getItem('rms_staff');
+  const customers = localStorage.getItem('rms_customers');
+  const inventory = localStorage.getItem('rms_inventory');
+  
+  return {
+    settings: [],
+    system_config: [],
+    roles: [],
+    audit_logs: [],
+    staff: staff ? JSON.parse(staff) : [],
+    menu: menuItems ? JSON.parse(menuItems) : [],
+    orders: orders ? JSON.parse(orders) : [],
+    tables: tables ? JSON.parse(tables) : [],
+    customers: customers ? JSON.parse(customers) : [],
+    inventory: inventory ? JSON.parse(inventory) : [],
+  };
+};
 
 export function BackupRecovery() {
   const [backups, setBackups] = useState<Backup[]>([]);
@@ -44,28 +120,18 @@ export function BackupRecovery() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isCreatingBackup, setIsCreatingBackup] = useState(false);
 
-  // Load backups and config from backend API
+  // Load backups and config from localStorage
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [backupsData, configData] = await Promise.all([
-          backupApi.list().catch(() => []),
-          backupApi.getConfig(),
-        ]);
+        // Load from localStorage
+        const storedBackups = getStoredBackups();
+        const storedConfig = getStoredConfig();
         
-        setBackups(backupsData || []);
-        
-        if (configData) {
-          setConfig({
-            autoBackupEnabled: configData.autoBackupEnabled ?? true,
-            frequency: configData.frequency ?? 'daily',
-            backupTime: configData.backupTime ?? '02:00',
-            retentionDays: configData.retentionDays ?? 30,
-            backupLocation: configData.backupLocation ?? 'local',
-            googleDriveEnabled: configData.googleDriveEnabled ?? false,
-          });
-        }
+        setBackups(storedBackups);
+        setConfig(storedConfig);
       } catch (error) {
         console.error('Failed to load backup data:', error);
       } finally {
@@ -76,23 +142,82 @@ export function BackupRecovery() {
   }, []);
 
   const handleCreateBackup = async () => {
+    setIsCreatingBackup(true);
     try {
-      const newBackup = await backupApi.create({
-        name: `Manual Backup - ${new Date().toISOString().split('T')[0]}`,
-        type: 'manual',
+      // Simulate backup creation with a delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0];
+      const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+      
+      // Get mock data for backup
+      const backupData = getMockBackupData();
+      
+      // Calculate approximate size
+      const dataJson = JSON.stringify(backupData);
+      const backupSizeBytes = dataJson.length;
+      let sizeStr: string;
+      if (backupSizeBytes > 1024 * 1024) {
+        sizeStr = `${(backupSizeBytes / (1024 * 1024)).toFixed(2)} MB`;
+      } else {
+        sizeStr = `${(backupSizeBytes / 1024).toFixed(2)} KB`;
+      }
+      
+      // Count documents in each collection
+      const documentCounts: Record<string, number> = {};
+      let totalDocs = 0;
+      Object.keys(backupData).forEach(key => {
+        documentCounts[key] = backupData[key].length;
+        totalDocs += backupData[key].length;
       });
-      setBackups(prev => [newBackup, ...prev]);
+      
+      const newBackup: Backup = {
+        _id: generateId(),
+        name: `Manual Backup - ${dateStr}`,
+        size: sizeStr,
+        date: dateStr,
+        time: timeStr,
+        status: 'completed',
+        type: 'manual',
+        documentCounts,
+        totalDocuments: totalDocs,
+        collections: Object.keys(backupData),
+        data: backupData,
+      };
+      
+      // Save to localStorage
+      const updatedBackups = [newBackup, ...backups];
+      setBackups(updatedBackups);
+      saveBackups(updatedBackups);
+      
       toast.success('Backup created successfully!');
     } catch (error) {
       console.error('Failed to create backup:', error);
       toast.error('Failed to create backup');
+    } finally {
+      setIsCreatingBackup(false);
     }
   };
 
   const handleRestoreBackup = async (backupId: string) => {
     try {
-      await backupApi.restore(backupId);
-      toast.success('Backup restore initiated');
+      const backup = backups.find(b => b._id === backupId);
+      if (!backup) {
+        throw new Error('Backup not found');
+      }
+      
+      // Simulate restore with delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // If backup has data, restore it to localStorage
+      if (backup.data) {
+        Object.keys(backup.data).forEach(key => {
+          localStorage.setItem(`rms_${key}`, JSON.stringify(backup.data![key]));
+        });
+      }
+      
+      toast.success(`Backup '${backup.name}' restored successfully!`);
     } catch (error) {
       console.error('Failed to restore backup:', error);
       toast.error('Failed to restore backup');
@@ -101,15 +226,34 @@ export function BackupRecovery() {
 
   const handleDownloadBackup = async (backupId: string) => {
     try {
-      const data = await fetch(`/api/settings/backups/${backupId}/download`).then(r => r.json());
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const backup = backups.find(b => b._id === backupId);
+      if (!backup) {
+        throw new Error('Backup not found');
+      }
+      
+      // Create backup data object for download
+      const downloadData = {
+        backupInfo: {
+          name: backup.name,
+          date: backup.date,
+          time: backup.time,
+          type: backup.type,
+          documentCounts: backup.documentCounts,
+          totalDocuments: backup.totalDocuments,
+          exportedAt: new Date().toISOString(),
+        },
+        collections: backup.collections || [],
+        data: backup.data || {},
+      };
+      
+      const blob = new Blob([JSON.stringify(downloadData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `backup-${backupId}.json`;
+      a.download = `backup-${backup.date}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success('Backup downloaded');
+      toast.success('Backup downloaded successfully');
     } catch (error) {
       console.error('Failed to download backup:', error);
       toast.error('Failed to download backup');
@@ -118,8 +262,9 @@ export function BackupRecovery() {
 
   const handleDeleteBackup = async (backupId: string) => {
     try {
-      await backupApi.delete(backupId);
-      setBackups(prev => prev.filter(b => b._id !== backupId));
+      const updatedBackups = backups.filter(b => b._id !== backupId);
+      setBackups(updatedBackups);
+      saveBackups(updatedBackups);
       toast.success('Backup deleted');
     } catch (error) {
       console.error('Failed to delete backup:', error);
@@ -130,13 +275,12 @@ export function BackupRecovery() {
   const handleSaveConfig = async () => {
     setSaving(true);
     try {
-      await backupApi.updateConfig({
-        autoBackupEnabled: config.autoBackupEnabled,
-        frequency: config.frequency,
-        retentionDays: config.retentionDays,
-        backupLocation: config.backupLocation,
-        googleDriveEnabled: config.googleDriveEnabled,
-      });
+      // Save to localStorage
+      saveConfig(config);
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       toast.success('Backup configuration saved!');
     } catch (error) {
       console.error('Failed to save config:', error);
@@ -199,9 +343,14 @@ export function BackupRecovery() {
               onClick={handleCreateBackup} 
               className="w-full" 
               size="lg"
+              disabled={isCreatingBackup}
             >
-              <Database className="h-5 w-5 mr-2" />
-              Create Backup Now
+              {isCreatingBackup ? (
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+              ) : (
+                <Database className="h-5 w-5 mr-2" />
+              )}
+              {isCreatingBackup ? 'Creating Backup...' : 'Create Backup Now'}
             </Button>
 
             <Separator />
@@ -391,6 +540,14 @@ export function BackupRecovery() {
                           disabled={backup.status !== 'completed'}
                         >
                           <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeleteBackup(backup._id)}
+                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
