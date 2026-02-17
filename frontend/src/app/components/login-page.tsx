@@ -46,8 +46,86 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-login-module flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-login-module flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <style>{`
+          @keyframes float1 {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.15; }
+            33% { transform: translate(40px, -40px) rotate(120deg); opacity: 0.25; }
+            66% { transform: translate(-30px, 30px) rotate(240deg); opacity: 0.15; }
+          }
+          @keyframes float2 {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.12; }
+            25% { transform: translate(-50px, 50px) rotate(90deg); opacity: 0.2; }
+            75% { transform: translate(50px, -50px) rotate(270deg); opacity: 0.12; }
+          }
+          @keyframes float3 {
+            0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.1; }
+            50% { transform: translate(30px, -50px) scale(1.1); opacity: 0.18; }
+          }
+          @keyframes pulse-glow {
+            0%, 100% { filter: drop-shadow(0 0 5px rgba(139, 90, 43, 0.3)); }
+            50% { filter: drop-shadow(0 0 15px rgba(139, 90, 43, 0.5)); }
+          }
+          .float-element-1 { animation: float1 12s ease-in-out infinite; }
+          .float-element-2 { animation: float2 15s ease-in-out infinite; }
+          .float-element-3 { animation: float3 10s ease-in-out infinite; }
+          .glow { animation: pulse-glow 3s ease-in-out infinite; }
+        `}</style>
+        
+        {/* Floating Food Icons */}
+        <div className="absolute top-20 left-12 w-16 h-16 float-element-1 glow">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="0.5" opacity="0.6"/>
+            <path d="M12 2 L14 8 L20 8 L15.5 12 L17 18 L12 14 L7 18 L8.5 12 L4 8 L10 8 Z" fill="white" opacity="0.4"/>
+          </svg>
+        </div>
+
+        {/* Floating Utensils */}
+        <div className="absolute top-40 right-20 w-14 h-14 float-element-2 glow">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 20 L8 12 L8 2 M16 20 L14 12 L14 2 M11 20 L10 10 L10 2" stroke="white" strokeWidth="0.8" opacity="0.5" strokeLinecap="round"/>
+            <circle cx="5" cy="20" r="1.5" fill="white" opacity="0.4"/>
+            <circle cx="15" cy="20" r="1.5" fill="white" opacity="0.4"/>
+            <circle cx="11" cy="20" r="1.5" fill="white" opacity="0.4"/>
+          </svg>
+        </div>
+
+        {/* Floating Plate */}
+        <div className="absolute bottom-32 left-20 w-16 h-16 float-element-3 glow">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="0.8" opacity="0.5"/>
+            <circle cx="12" cy="12" r="7" stroke="white" strokeWidth="0.5" opacity="0.3"/>
+            <circle cx="12" cy="12" r="4" fill="white" opacity="0.2"/>
+            <path d="M12 5 Q 15 12 12 19 Q 9 12 12 5" fill="white" opacity="0.15"/>
+          </svg>
+        </div>
+
+        {/* Floating Chef Hat */}
+        <div className="absolute bottom-20 right-32 w-14 h-14 float-element-1 glow" style={{ animationDelay: '2s' }}>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M5 16 L5 12 Q5 10 7 9 L17 9 Q 19 10 19 12 L19 16 Z" stroke="white" strokeWidth="0.8" opacity="0.5"/>
+            <rect x="5" y="16" width="14" height="2" fill="white" opacity="0.3"/>
+            <path d="M12 2 Q 14 6 12 9" stroke="white" strokeWidth="0.8" opacity="0.4" strokeLinecap="round"/>
+          </svg>
+        </div>
+
+        {/* Floating Bowl */}
+        <div className="absolute top-1/2 right-24 w-16 h-16 float-element-2 glow" style={{ animationDelay: '4s' }}>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 10 Q 4 18 12 18 Q 20 18 20 10 Z" stroke="white" strokeWidth="0.8" opacity="0.5" fill="none"/>
+            <path d="M6 10 L18 10" stroke="white" strokeWidth="0.6" opacity="0.3"/>
+            <circle cx="12" cy="13" r="2" fill="white" opacity="0.2"/>
+          </svg>
+        </div>
+
+        {/* Animated gradient orb */}
+        <div className="absolute top-1/3 left-1/3 w-32 h-32 bg-gradient-to-br from-orange-300 to-amber-400 rounded-full mix-blend-multiply filter blur-3xl opacity-5 float-element-3" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute bottom-1/3 right-1/3 w-40 h-40 bg-gradient-to-br from-amber-200 to-orange-300 rounded-full mix-blend-multiply filter blur-3xl opacity-5 float-element-2" style={{ animationDelay: '3s' }}></div>
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
         {/* Login Form */}
         <Card className="shadow-xl border-0">
           <CardHeader className="space-y-4 pb-6 text-center">
