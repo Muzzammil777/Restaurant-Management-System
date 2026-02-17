@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { offersApi } from "@/utils/api";
 import {
   Card,
   CardContent,
@@ -172,104 +173,13 @@ export function OffersLoyalty() {
     prioritySupport: false,
   });
 
-  const [coupons, setCoupons] = useState<Coupon[]>([
-    {
-      id: "1",
-      code: "SAVE20",
-      type: "percentage",
-      value: 20,
-      min_order: 500,
-      valid_from: "2026-01-01",
-      valid_to: "2026-03-31",
-      usage_count: 45,
-      usage_limit: 100,
-      status: "active",
-    },
-    {
-      id: "2",
-      code: "FLAT100",
-      type: "flat",
-      value: 100,
-      min_order: 1000,
-      valid_from: "2026-01-15",
-      valid_to: "2026-02-28",
-      usage_count: 23,
-      usage_limit: 50,
-      status: "active",
-    },
-    {
-      id: "3",
-      code: "WELCOME50",
-      type: "flat",
-      value: 50,
-      min_order: 300,
-      valid_from: "2025-12-01",
-      valid_to: "2025-12-31",
-      usage_count: 89,
-      usage_limit: 100,
-      status: "expired",
-    },
-  ]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Membership Plans State
   const [membershipPlans, setMembershipPlans] = useState<
     MembershipPlan[]
-  >([
-    {
-      id: "1",
-      name: "Silver Plan",
-      tier: "silver",
-      icon: <Star className="h-6 w-6" />,
-      color: "text-gray-600",
-      bgColor: "bg-gray-50",
-      borderColor: "border-gray-300",
-      monthlyPrice: 199,
-      billingCycle: "/monthly",
-      status: "active",
-      benefits: {
-        loyaltyBonus: 10,
-        exclusiveCoupons: false,
-        freeDelivery: false,
-        prioritySupport: false,
-      },
-    },
-    {
-      id: "2",
-      name: "Gold Plan",
-      tier: "gold",
-      icon: <Crown className="h-6 w-6" />,
-      color: "text-yellow-600",
-      bgColor: "bg-yellow-50",
-      borderColor: "border-yellow-300",
-      monthlyPrice: 499,
-      billingCycle: "/monthly",
-      status: "active",
-      benefits: {
-        loyaltyBonus: 25,
-        exclusiveCoupons: true,
-        freeDelivery: false,
-        prioritySupport: false,
-      },
-    },
-    {
-      id: "3",
-      name: "Platinum Plan",
-      tier: "platinum",
-      icon: <Trophy className="h-6 w-6" />,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
-      borderColor: "border-purple-300",
-      monthlyPrice: 999,
-      billingCycle: "/monthly",
-      status: "active",
-      benefits: {
-        loyaltyBonus: 50,
-        exclusiveCoupons: true,
-        freeDelivery: true,
-        prioritySupport: true,
-      },
-    },
-  ]);
+  >([]);
 
   // Loyalty Configuration State
   const [loyaltyConfig, setLoyaltyConfig] =
@@ -284,41 +194,7 @@ export function OffersLoyalty() {
     });
 
   // Feedback State
-  const [feedbacks, setFeedbacks] = useState<Feedback[]>([
-    {
-      id: "1",
-      customerName: "Rajesh Kumar",
-      customerId: "CUST-001",
-      orderId: "ORD-2026-1234",
-      rating: 5,
-      comment:
-        "Excellent food quality and fast delivery! The biryani was amazing.",
-      pointsAwarded: 0,
-      submittedAt: "2026-02-08T14:30:00",
-    },
-    {
-      id: "2",
-      customerName: "Priya Singh",
-      customerId: "CUST-002",
-      orderId: "ORD-2026-1235",
-      rating: 4,
-      comment:
-        "Good taste but delivery was a bit late. Overall satisfied with the meal.",
-      pointsAwarded: 0,
-      submittedAt: "2026-02-07T19:15:00",
-    },
-    {
-      id: "3",
-      customerName: "Amit Patel",
-      customerId: "CUST-003",
-      orderId: "ORD-2026-1236",
-      rating: 5,
-      comment:
-        "Amazing pizza! Hot and fresh delivery. Will order again.",
-      pointsAwarded: 0,
-      submittedAt: "2026-02-06T20:45:00",
-    },
-  ]);
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
 
   // Feedback Form State
   const [feedbackFormData, setFeedbackFormData] = useState({
@@ -332,6 +208,89 @@ export function OffersLoyalty() {
   // Check if coupon is expired based on date
   const isCouponExpired = (validTo: string): boolean => {
     return new Date(validTo) < new Date();
+  };
+
+  // Fetch data from API
+  const fetchCoupons = async () => {
+    try {
+      const data = await offersApi.listCoupons();
+      const mapped = data.map((c: any) => ({
+        id: c._id || c.id,
+        code: c.code,
+        type: c.type,
+        value: c.value,
+        min_order: c.min_order,
+        max_discount: c.max_discount,
+        valid_from: c.valid_from,
+        valid_to: c.valid_to,
+        usage_count: c.usage_count || 0,
+        usage_limit: c.usage_limit || 999,
+        status: c.status || "active",
+      }));
+      setCoupons(mapped);
+    } catch (err) {
+      console.error("Failed to fetch coupons:", err);
+    }
+  };
+
+  const fetchMemberships = async () => {
+    try {
+      const data = await offersApi.listMemberships();
+      const mapped = data.map((m: any) => ({
+        id: m._id || m.id,
+        name: m.name,
+        tier: m.tier,
+        icon: m.tier === "platinum" ? <Trophy className="h-6 w-6" /> : m.tier === "gold" ? <Crown className="h-6 w-6" /> : <Star className="h-6 w-6" />,
+        color: m.tier === "platinum" ? "text-purple-600" : m.tier === "gold" ? "text-yellow-600" : "text-gray-600",
+        bgColor: m.tier === "platinum" ? "bg-purple-50" : m.tier === "gold" ? "bg-yellow-50" : "bg-gray-50",
+        borderColor: m.tier === "platinum" ? "border-purple-300" : m.tier === "gold" ? "border-yellow-300" : "border-gray-300",
+        monthlyPrice: m.monthlyPrice,
+        billingCycle: "/monthly",
+        status: m.status || "active",
+        benefits: m.benefits || { loyaltyBonus: 0, exclusiveCoupons: false, freeDelivery: false, prioritySupport: false },
+      }));
+      setMembershipPlans(mapped);
+    } catch (err) {
+      console.error("Failed to fetch memberships:", err);
+    }
+  };
+
+  const fetchLoyaltyConfig = async () => {
+    try {
+      const data = await offersApi.getLoyaltyConfig();
+      if (data) {
+        setLoyaltyConfig({
+          pointsPerHundred: data.pointsPerHundred || 10,
+          maxPointsPerOrder: data.maxPointsPerOrder || 500,
+          loyaltyEnabled: data.loyaltyEnabled ?? true,
+          pointsPerRupee: data.pointsPerRupee || 10,
+          minRedeemablePoints: data.minRedeemablePoints || 100,
+          expiryMonths: data.expiryMonths || 12,
+          autoExpiryEnabled: data.autoExpiryEnabled ?? true,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch loyalty config:", err);
+    }
+  };
+
+  const fetchFeedback = async () => {
+    try {
+      const data = await offersApi.listFeedback();
+      const mapped = data.map((f: any) => ({
+        id: f._id || f.id,
+        customerName: f.customerName,
+        customerId: f.customerId,
+        orderId: f.orderId,
+        rating: f.rating,
+        comment: f.comment,
+        pointsAwarded: f.pointsAwarded || 0,
+        submittedAt: f.submittedAt,
+      }));
+      setFeedbacks(mapped);
+    } catch (err) {
+      console.error("Failed to fetch feedback:", err);
+    }
   };
 
   // Auto-update expired coupons
@@ -349,12 +308,22 @@ export function OffersLoyalty() {
     );
   };
 
-  // Run on mount and periodically
+  // Load data on mount
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([fetchCoupons(), fetchMemberships(), fetchLoyaltyConfig(), fetchFeedback()]);
+      setLoading(false);
+    };
+    loadData();
+  }, []);
+
+  // Periodically update expired coupons
   useEffect(() => {
     updateExpiredStatus();
     const interval = setInterval(updateExpiredStatus, 60000); // Check every minute
     return () => clearInterval(interval);
-  }, []);
+  }, [coupons.length]);
 
   const resetForm = () => {
     setFormData({
@@ -383,7 +352,7 @@ export function OffersLoyalty() {
     setEditingPlan(null);
   };
 
-  const handleCreateCoupon = () => {
+  const handleCreateCoupon = async () => {
     if (
       !formData.code ||
       !formData.value ||
@@ -395,30 +364,25 @@ export function OffersLoyalty() {
       return;
     }
 
-    const newCoupon: Coupon = {
-      id: Date.now().toString(),
-      code: formData.code.toUpperCase(),
-      type: formData.type,
-      value: Number(formData.value),
-      min_order: Number(formData.min_order),
-      max_discount: formData.max_discount
-        ? Number(formData.max_discount)
-        : undefined,
-      valid_from: formData.valid_from,
-      valid_to: formData.valid_to,
-      usage_count: 0,
-      usage_limit: Number(formData.usage_limit) || 999,
-      status: isCouponExpired(formData.valid_to)
-        ? "expired"
-        : "active",
-    };
-
-    setCoupons([...coupons, newCoupon]);
-    toast.success(
-      `Coupon ${newCoupon.code} created successfully!`,
-    );
-    setCreateDialogOpen(false);
-    resetForm();
+    try {
+      const payload = {
+        code: formData.code.toUpperCase(),
+        type: formData.type,
+        value: Number(formData.value),
+        min_order: Number(formData.min_order),
+        max_discount: formData.max_discount ? Number(formData.max_discount) : undefined,
+        valid_from: formData.valid_from,
+        valid_to: formData.valid_to,
+        usage_limit: Number(formData.usage_limit) || 999,
+      };
+      await offersApi.createCoupon(payload);
+      toast.success(`Coupon ${payload.code} created successfully!`);
+      setCreateDialogOpen(false);
+      resetForm();
+      await fetchCoupons();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create coupon");
+    }
   };
 
   const handleEditCoupon = (coupon: Coupon) => {
@@ -436,65 +400,53 @@ export function OffersLoyalty() {
     setCreateDialogOpen(true);
   };
 
-  const handleUpdateCoupon = () => {
+  const handleUpdateCoupon = async () => {
     if (!editingCoupon) return;
 
-    setCoupons(
-      coupons.map((coupon) => {
-        if (coupon.id === editingCoupon.id) {
-          return {
-            ...coupon,
-            code: formData.code.toUpperCase(),
-            type: formData.type,
-            value: Number(formData.value),
-            min_order: Number(formData.min_order),
-            max_discount: formData.max_discount
-              ? Number(formData.max_discount)
-              : undefined,
-            valid_from: formData.valid_from,
-            valid_to: formData.valid_to,
-            usage_limit: Number(formData.usage_limit),
-            status: isCouponExpired(formData.valid_to)
-              ? "expired"
-              : coupon.status,
-          };
-        }
-        return coupon;
-      }),
-    );
-
-    toast.success(
-      `Coupon ${formData.code} updated successfully!`,
-    );
-    setCreateDialogOpen(false);
-    resetForm();
+    try {
+      const payload = {
+        code: formData.code.toUpperCase(),
+        type: formData.type,
+        value: Number(formData.value),
+        min_order: Number(formData.min_order),
+        max_discount: formData.max_discount ? Number(formData.max_discount) : undefined,
+        valid_from: formData.valid_from,
+        valid_to: formData.valid_to,
+        usage_limit: Number(formData.usage_limit),
+      };
+      await offersApi.updateCoupon(editingCoupon.id, payload);
+      toast.success(`Coupon ${formData.code} updated successfully!`);
+      setCreateDialogOpen(false);
+      resetForm();
+      await fetchCoupons();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update coupon");
+    }
   };
 
-  const toggleCouponStatus = (couponId: string) => {
-    setCoupons(
-      coupons.map((coupon) => {
-        if (coupon.id === couponId) {
-          if (
-            coupon.status === "expired" ||
-            coupon.status === "disabled"
-          ) {
-            return { ...coupon, status: "active" };
-          } else {
-            return { ...coupon, status: "disabled" };
-          }
-        }
-        return coupon;
-      }),
-    );
-    toast.success("Coupon status updated");
+  const toggleCouponStatus = async (couponId: string) => {
+    const coupon = coupons.find(c => c.id === couponId);
+    if (!coupon) return;
+
+    const newStatus = (coupon.status === "expired" || coupon.status === "disabled") ? "active" : "disabled";
+    try {
+      await offersApi.updateCoupon(couponId, { status: newStatus });
+      toast.success("Coupon status updated");
+      await fetchCoupons();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update status");
+    }
   };
 
-  const handleDeleteCoupon = (couponId: string) => {
+  const handleDeleteCoupon = async (couponId: string) => {
     const coupon = coupons.find((c) => c.id === couponId);
-    setCoupons(coupons.filter((c) => c.id !== couponId));
-    toast.success(
-      `Coupon ${coupon?.code} deleted successfully!`,
-    );
+    try {
+      await offersApi.deleteCoupon(couponId);
+      toast.success(`Coupon ${coupon?.code} deleted successfully!`);
+      await fetchCoupons();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete coupon");
+    }
   };
 
   const copyCouponCode = (code: string) => {
@@ -517,108 +469,81 @@ export function OffersLoyalty() {
     setPlanDialogOpen(true);
   };
 
-  const handleUpdatePlan = () => {
+  const handleUpdatePlan = async () => {
     if (!editingPlan) return;
 
-    setMembershipPlans(
-      membershipPlans.map((plan) => {
-        if (plan.id === editingPlan.id) {
-          return {
-            ...plan,
-            name: planFormData.name,
-            monthlyPrice: Number(planFormData.monthlyPrice),
-            benefits: {
-              loyaltyBonus: Number(planFormData.loyaltyBonus),
-              exclusiveCoupons: planFormData.exclusiveCoupons,
-              freeDelivery: planFormData.freeDelivery,
-              prioritySupport: planFormData.prioritySupport,
-            },
-          };
-        }
-        return plan;
-      }),
-    );
-
-    toast.success(`${planFormData.name} updated successfully!`);
-    setPlanDialogOpen(false);
-    resetPlanForm();
+    try {
+      const payload = {
+        name: planFormData.name,
+        tier: planFormData.tier,
+        monthlyPrice: Number(planFormData.monthlyPrice),
+        benefits: {
+          loyaltyBonus: Number(planFormData.loyaltyBonus),
+          exclusiveCoupons: planFormData.exclusiveCoupons,
+          freeDelivery: planFormData.freeDelivery,
+          prioritySupport: planFormData.prioritySupport,
+        },
+      };
+      await offersApi.updateMembership(editingPlan.id, payload);
+      toast.success(`${planFormData.name} updated successfully!`);
+      setPlanDialogOpen(false);
+      resetPlanForm();
+      await fetchMemberships();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update plan");
+    }
   };
 
-  const handleAddPlan = () => {
+  const handleAddPlan = async () => {
     if (!planFormData.name || !planFormData.monthlyPrice) {
       toast.error("Please fill all required fields");
       return;
     }
 
-    const tierConfig = {
-      silver: {
-        icon: <Star className="h-6 w-6" />,
-        color: "text-gray-600",
-        bgColor: "bg-gray-50",
-        borderColor: "border-gray-300",
-      },
-      gold: {
-        icon: <Crown className="h-6 w-6" />,
-        color: "text-yellow-600",
-        bgColor: "bg-yellow-50",
-        borderColor: "border-yellow-300",
-      },
-      platinum: {
-        icon: <Trophy className="h-6 w-6" />,
-        color: "text-purple-600",
-        bgColor: "bg-purple-50",
-        borderColor: "border-purple-300",
-      },
-    };
-
-    const config = tierConfig[planFormData.tier];
-
-    const newPlan: MembershipPlan = {
-      id: Date.now().toString(),
-      name: planFormData.name,
-      tier: planFormData.tier,
-      icon: config.icon,
-      color: config.color,
-      bgColor: config.bgColor,
-      borderColor: config.borderColor,
-      monthlyPrice: Number(planFormData.monthlyPrice),
-      billingCycle: "/monthly",
-      status: "active",
-      benefits: {
-        loyaltyBonus: Number(planFormData.loyaltyBonus) || 0,
-        exclusiveCoupons: planFormData.exclusiveCoupons,
-        freeDelivery: planFormData.freeDelivery,
-        prioritySupport: planFormData.prioritySupport,
-      },
-    };
-
-    setMembershipPlans([...membershipPlans, newPlan]);
-    toast.success(`${planFormData.name} created successfully!`);
-    setPlanDialogOpen(false);
-    resetPlanForm();
+    try {
+      const payload = {
+        name: planFormData.name,
+        tier: planFormData.tier,
+        monthlyPrice: Number(planFormData.monthlyPrice),
+        benefits: {
+          loyaltyBonus: Number(planFormData.loyaltyBonus) || 0,
+          exclusiveCoupons: planFormData.exclusiveCoupons,
+          freeDelivery: planFormData.freeDelivery,
+          prioritySupport: planFormData.prioritySupport,
+        },
+      };
+      await offersApi.createMembership(payload);
+      toast.success(`${planFormData.name} created successfully!`);
+      setPlanDialogOpen(false);
+      resetPlanForm();
+      await fetchMemberships();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create plan");
+    }
   };
 
-  const togglePlanStatus = (planId: string) => {
-    setMembershipPlans(
-      membershipPlans.map((plan) => {
-        if (plan.id === planId) {
-          return {
-            ...plan,
-            status:
-              plan.status === "active" ? "inactive" : "active",
-          };
-        }
-        return plan;
-      }),
-    );
-    toast.success("Plan status updated");
+  const togglePlanStatus = async (planId: string) => {
+    const plan = membershipPlans.find(p => p.id === planId);
+    if (!plan) return;
+
+    const newStatus = plan.status === "active" ? "inactive" : "active";
+    try {
+      await offersApi.updateMembership(planId, { status: newStatus });
+      toast.success("Plan status updated");
+      await fetchMemberships();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update plan status");
+    }
   };
 
   // Loyalty Configuration Functions
-  const handleSaveLoyaltyConfig = () => {
-    toast.success(
-      "Loyalty points configuration saved successfully!",
-    );
+  const handleSaveLoyaltyConfig = async () => {
+    try {
+      await offersApi.updateLoyaltyConfig(loyaltyConfig);
+      toast.success("Loyalty points configuration saved successfully!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save loyalty config");
+    }
   };
 
   // Feedback Functions
@@ -632,7 +557,7 @@ export function OffersLoyalty() {
     });
   };
 
-  const handleCreateFeedback = () => {
+  const handleCreateFeedback = async () => {
     if (
       !feedbackFormData.customerName ||
       !feedbackFormData.customerId ||
@@ -643,22 +568,20 @@ export function OffersLoyalty() {
       return;
     }
 
-    const newFeedback: Feedback = {
-      id: Date.now().toString(),
-      customerName: feedbackFormData.customerName,
-      customerId: feedbackFormData.customerId,
-      orderId: feedbackFormData.orderId,
-      rating: feedbackFormData.rating,
-      comment: feedbackFormData.comment,
-      pointsAwarded: 0,
-      submittedAt: new Date().toISOString(),
-    };
-
-    setFeedbacks([newFeedback, ...feedbacks]);
-    toast.success(
-      `Feedback submitted successfully! Thank you ${feedbackFormData.customerName}!`,
-    );
-    resetFeedbackForm();
+    try {
+      const result = await offersApi.createFeedback({
+        customerName: feedbackFormData.customerName,
+        customerId: feedbackFormData.customerId,
+        orderId: feedbackFormData.orderId,
+        rating: feedbackFormData.rating,
+        comment: feedbackFormData.comment,
+      });
+      toast.success(result.message || `Feedback submitted! You earned ${result.pointsAwarded} loyalty points!`);
+      resetFeedbackForm();
+      await fetchFeedback();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit feedback");
+    }
   };
 
   // Calculate feedback statistics
