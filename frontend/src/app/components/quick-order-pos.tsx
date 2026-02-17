@@ -412,8 +412,16 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
         if (menuResponse.ok) {
           const menuResult = await menuResponse.json();
-          if (menuResult.success && menuResult.data) {
-            const availableItems = menuResult.data.filter((item: MenuItem) => item.available);
+          // Handle both array response and {success, data} format
+          const menuData = Array.isArray(menuResult) ? menuResult : (menuResult.data || []);
+          if (menuData.length > 0) {
+            // Map _id to id for frontend compatibility
+            const availableItems = menuData
+              .filter((item: MenuItem) => item.available !== false)
+              .map((item: any) => ({
+                ...item,
+                id: item._id || item.id,
+              }));
             setMenuItems(availableItems);
             menuFetched = true;
           }
@@ -429,8 +437,16 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
         if (comboResponse.ok) {
           const comboResult = await comboResponse.json();
-          if (comboResult.success && comboResult.data) {
-            const availableCombos = comboResult.data.filter((combo: ComboMeal) => combo.available);
+          // Handle both array response and {success, data} format
+          const comboData = Array.isArray(comboResult) ? comboResult : (comboResult.data || []);
+          if (comboData.length >= 0) {
+            // Map _id to id for frontend compatibility
+            const availableCombos = comboData
+              .filter((combo: ComboMeal) => combo.available !== false)
+              .map((combo: any) => ({
+                ...combo,
+                id: combo._id || combo.id,
+              }));
             setComboMeals(availableCombos);
             comboFetched = true;
           }
