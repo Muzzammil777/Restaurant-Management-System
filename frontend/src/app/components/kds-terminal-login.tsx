@@ -26,7 +26,7 @@ export type KitchenTerminalStation =
   | 'GRILL'
   | 'DESSERT'
   | 'HEAD_CHEF';
-
+// Note: In a real application, PINs would be securely stored and verified on the backend
 interface StationCard {
   id: KitchenTerminalStation;
   name: string;
