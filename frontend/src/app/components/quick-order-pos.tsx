@@ -741,11 +741,11 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
   // Create order
   const handleCreateOrder = async () => {
-    // Role check: Only waiters can create orders
+    // Role check: Only waiters and admins can create orders
     const currentRole = restaurantState.getRole();
-    if (currentRole !== 'waiter') {
-      toast.error('Only waiters can create and send orders to kitchen', {
-        description: 'Please switch to waiter mode to create orders',
+    if (currentRole !== 'waiter' && currentRole !== 'admin') {
+      toast.error('Only waiters and admins can create and send orders to kitchen', {
+        description: 'Please switch to waiter or admin mode to create orders',
         duration: 4000,
       });
       playSound('error', soundEnabled);
@@ -787,7 +787,8 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
       );
 
       const result = await response.json();
-      if (result.success) {
+      // Check if order was created (API returns the order object with _id)
+      if (result && (result._id || result.id || result.success)) {
         // Feature #10: Smart Notification
         toast.success('🎉 Order created successfully!', { duration: 3000 });
         
@@ -797,10 +798,12 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
         onOrderCreated();
         resetForm();
         onOpenChange(false);
+      } else {
+        throw new Error(result.detail || 'Failed to create order');
       }
     } catch (error) {
       console.error('Error creating order:', error);
-      toast.error('Failed to create order');
+      toast.error(error instanceof Error ? error.message : 'Failed to create order');
       playSound('error', soundEnabled);
     }
   };
