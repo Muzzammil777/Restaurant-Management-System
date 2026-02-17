@@ -121,12 +121,8 @@ export function OrderManagement() {
   const fetchOrders = async () => {
     try {
       const result = await ordersApi.list();
-      const rawOrders = Array.isArray(result?.data)
-        ? result.data
-        : Array.isArray(result as any)
-          ? (result as any)
-          : [];
-      setOrders(rawOrders.map(normalizeOrder));
+      const rawOrders = (result as any)?.data || result || [];
+      setOrders(Array.isArray(rawOrders) ? rawOrders.map(normalizeOrder) : []);
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to fetch orders. Please check your connection.');
@@ -138,9 +134,9 @@ export function OrderManagement() {
 
   const fetchMenuItems = async () => {
     try {
-      const result = await menuApi.list();
-      const items = result.data || result || [];
-      setMenuItems(items.filter((item: MenuItem) => item.available !== false));
+      const data = await menuApi.list();
+      const items = (data as any)?.data || data || [];
+      setMenuItems(Array.isArray(items) ? items.filter((item: MenuItem) => item.available !== false) : []);
     } catch (error) {
       console.error('Error fetching menu items:', error);
     }

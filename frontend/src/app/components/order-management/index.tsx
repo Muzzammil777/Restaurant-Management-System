@@ -92,9 +92,10 @@ export function OrderManagement() {
   const fetchOrders = async () => {
     try {
       const result = await ordersApi.list();
-      if (result.data) {
+      const ordersData = (result as any)?.data || result || [];
+      if (Array.isArray(ordersData)) {
         // Transform API data to match Order interface
-        const transformedOrders = result.data.map((order: any) => ({
+        const transformedOrders = ordersData.map((order: any) => ({
           ...order,
           total: order.totalAmount || order.total || 0,
           items: (Array.isArray(order.items) ? order.items : []).map((item: any) => ({
@@ -105,8 +106,6 @@ export function OrderManagement() {
           }))
         }));
         setOrders(transformedOrders as any);
-        setLoading(false);
-        return;
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -119,8 +118,9 @@ export function OrderManagement() {
   const fetchMenuItems = async () => {
     try {
       const result = await menuApi.list();
-      if (result.data) {
-        setMenuItems((result.data || []) as any);
+      const menuData = (result as any)?.data || result || [];
+      if (Array.isArray(menuData)) {
+        setMenuItems(menuData as any);
       }
     } catch (error) {
       console.error('Error fetching menu items:', error);

@@ -86,12 +86,13 @@ export const staffApi = {
   create: (data: {
     name: string;
     email: string;
-    password: string;
+    password?: string;
     role?: string;
     phone?: string;
     shift?: string;
     department?: string;
     salary?: number;
+    active?: boolean;
   }) => fetchApi<any>('/staff', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -126,6 +127,42 @@ export const staffApi = {
   deactivate: (id: string) => fetchApi<{ success: boolean }>(`/staff/${id}/deactivate`, {
     method: 'POST',
   }),
+
+  // Export staff as CSV
+  exportCsv: (params?: { role?: string; active?: boolean; shift?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.role) query.append('role', params.role);
+    if (params?.active !== undefined) query.append('active', String(params.active));
+    if (params?.shift) query.append('shift', params.shift);
+    return fetchApi<{ csv: string; filename: string }>(`/staff/export/csv?${query.toString()}`);
+  },
+
+  // Export attendance as CSV
+  exportAttendanceCsv: (params?: { staffId?: string; date_from?: string; date_to?: string; status?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.staffId) query.append('staffId', params.staffId);
+    if (params?.date_from) query.append('date_from', params.date_from);
+    if (params?.date_to) query.append('date_to', params.date_to);
+    if (params?.status) query.append('status', params.status);
+    return fetchApi<{ csv: string; filename: string }>(`/staff/attendance/export/csv?${query.toString()}`);
+  },
+
+  // Export shifts as CSV
+  exportShiftsCsv: (params?: { staffId?: string; date_from?: string; date_to?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.staffId) query.append('staffId', params.staffId);
+    if (params?.date_from) query.append('date_from', params.date_from);
+    if (params?.date_to) query.append('date_to', params.date_to);
+    return fetchApi<{ csv: string; filename: string }>(`/staff/shifts/export/csv?${query.toString()}`);
+  },
+
+  // Export payroll as CSV
+  exportPayrollCsv: (params?: { date_from?: string; date_to?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.date_from) query.append('date_from', params.date_from);
+    if (params?.date_to) query.append('date_to', params.date_to);
+    return fetchApi<{ csv: string; filename: string }>(`/staff/payroll/export/csv?${query.toString()}`);
+  },
 };
 
 
@@ -461,7 +498,7 @@ export const menuApi = {
     if (params?.available !== undefined) query.append('available', String(params.available));
     if (params?.dietType) query.append('dietType', params.dietType);
     if (params?.search) query.append('search', params.search);
-    return fetchApi<{ data: any[]; total: number }>(`/menu?${query.toString()}`);
+    return fetchApi<any[]>(`/menu?${query.toString()}`);
   },
 
   // Get stats
@@ -496,7 +533,7 @@ export const menuApi = {
   }),
 
   // Combos
-  listCombos: () => fetchApi<any[]>('/menu/combos/all'),
+listCombos: () => fetchApi<any[]>('/menu/combos'),
   createCombo: (data: any) => fetchApi<any>('/menu/combos', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -507,6 +544,9 @@ export const menuApi = {
   }),
   deleteCombo: (id: string) => fetchApi<{ success: boolean }>(`/menu/combos/${id}`, {
     method: 'DELETE',
+  }),
+  toggleComboAvailability: (id: string, available: boolean) => fetchApi<any>(`/menu/combos/${id}/availability?available=${available}`, {
+    method: 'PATCH',
   }),
 };
 

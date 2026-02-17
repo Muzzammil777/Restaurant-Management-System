@@ -155,7 +155,7 @@ async def create_staff(payload: StaffIn, request: Request):
     if existing:
         raise HTTPException(status_code=409, detail='Email already exists')
     
-    pw_hash = hash_password(payload.password)
+    pw_hash = hash_password(payload.password) if payload.password else None
     doc = {
         'name': payload.name,
         'email': payload.email,
@@ -166,7 +166,7 @@ async def create_staff(payload: StaffIn, request: Request):
         'department': payload.department,
         'salary': payload.salary,
         'hireDate': payload.hireDate.isoformat() if payload.hireDate else None,
-        'active': True,
+        'active': payload.active if payload.active is not None else True,
         'createdAt': datetime.utcnow().isoformat()
     }
     res = await coll.insert_one(doc)
@@ -583,3 +583,182 @@ async def get_staff_performance_summary(staffId: str):
         'summary': serialize_doc(result),
         'recentLogs': serialize_doc(recent_logs)
     }
+
+
+# ============ EXPORT ENDPOINTS ============
+@router.get('/export/csv', tags=['export'])
+async def export_staff_csv(
+    role: Optional[str] = None,
+    active: Optional[bool] = None,
+    shift: Optional[str] = None
+):
+    """Export staff records as CSV"""
+    db = get_db()
+    coll = db.get_collection('staff')
+    filt = {}
+    if role:
+        filt['role'] = role
+    if active is not None:
+        filt['active'] = active
+    if shift:
+        filt['shift'] = shift
+    
+    docs = await coll.find(filt, {'password_hash': 0}).to_list(1000)
+    staff_list = serialize_doc(docs)
+    
+    # Generate CSV content
+    csv_lines = ["ID,Name,Email,Role,Phone,Shift,Department,Salary,Hire Date,Status"]
+    for s in staff_list:
+        hire_date = s.get('hireDate', '')
+        status = 'Active' if s.get('active', True) else 'Inactive'
+        csv_lines.append(f"{s.get('_id','')},{s.get('name','')},{s.get('email','')},{s.get('role','')},{s.get('phone','')},{s.get('shift','')},{s.get('department','')},{s.get('salary','')},{hire_date},{status}")
+    
+    return {"csv": "\n".join(csv_lines), "filename": "staff_export.csv"}
+
+
+@router.get('/attendance/export/csv', tags=['export'])
+async def export_attendance_csv(
+    staffId: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    status: Optional[str] = None
+):
+    """Export attendance records as CSV"""
+    db = get_db()
+    coll = db.get_collection('attendance')
+    filt = {}
+    if staffId:
+        filt['staffId'] = staffId
+    if date_from:
+        filt['date'] = {'$gte': date_from}
+    if date_to:
+        if 'date' in filt:
+            filt['date']['$lte'] = date_to
+        else:
+            filt['date'] = {'$lte': date_to}
+    if status:
+        filt['status'] = status
+    
+    docs = await coll.find(filt).sort('date', -1).to_list(1000)
+    attendance_list = serialize_doc(docs)
+    
+    # Generate CSV content
+    csv_lines = ["ID,Staff ID,Staff Name,Date,Status,Check In,Check Out,Hours Worked,Notes"]
+    for a in attendance_list:
+        csv_lines.append(f"{a.get('_id','')},{a.get('staffId','')},{a.get('staffName','')},{a.get('date','')},{a.get('status','')},{a.get('checkIn','')},{a.get('checkOut','')},{a.get('hoursWorked','')},{a.get('notes','')}")
+    
+    return {"csv": "\n".join(csv_lines), "filename": "attendance_export.csv"}
+
+
+@router.get('/shifts/export/csv', tags=['export'])
+async def export_shifts_csv(
+    staffId: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None
+):
+    """Export shift assignments as CSV"""
+    db = get_db()
+    coll = db.get_collection('shifts')
+    filt = {}
+    if staffId:
+        filt['staffId'] = staffId
+    if date_from:
+        filt['date'] = {'$gte': date_from}
+    if date_to:
+        if 'date' in filt:
+            filt['date']['$lte'] = date_to
+        else:
+            filt['date'] = {'$lte': date_to}
+    
+    docs = await coll.find(filt).sort('date', -1).to_list(1000)
+    shifts_list = serialize_doc(docs)
+    
+    # Generate CSV content
+    csv_lines = ["ID,Staff ID,Staff Name,Date,Shift Type,Start Time,End Time,Notes"]
+    for s in shifts_list:
+        csv_lines.append(f"{s.get('_id','')},{s.get('staffId','')},{s.get('staffName','')},{s.get('date','')},{s.get('shiftType','')},{s.get('startTime','')},{s.get('endTime','')},{s.get('notes','')}")
+    
+    return {"csv": "\n".join(csv_lines), "filename": "shifts_export.csv"}
+
+
+@router.get('/payroll/export/csv', tags=['export'])
+async def export_payroll_csv(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None
+):
+    """Export payroll report as CSV"""
+    db = get_db()
+    
+    # Get all staff
+    staff_coll = db.get_collection('staff')
+    all_staff = await staff_coll.find({}, {'password_hash': 0}).to_list(1000)
+    
+    # Get attendance records for the period
+    attendance_coll = db.get_collection('attendance')
+    att_filt = {}
+    if date_from:
+        att_filt['date'] = {'$gte': date_from}
+    if date_to:
+        if 'date' in att_filt:
+            att_filt['date']['$lte'] = date_to
+        else:
+            att_filt['date'] = {'$lte': date_to}
+    
+    attendance_records = await attendance_coll.find(att_filt).to_list(10000)
+    
+    # Group attendance by staff
+    attendance_by_staff = {}
+    for att in attendance_records:
+        sid = att.get('staffId')
+        if sid not in attendance_by_staff:
+            attendance_by_staff[sid] = []
+        attendance_by_staff[sid].append(att)
+    
+    # Get shifts for overtime calculation
+    shifts_coll = db.get_collection('shifts')
+    shift_filt = {}
+    if date_from:
+        shift_filt['date'] = {'$gte': date_from}
+    if date_to:
+        if 'date' in shift_filt:
+            shift_filt['date']['$lte'] = date_to
+        else:
+            shift_filt['date'] = {'$lte': date_to}
+    
+    shifts = await shifts_coll.find(shift_filt).to_list(10000)
+    
+    # Group shifts by staff
+    shifts_by_staff = {}
+    for shift in shifts:
+        sid = shift.get('staffId')
+        if sid not in shifts_by_staff:
+            shifts_by_staff[sid] = []
+        shifts_by_staff[sid].append(shift)
+    
+    # Generate CSV content
+    csv_lines = ["Staff ID,Name,Role,Department,Salary,Days Present,Days Absent,Days Late,Total Hours,Regular Hours,Overtime Hours,Overtime Pay,Total Pay"]
+    
+    for staff in all_staff:
+        sid = str(staff.get('_id', ''))
+        att_records = attendance_by_staff.get(sid, [])
+        shift_records = shifts_by_staff.get(sid, [])
+        
+        # Calculate stats
+        days_present = len([a for a in att_records if a.get('status') == 'present'])
+        days_absent = len([a for a in att_records if a.get('status') == 'absent'])
+        days_late = len([a for a in att_records if a.get('status') == 'late'])
+        
+        # Calculate hours
+        total_hours = sum([s.get('hoursWorked', 8) for s in shift_records])
+        regular_hours = min(total_hours, 160)  # Assuming 8 hours/day * 20 days
+        overtime_hours = max(0, total_hours - 160)
+        
+        # Calculate pay
+        monthly_salary = staff.get('salary', 30000)
+        hourly_rate = monthly_salary / 176  # 22 days * 8 hours
+        overtime_pay = overtime_hours * hourly_rate * 1.5
+        total_pay = monthly_salary + overtime_pay
+        
+        csv_lines.append(f"{sid},{staff.get('name','')},{staff.get('role','')},{staff.get('department','')},{monthly_salary},{days_present},{days_absent},{days_late},{total_hours:.1f},{regular_hours:.1f},{overtime_hours:.1f},{overtime_pay:.2f},{total_pay:.2f}")
+    
+    return {"csv": "\n".join(csv_lines), "filename": "payroll_export.csv"}

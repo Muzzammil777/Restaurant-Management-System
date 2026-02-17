@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -11,26 +11,176 @@ import {
   SelectValue 
 } from "@/app/components/ui/select";
 import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/app/components/ui/dialog";
+import { Label } from "@/app/components/ui/label";
+import { 
   Search, 
   FileDown, 
-  Download, 
   Plus, 
   Pencil, 
   Eye, 
   ChevronLeft, 
   ChevronRight,
-  MoreHorizontal
+  MoreHorizontal,
+  Loader2
 } from 'lucide-react';
+import { staffApi } from '@/utils/api';
+import { toast } from 'sonner';
 
-const mockStaff = [
-  { id: '#ST-001', name: 'Alex Johnson', role: 'CHEF', shift: 'Morning (08:00 - 16:00)', status: 'Active', initials: 'AJ' },
-  { id: '#ST-002', name: 'Maria Garcia', role: 'WAITER', shift: 'Morning (08:00 - 16:00)', status: 'Active', initials: 'MG' },
-  { id: '#ST-003', name: 'James Smith', role: 'CASHIER', shift: 'Evening (16:00 - 00:00)', status: 'Off-duty', initials: 'JS' },
-  { id: '#ST-004', name: 'Linda Chen', role: 'CHEF', shift: 'Evening (16:00 - 00:00)', status: 'Active', initials: 'LC' },
-];
+interface StaffMember {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+  phone?: string;
+  shift: string;
+  department?: string;
+  salary?: number;
+  active: boolean;
+  hireDate?: string;
+}
+
+interface NewStaffForm {
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  shift: string;
+  department: string;
+  salary: string;
+}
 
 export function StaffList() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [shiftFilter, setShiftFilter] = useState('all');
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [newStaff, setNewStaff] = useState<NewStaffForm>({
+    name: '',
+    email: '',
+    phone: '',
+    role: 'waiter',
+    shift: 'morning',
+    department: 'service',
+    salary: ''
+  });
+
+  useEffect(() => {
+    fetchStaff();
+  }, [roleFilter, shiftFilter]);
+
+  const fetchStaff = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const params: { role?: string; active?: boolean; shift?: string } = {};
+      if (roleFilter !== 'all') params.role = roleFilter;
+      if (shiftFilter !== 'all') params.shift = shiftFilter;
+      
+      const data = await staffApi.list(params);
+      setStaff(data || []);
+    } catch (err) {
+      console.error('Error fetching staff:', err);
+      setError('Failed to load staff data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddStaff = async () => {
+    if (!newStaff.name || !newStaff.email) {
+      toast.error('Name and email are required');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await staffApi.create({
+        name: newStaff.name,
+        email: newStaff.email,
+        phone: newStaff.phone || undefined,
+        role: newStaff.role,
+        shift: newStaff.shift,
+        department: newStaff.department,
+        salary: newStaff.salary ? parseFloat(newStaff.salary) : undefined,
+        active: true
+      });
+      
+      toast.success('Staff member added successfully!');
+      setAddDialogOpen(false);
+      setNewStaff({
+        name: '',
+        email: '',
+        phone: '',
+        role: 'waiter',
+        shift: 'morning',
+        department: 'service',
+        salary: ''
+      });
+      fetchStaff();
+    } catch (err) {
+      console.error('Error adding staff:', err);
+      toast.error('Failed to add staff member');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleExportCsv = async () => {
+    try {
+      setExporting(true);
+      const params: { role?: string; active?: boolean; shift?: string } = {};
+      if (roleFilter !== 'all') params.role = roleFilter;
+      if (shiftFilter !== 'all') params.shift = shiftFilter;
+      
+      const result = await staffApi.exportCsv(params);
+      
+      // Create and download CSV file
+      const blob = new Blob([result.csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.filename || 'staff_export.csv';
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error exporting staff:', err);
+      setError('Failed to export staff data');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const filteredStaff = staff.filter(s => 
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.role.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getShiftLabel = (shift: string) => {
+    const shifts: Record<string, string> = {
+      'morning': 'Morning (08:00 - 16:00)',
+      'evening': 'Evening (16:00 - 00:00)',
+      'night': 'Night (00:00 - 08:00)'
+    };
+    return shifts[shift] || shift;
+  };
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
 
   return (
     <div className="space-y-6">
@@ -40,18 +190,144 @@ export function StaffList() {
           <p className="text-muted-foreground">Manage and monitor your restaurant team members and schedules.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" className="gap-2 bg-white border-gray-200">
-            <FileDown className="h-4 w-4" />
-            Export as PDF
-          </Button>
-          <Button variant="outline" className="gap-2 bg-white border-gray-200">
-            <Download className="h-4 w-4" />
+          <Button 
+            variant="outline" 
+            className="gap-2 bg-white border-gray-200"
+            onClick={handleExportCsv}
+            disabled={exporting}
+          >
+            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
             Export Records
           </Button>
-          <Button className="gap-2 bg-[#1A1A1A] hover:bg-black text-white px-6">
-            <Plus className="h-4 w-4" />
-            Add New Member
-          </Button>
+          <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2 bg-[#1A1A1A] hover:bg-black text-white px-6">
+                <Plus className="h-4 w-4" />
+                Add New Member
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Add New Staff Member</DialogTitle>
+                <DialogDescription>
+                  Enter the details of the new staff member below.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Full Name *</Label>
+                  <Input
+                    id="name"
+                    placeholder="Enter full name"
+                    value={newStaff.name}
+                    onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="email">Email Address *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter email address"
+                    value={newStaff.email}
+                    onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    placeholder="Enter phone number"
+                    value={newStaff.phone}
+                    onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="role">Role</Label>
+                    <Select 
+                      value={newStaff.role} 
+                      onValueChange={(value) => setNewStaff({ ...newStaff, role: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="chef">Chef</SelectItem>
+                        <SelectItem value="waiter">Waiter</SelectItem>
+                        <SelectItem value="cashier">Cashier</SelectItem>
+                        <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="bartender">Bartender</SelectItem>
+                        <SelectItem value="cleaner">Cleaner</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="shift">Shift</Label>
+                    <Select 
+                      value={newStaff.shift} 
+                      onValueChange={(value) => setNewStaff({ ...newStaff, shift: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select shift" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="morning">Morning (08:00 - 16:00)</SelectItem>
+                        <SelectItem value="evening">Evening (16:00 - 00:00)</SelectItem>
+                        <SelectItem value="night">Night (00:00 - 08:00)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="department">Department</Label>
+                    <Select 
+                      value={newStaff.department} 
+                      onValueChange={(value) => setNewStaff({ ...newStaff, department: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="kitchen">Kitchen</SelectItem>
+                        <SelectItem value="service">Service</SelectItem>
+                        <SelectItem value="cleaning">Cleaning</SelectItem>
+                        <SelectItem value="bar">Bar</SelectItem>
+                        <SelectItem value="management">Management</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="salary">Monthly Salary (₹)</Label>
+                    <Input
+                      id="salary"
+                      type="number"
+                      placeholder="Enter salary"
+                      value={newStaff.salary}
+                      onChange={(e) => setNewStaff({ ...newStaff, salary: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleAddStaff} disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    'Add Staff Member'
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -70,7 +346,7 @@ export function StaffList() {
             <div className="flex items-center gap-4 w-full md:w-auto">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Role:</span>
-                <Select defaultValue="all">
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
                   <SelectTrigger className="w-[120px] bg-transparent border-none font-semibold text-gray-700">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
@@ -80,12 +356,13 @@ export function StaffList() {
                     <SelectItem value="waiter">Waiter</SelectItem>
                     <SelectItem value="cashier">Cashier</SelectItem>
                     <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Shift:</span>
-                <Select defaultValue="all">
+                <Select value={shiftFilter} onValueChange={setShiftFilter}>
                   <SelectTrigger className="w-[120px] bg-transparent border-none font-semibold text-gray-700">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
@@ -113,49 +390,74 @@ export function StaffList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {mockStaff.map((staff) => (
-                  <tr key={staff.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4 text-gray-400 font-medium">{staff.id}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 font-semibold text-xs border border-white shadow-sm">
-                          {staff.initials}
-                        </div>
-                        <span className="font-semibold text-gray-800">{staff.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge variant="outline" className="bg-gray-50 text-gray-400 border-none font-bold text-[10px] py-1 px-3">
-                        {staff.role}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-gray-500">{staff.shift}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className={`h-2 w-2 rounded-full ${staff.status === 'Active' ? 'bg-green-500' : 'bg-gray-300'}`} />
-                        <span className={staff.status === 'Active' ? 'text-green-600 font-medium' : 'text-gray-400 font-medium'}>
-                          {staff.status}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-[#8B5A2B] hover:bg-[#8B5A2B]/10">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-gray-400 hover:bg-gray-100">
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <div className="flex items-center justify-center gap-2 text-gray-400">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span>Loading staff data...</span>
                       </div>
                     </td>
                   </tr>
-                ))}
+                ) : error ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-red-500">
+                      {error}
+                    </td>
+                  </tr>
+                ) : filteredStaff.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
+                      No staff members found
+                    </td>
+                  </tr>
+                ) : (
+                  filteredStaff.map((member) => (
+                    <tr key={member._id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4 text-gray-400 font-medium">#{member._id.slice(-6).toUpperCase()}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 font-semibold text-xs border border-white shadow-sm">
+                            {getInitials(member.name)}
+                          </div>
+                          <span className="font-semibold text-gray-800">{member.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge variant="outline" className="bg-gray-50 text-gray-400 border-none font-bold text-[10px] py-1 px-3">
+                          {member.role?.toUpperCase()}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 text-gray-500">{getShiftLabel(member.shift)}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className={`h-2 w-2 rounded-full ${member.active ? 'bg-green-500' : 'bg-gray-300'}`} />
+                          <span className={member.active ? 'text-green-600 font-medium' : 'text-gray-400 font-medium'}>
+                            {member.active ? 'Active' : 'Off-duty'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-[#8B5A2B] hover:bg-[#8B5A2B]/10">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-gray-400 hover:bg-gray-100">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
 
           <div className="p-4 border-t border-gray-100 flex items-center justify-between">
-            <span className="text-xs text-gray-400">Showing 1 to 4 of 24 results</span>
+            <span className="text-xs text-gray-400">
+              {loading ? 'Loading...' : `Showing 1 to ${filteredStaff.length} of ${staff.length} results`}
+            </span>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-gray-400">
                 <ChevronLeft className="h-4 w-4" />
