@@ -78,7 +78,10 @@ class RestaurantStateManager {
 
   canCreateOrder(tableWaiterId: string): boolean {
     const role = this.getRole();
-    // ONLY waiters can create orders, NOT admin
+    // Admins can create any order, waiters can only create for their assigned tables
+    if (role === 'admin') {
+      return true;
+    }
     if (role === 'waiter') {
       const currentWaiterId = this.getCurrentWaiterId();
       return currentWaiterId === tableWaiterId;
@@ -88,7 +91,10 @@ class RestaurantStateManager {
 
   canAcceptOrder(orderWaiterId: string): boolean {
     const role = this.getRole();
-    // ONLY waiters can accept orders, NOT admin
+    // Admins can accept any order, waiters can only accept their own
+    if (role === 'admin') {
+      return true;
+    }
     if (role === 'waiter') {
       const currentWaiterId = this.getCurrentWaiterId();
       return currentWaiterId === orderWaiterId;
@@ -98,7 +104,10 @@ class RestaurantStateManager {
 
   canSendToCooking(orderWaiterId: string): boolean {
     const role = this.getRole();
-    // ONLY waiters can send to cooking, NOT admin
+    // Admins can send any order to cooking, waiters can only send their own
+    if (role === 'admin') {
+      return true;
+    }
     if (role === 'waiter') {
       const currentWaiterId = this.getCurrentWaiterId();
       return currentWaiterId === orderWaiterId;
@@ -108,7 +117,10 @@ class RestaurantStateManager {
 
   canMarkReady(orderWaiterId: string): boolean {
     const role = this.getRole();
-    // ONLY waiters can mark as ready (kitchen function), NOT admin
+    // Admins can mark any order as ready, waiters can only mark their own
+    if (role === 'admin') {
+      return true;
+    }
     if (role === 'waiter') {
       const currentWaiterId = this.getCurrentWaiterId();
       return currentWaiterId === orderWaiterId;
@@ -118,7 +130,10 @@ class RestaurantStateManager {
 
   canServeOrder(orderWaiterId: string): boolean {
     const role = this.getRole();
-    // ONLY waiters can serve orders, NOT admin
+    // Admins can serve any order, waiters can only serve their own
+    if (role === 'admin') {
+      return true;
+    }
     if (role === 'waiter') {
       const currentWaiterId = this.getCurrentWaiterId();
       return currentWaiterId === orderWaiterId;
