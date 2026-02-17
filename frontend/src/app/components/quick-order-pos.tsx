@@ -18,7 +18,7 @@ import {
   Timer, TrendingUp, Package
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { API_BASE_URL } from '@/utils/supabase/info';
+import { ordersApi, menuApi } from '@/utils/api';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/app/components/ui/dialog';
 import { restaurantState } from '@/app/services/restaurant-state';
 import { Switch } from '@/app/components/ui/switch';
@@ -406,50 +406,38 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
       let comboFetched = false;
 
       try {
-        const menuResponse = await fetch(
-          `${API_BASE_URL}/menu`,
-        );
-
-        if (menuResponse.ok) {
-          const menuResult = await menuResponse.json();
-          // Handle both array response and {success, data} format
-          const menuData = Array.isArray(menuResult) ? menuResult : (menuResult.data || []);
-          if (menuData.length > 0) {
-            // Map _id to id for frontend compatibility
-            const availableItems = menuData
-              .filter((item: MenuItem) => item.available !== false)
-              .map((item: any) => ({
-                ...item,
-                id: item._id || item.id,
-              }));
-            setMenuItems(availableItems);
-            menuFetched = true;
-          }
+        const menuResult = await menuApi.list();
+        // Handle both array response and {success, data} format
+        const menuData = Array.isArray(menuResult) ? menuResult : ((menuResult as any).data || []);
+        if (menuData.length > 0) {
+          // Map _id to id for frontend compatibility
+          const availableItems = menuData
+            .filter((item: MenuItem) => item.available !== false)
+            .map((item: any) => ({
+              ...item,
+              id: item._id || item.id,
+            }));
+          setMenuItems(availableItems);
+          menuFetched = true;
         }
       } catch (menuError) {
         console.log('Menu API not available, using mock data');
       }
 
       try {
-        const comboResponse = await fetch(
-          `${API_BASE_URL}/menu/combos`,
-        );
-
-        if (comboResponse.ok) {
-          const comboResult = await comboResponse.json();
-          // Handle both array response and {success, data} format
-          const comboData = Array.isArray(comboResult) ? comboResult : (comboResult.data || []);
-          if (comboData.length >= 0) {
-            // Map _id to id for frontend compatibility
-            const availableCombos = comboData
-              .filter((combo: ComboMeal) => combo.available !== false)
-              .map((combo: any) => ({
-                ...combo,
-                id: combo._id || combo.id,
-              }));
-            setComboMeals(availableCombos);
-            comboFetched = true;
-          }
+        const comboResult = await menuApi.listCombos();
+        // Handle both array response and {success, data} format
+        const comboData = Array.isArray(comboResult) ? comboResult : ((comboResult as any).data || []);
+        if (comboData.length >= 0) {
+          // Map _id to id for frontend compatibility
+          const availableCombos = comboData
+            .filter((combo: ComboMeal) => combo.available !== false)
+            .map((combo: any) => ({
+              ...combo,
+              id: combo._id || combo.id,
+            }));
+          setComboMeals(availableCombos);
+          comboFetched = true;
         }
       } catch (comboError) {
         console.log('Combo API not available, using mock data');
@@ -791,20 +779,9 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
         notes: notes || undefined,
       };
 
-      const response = await fetch(
-        `${API_BASE_URL}/orders`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(orderData),
-        }
-      );
-
-      const result = await response.json();
+      const result = await ordersApi.create(orderData);
       // Check if order was created (API returns the order object with _id)
-      if (result && (result._id || result.id || result.success)) {
+      if (result && (result._id || result.id)) {
         // Feature #10: Smart Notification
         toast.success('🎉 Order created successfully!', { duration: 3000 });
         
@@ -815,7 +792,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
         resetForm();
         onOpenChange(false);
       } else {
-        throw new Error(result.detail || 'Failed to create order');
+        throw new Error((result as any)?.detail || 'Failed to create order');
       }
     } catch (error: any) {
       let errorMsg = 'Failed to create order';
