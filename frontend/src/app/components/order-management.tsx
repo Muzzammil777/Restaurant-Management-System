@@ -313,17 +313,19 @@ export function OrderManagement() {
       const timeDiffMs = now.getTime() - orderTime.getTime();
       const ageInMinutes = Math.floor(Math.abs(timeDiffMs) / 60000);
       
-      // Debug logging with more details
-      console.log('Exact Time Calculation:', {
-        orderId: order.id?.slice(-6),
-        rawStatusTime: statusTime,
-        cleanedTime: statusTime.includes('T') ? statusTime.split('.')[0] + 'Z' : statusTime,
-        orderTimeObj: orderTime.toString(),
-        nowTime: now.toString(),
-        timeDiffMs,
-        ageInMinutes,
-        orderStatus: order.status
-      });
+      // Debug logging with more details (only first few orders to reduce spam)
+      if (Math.random() < 0.1) { // Log only 10% of the time
+        console.log('Exact Time Calculation:', {
+          orderId: order.id?.slice(-6),
+          rawStatusTime: statusTime,
+          cleanedTime: statusTime.includes('T') ? statusTime.split('.')[0] + 'Z' : statusTime,
+          orderTimeObj: orderTime.toString(),
+          nowTime: now.toString(),
+          timeDiffMs,
+          ageInMinutes,
+          orderStatus: order.status
+        });
+      }
       
       // Return the calculated age (minimum 1 minute)
       return Math.max(ageInMinutes, 1);
