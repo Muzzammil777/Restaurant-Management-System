@@ -10,6 +10,7 @@ import { Separator } from '@/app/components/ui/separator';
 import { Input } from '@/app/components/ui/input';
 import { Database, Download, Upload, RefreshCcw, Check, AlertCircle, Calendar, Clock, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { backupApi } from '@/utils/api';
 
 // Local storage keys
 const BACKUPS_STORAGE_KEY = 'rms_backups';
@@ -122,16 +123,42 @@ export function BackupRecovery() {
   const [saving, setSaving] = useState(false);
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);
 
-  // Load backups and config from localStorage
+  // Load backups and config - try backend first, fallback to localStorage
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Load from localStorage
-        const storedBackups = getStoredBackups();
-        const storedConfig = getStoredConfig();
+        // Try to load from backend first
+        try {
+          const configData = await backupApi.getConfig();
+          if (configData) {
+            setConfig({
+              autoBackupEnabled: configData.autoBackupEnabled ?? true,
+              frequency: configData.frequency ?? 'daily',
+              backupTime: configData.backupTime ?? '02:00',
+              retentionDays: configData.retentionDays ?? 30,
+              backupLocation: configData.backupLocation ?? 'local',
+              googleDriveEnabled: configData.googleDriveEnabled ?? false,
+            });
+            // Save to localStorage for offline access
+            saveConfig({
+              autoBackupEnabled: configData.autoBackupEnabled ?? true,
+              frequency: configData.frequency ?? 'daily',
+              backupTime: configData.backupTime ?? '02:00',
+              retentionDays: configData.retentionDays ?? 30,
+              backupLocation: configData.backupLocation ?? 'local',
+              googleDriveEnabled: configData.googleDriveEnabled ?? false,
+            });
+          }
+        } catch (apiError) {
+          // Backend not available, use localStorage
+          console.log('Backend not available, loading from localStorage');
+          const storedConfig = getStoredConfig();
+          setConfig(storedConfig);
+        }
         
+        // Load backups from localStorage
+        const storedBackups = getStoredBackups();
         setBackups(storedBackups);
-        setConfig(storedConfig);
       } catch (error) {
         console.error('Failed to load backup data:', error);
       } finally {
@@ -278,8 +305,19 @@ export function BackupRecovery() {
       // Save to localStorage
       saveConfig(config);
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Also try to save to backend API (if available)
+      try {
+        await backupApi.updateConfig({
+          autoBackupEnabled: config.autoBackupEnabled,
+          frequency: config.frequency,
+          backupTime: config.backupTime,
+          retentionDays: config.retentionDays,
+          backupLocation: config.backupLocation,
+          googleDriveEnabled: config.googleDriveEnabled,
+        });
+      } catch (apiError) {
+        console.log('Backend not available, using localStorage only');
+      }
       
       toast.success('Backup configuration saved!');
     } catch (error) {
