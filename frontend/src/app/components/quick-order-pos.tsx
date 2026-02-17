@@ -863,12 +863,6 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                 
                 {/* Feature #7: Menu Sync Badge + Role Warning */}
                 <div className="flex items-center gap-3">
-                  {currentRole !== 'waiter' && currentRole !== 'admin' && (
-                    <Badge className="bg-red-500/90 text-white border-white/30 animate-pulse">
-                      <AlertTriangle className="h-3 w-3 mr-1" />
-                      {currentRole.charAt(0).toUpperCase() + currentRole.slice(1)} Mode - Cannot Create Orders
-                    </Badge>
-                  )}
                   {currentRole === 'waiter' && (
                     <Badge className="bg-green-500/20 text-white border-white/30">
                       <Check className="h-3 w-3 mr-1" />
