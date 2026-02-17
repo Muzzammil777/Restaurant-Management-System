@@ -286,7 +286,7 @@ async def delete_supplier(supplier_id: str):
 
 @router.get("/purchases/all")
 async def list_purchases(
-    supplier_id: Optional[str] = None,
+    supplier_id: Optional[str] = Query(None, alias="supplierId"),
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
 ):
@@ -313,7 +313,11 @@ async def create_purchase(data: dict):
     """Record a purchase"""
     db = get_db()
     
-    data["createdAt"] = datetime.utcnow()
+    # Timestamp fields: store both a datetime for internal use and an ISO date string
+    now_dt = datetime.utcnow()
+    data["createdAt"] = now_dt
+    # ensure there is a `date` field (many parts of the app / seed expect this)
+    data["date"] = data.get("date") or now_dt.isoformat()
 
     # If IDs are provided, populate friendly names so frontend sees detail fields
     try:
