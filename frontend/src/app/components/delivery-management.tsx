@@ -28,6 +28,7 @@ import {
   Users
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
+import { deliveryApi } from '@/utils/api';
 import { 
   BarChart, 
   Bar, 
@@ -181,21 +182,12 @@ export function DeliveryManagement() {
   // Actions
   const handleAssignRider = async (riderId: string) => {
     if (!selectedOrder) return;
-    
-    try {
-      const res = await fetch(`http://localhost:8000/api/delivery/orders/${selectedOrder.id}/assign`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rider_id: riderId }),
-      });
 
-      if (res.ok) {
-        setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: 'on_the_way', riderId } : o));
-        setRiders(prev => prev.map(r => r.id === riderId ? { ...r, status: 'On Delivery' } : r));
-        toast.success("Rider Assigned", { description: `${riders.find(r => r.id === riderId)?.name} is now delivering Order ${selectedOrder.orderNumber}` });
-      } else {
-        toast.error("Failed to assign rider");
-      }
+    try {
+      await deliveryApi.assignRider(selectedOrder.id, riderId);
+      setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: 'on_the_way', riderId } : o));
+      setRiders(prev => prev.map(r => r.id === riderId ? { ...r, status: 'On Delivery' } : r));
+      toast.success("Rider Assigned", { description: `${riders.find(r => r.id === riderId)?.name} is now delivering Order ${selectedOrder.orderNumber}` });
     } catch (error) {
       console.error('Assignment error:', error);
       toast.error("Error assigning rider");

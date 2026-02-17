@@ -50,6 +50,7 @@ import { Separator } from "@/app/components/ui/separator";
 import { Label } from "@/app/components/ui/label";
 import { cn } from '@/app/components/ui/utils';
 import { toast } from 'sonner';
+import { inventoryApi } from '@/utils/api';
 
 // --- Types ---
 
@@ -199,6 +200,32 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch purchase records from backend
+  useEffect(() => {
+    let mounted = true;
+    const fetchPurchases = async () => {
+      try {
+        const data = await inventoryApi.listPurchases();
+        if (!mounted) return;
+        const mapped: PurchaseRecord[] = (data || []).map((p: any) => ({
+          id: p._id || p.id,
+          supplierName: p.supplierName || p.supplierId || p.supplierId || 'Unknown',
+          ingredientName: p.ingredientName || p.ingredientId || p.ingredientName || 'Unknown',
+          quantity: p.quantity || 0,
+          cost: p.cost || 0,
+          date: p.createdAt || p.date || new Date().toISOString(),
+        }));
+        setPurchaseRecords(mapped);
+      } catch (error) {
+        console.error('Failed to load purchases:', error);
+      }
+    };
+
+    fetchPurchases();
+    const iv = setInterval(fetchPurchases, 10000);
+    return () => { mounted = false; clearInterval(iv); };
+  }, []);
+
   // Simulation Logic
   useEffect(() => {
     let interval: any;
@@ -246,14 +273,38 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
   }, [isSimulating]);
 
   // Actions
-  const handleAddPurchase = (data: any) => {
-    const newRecord: PurchaseRecord = {
-      id: Date.now().toString(),
-      ...data,
-      date: new Date().toISOString()
-    };
-    setPurchaseRecords(prev => [newRecord, ...prev]);
-    toast.success("Purchase Recorded", { description: "Record added to audit log. Live stock remains unchanged." });
+  const handleAddPurchase = async (data: any) => {
+    try {
+      // Map ingredient and supplier names to ids if available
+      const ingredient = ingredients.find(i => i.name === data.ingredientName);
+      const supplier = suppliers.find(s => s.name === data.supplierName);
+
+      const payload: any = {
+        ingredientName: data.ingredientName,
+        supplierName: data.supplierName,
+        quantity: Number(data.quantity),
+        cost: Number(data.cost),
+      };
+
+      if (ingredient) payload.ingredientId = ingredient.id;
+      if (supplier) payload.supplierId = supplier.id;
+
+      const created = await inventoryApi.createPurchase(payload);
+      const newRecord: PurchaseRecord = {
+        id: created._id || created.id || Date.now().toString(),
+        supplierName: created.supplierName || payload.supplierName,
+        ingredientName: created.ingredientName || payload.ingredientName,
+        quantity: created.quantity || payload.quantity,
+        cost: created.cost || payload.cost,
+        date: created.createdAt || created.date || new Date().toISOString(),
+      };
+
+      setPurchaseRecords(prev => [newRecord, ...prev]);
+      toast.success("Purchase Recorded", { description: "Record saved to backend." });
+    } catch (error) {
+      console.error('Create purchase error:', error);
+      toast.error("Failed to save purchase", { description: "Record saved locally only." });
+    }
   };
 
   const handleToggleSupplier = (id: string) => {

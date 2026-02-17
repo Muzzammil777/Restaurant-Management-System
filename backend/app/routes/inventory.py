@@ -314,27 +314,53 @@ async def create_purchase(data: dict):
     db = get_db()
     
     data["createdAt"] = datetime.utcnow()
-    
+
+    # If IDs are provided, populate friendly names so frontend sees detail fields
+    try:
+        if data.get("ingredientId"):
+            try:
+                ingredient = await db.ingredients.find_one({"_id": ObjectId(data["ingredientId"])})
+                if ingredient:
+                    data["ingredientName"] = ingredient.get("name")
+            except Exception:
+                # ignore lookup errors (invalid ObjectId formats)
+                pass
+
+        if data.get("supplierId"):
+            try:
+                supplier = await db.suppliers.find_one({"_id": ObjectId(data["supplierId"])})
+                if supplier:
+                    data["supplierName"] = supplier.get("name")
+            except Exception:
+                pass
+    except Exception:
+        # defensive: do not fail on lookup
+        pass
+
     result = await db.purchases.insert_one(data)
-    
+
     # Update ingredient stock if linked
     if data.get("ingredientId") and data.get("quantity"):
-        await db.ingredients.update_one(
-            {"_id": ObjectId(data["ingredientId"])},
-            {"$inc": {"stockLevel": data["quantity"]}}
-        )
-        # Recalculate status
-        ingredient = await db.ingredients.find_one({"_id": ObjectId(data["ingredientId"])})
-        if ingredient:
-            status = calculate_status(ingredient["stockLevel"], ingredient.get("minThreshold", 10))
+        try:
             await db.ingredients.update_one(
                 {"_id": ObjectId(data["ingredientId"])},
-                {"$set": {"status": status}}
+                {"$inc": {"stockLevel": data["quantity"]}}
             )
-    
+            # Recalculate status
+            ingredient = await db.ingredients.find_one({"_id": ObjectId(data["ingredientId"])})
+            if ingredient:
+                status = calculate_status(ingredient["stockLevel"], ingredient.get("minThreshold", 10))
+                await db.ingredients.update_one(
+                    {"_id": ObjectId(data["ingredientId"])},
+                    {"$set": {"status": status}}
+                )
+        except Exception as e:
+            # log but don't raise
+            print(f"Warning: failed to update ingredient stock: {e}")
+
     created = await db.purchases.find_one({"_id": result.inserted_id})
     await log_audit("create", "purchase", str(result.inserted_id))
-    
+
     return serialize_doc(created)
 
 
