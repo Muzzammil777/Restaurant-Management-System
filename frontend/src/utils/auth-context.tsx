@@ -71,19 +71,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Load role permissions from localStorage on mount and when updated
   useEffect(() => {
     const loadPermissions = () => {
-      setRolePermissions(getRolePermissions());
+      const newPermissions = getRolePermissions();
+      setRolePermissions(newPermissions);
     };
     
     // Load on mount
     loadPermissions();
     
     // Listen for role-permissions-updated events
-    window.addEventListener('role-permissions-updated', loadPermissions);
-    window.addEventListener('storage', loadPermissions);
+    const handlePermissionsUpdate = () => {
+      loadPermissions();
+    };
+    
+    window.addEventListener('role-permissions-updated', handlePermissionsUpdate);
+    window.addEventListener('storage', handlePermissionsUpdate);
     
     return () => {
-      window.removeEventListener('role-permissions-updated', loadPermissions);
-      window.removeEventListener('storage', loadPermissions);
+      window.removeEventListener('role-permissions-updated', handlePermissionsUpdate);
+      window.removeEventListener('storage', handlePermissionsUpdate);
     };
   }, []);
 

@@ -255,6 +255,17 @@ async def list_roles():
                     'delivery': False, 'offers': True, 'reports': True, 'notifications': True, 'settings': False
                 },
                 'createdAt': datetime.utcnow().isoformat()
+            },
+            {
+                '_id': 'delivery',
+                'name': 'Delivery',
+                'description': 'Delivery and order management',
+                'permissions': {
+                    'dashboard': True, 'menu': True, 'orders': True, 'kitchen': False,
+                    'tables': False, 'inventory': False, 'staff': False, 'billing': False,
+                    'delivery': True, 'offers': False, 'reports': False, 'notifications': True, 'settings': False
+                },
+                'createdAt': datetime.utcnow().isoformat()
             }
         ]
         await coll.insert_many(default_roles)
@@ -347,7 +358,7 @@ async def update_role(role_id: str, role: RoleUpdate, request: Request):
 @router.delete('/roles/{role_id}', tags=['roles'])
 async def delete_role(role_id: str, request: Request):
     """Delete a role (except built-in roles)"""
-    protected_roles = ['admin', 'manager', 'chef', 'waiter', 'cashier']
+    protected_roles = ['admin', 'manager', 'chef', 'waiter', 'cashier', 'delivery']
     if role_id in protected_roles:
         raise HTTPException(status_code=400, detail='Cannot delete built-in roles')
     
