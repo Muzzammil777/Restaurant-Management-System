@@ -815,6 +815,16 @@ export const tablesApi = {
   deleteReservation: (id: string) => fetchApi<{ success: boolean }>(`/tables/reservations/${id}`, {
     method: 'DELETE',
   }),
+  
+  // Waiter assignment
+  assignWaiter: (tableId: string, waiterId: string, waiterName: string) =>
+    fetchApi<any>(`/tables/${tableId}/waiter?waiter_id=${waiterId}&waiter_name=${encodeURIComponent(waiterName)}`, {
+      method: 'POST',
+    }),
+  removeWaiter: (tableId: string) =>
+    fetchApi<any>(`/tables/${tableId}/waiter`, {
+      method: 'DELETE',
+    }),
 };
 
 

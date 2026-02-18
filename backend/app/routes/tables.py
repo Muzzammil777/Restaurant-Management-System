@@ -43,6 +43,34 @@ async def list_tables(
         query["capacity"] = {"$gte": capacity}
     
     tables = await db.tables.find(query).sort("name", 1).to_list(100)
+    
+    # If no tables exist, seed default tables
+    if not tables:
+        default_tables = [
+            # VIP Section
+            {"name": "V1", "displayNumber": "V1", "capacity": 4, "location": "VIP", "segment": "Front", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
+            {"name": "V2", "displayNumber": "V2", "capacity": 6, "location": "VIP", "segment": "Front", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
+            {"name": "V3", "displayNumber": "V3", "capacity": 4, "location": "VIP", "segment": "Back", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
+            # Main Hall - Front
+            {"name": "M1", "displayNumber": "M1", "capacity": 2, "location": "Main Hall", "segment": "Front", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
+            {"name": "M2", "displayNumber": "M2", "capacity": 2, "location": "Main Hall", "segment": "Front", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
+            {"name": "M3", "displayNumber": "M3", "capacity": 4, "location": "Main Hall", "segment": "Front", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
+            # Main Hall - Middle
+            {"name": "M4", "displayNumber": "M4", "capacity": 4, "location": "Main Hall", "segment": "Middle", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
+            {"name": "M5", "displayNumber": "M5", "capacity": 6, "location": "Main Hall", "segment": "Middle", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
+            # Main Hall - Back
+            {"name": "M6", "displayNumber": "M6", "capacity": 2, "location": "Main Hall", "segment": "Back", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
+            {"name": "M7", "displayNumber": "M7", "capacity": 4, "location": "Main Hall", "segment": "Back", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
+            # AC Hall - Front
+            {"name": "A1", "displayNumber": "A1", "capacity": 4, "location": "AC Hall", "segment": "Front", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
+            {"name": "A2", "displayNumber": "A2", "capacity": 4, "location": "AC Hall", "segment": "Front", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
+            # AC Hall - Middle
+            {"name": "A3", "displayNumber": "A3", "capacity": 6, "location": "AC Hall", "segment": "Middle", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
+            {"name": "A4", "displayNumber": "A4", "capacity": 2, "location": "AC Hall", "segment": "Middle", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
+        ]
+        await db.tables.insert_many(default_tables)
+        tables = await db.tables.find({}).sort("name", 1).to_list(100)
+    
     return [serialize_doc(table) for table in tables]
 
 
@@ -139,7 +167,7 @@ async def update_table_status(table_id: str, status: str, data: Optional[dict] =
     """Update table status"""
     db = get_db()
     
-    valid_statuses = ["available", "occupied", "reserved", "cleaning"]
+    valid_statuses = ["available", "occupied", "reserved", "cleaning", "eating"]
     if status not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
     
@@ -196,6 +224,55 @@ async def delete_table(table_id: str):
     
     await db.tables.delete_one({"_id": ObjectId(table_id)})
     await log_audit("delete", "table", table_id, {"name": table.get("name")})
+    
+    return {"success": True}
+
+
+@router.post("/{table_id}/waiter")
+async def assign_waiter(table_id: str, waiter_id: str, waiter_name: str):
+    """Assign waiter to table"""
+    db = get_db()
+    
+    table = await db.tables.find_one({"_id": ObjectId(table_id)})
+    if not table:
+        raise HTTPException(status_code=404, detail="Table not found")
+    
+    if table.get("status") not in ["occupied", "eating"]:
+        raise HTTPException(status_code=400, detail="Waiter can only be assigned to occupied tables")
+    
+    await db.tables.update_one(
+        {"_id": ObjectId(table_id)},
+        {"$set": {
+            "waiterId": waiter_id,
+            "waiterName": waiter_name,
+            "updatedAt": datetime.utcnow()
+        }}
+    )
+    
+    await log_audit("assign_waiter", "table", table_id, {"waiterId": waiter_id, "waiterName": waiter_name})
+    
+    return {"success": True, "waiterId": waiter_id, "waiterName": waiter_name}
+
+
+@router.delete("/{table_id}/waiter")
+async def remove_waiter(table_id: str):
+    """Remove waiter from table"""
+    db = get_db()
+    
+    table = await db.tables.find_one({"_id": ObjectId(table_id)})
+    if not table:
+        raise HTTPException(status_code=404, detail="Table not found")
+    
+    await db.tables.update_one(
+        {"_id": ObjectId(table_id)},
+        {"$set": {
+            "waiterId": None,
+            "waiterName": None,
+            "updatedAt": datetime.utcnow()
+        }}
+    )
+    
+    await log_audit("remove_waiter", "table", table_id)
     
     return {"success": True}
 
