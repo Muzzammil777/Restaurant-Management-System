@@ -34,7 +34,7 @@ export function AccountAuthentication() {
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
-    role: 'Waiter',
+    role: 'waiter',
     password: '',
   });
 
@@ -134,7 +134,7 @@ export function AccountAuthentication() {
 
       setUserAccounts(prev => [...prev, created]);
       toast.success(`User ${newUser.name} added successfully!`);
-      setNewUser({ name: '', email: '', role: 'Waiter', password: '' });
+      setNewUser({ name: '', email: '', role: 'waiter', password: '' });
       setIsAddUserOpen(false);
     } catch (error: any) {
       console.error('Failed to create user:', error);
@@ -307,11 +307,12 @@ export function AccountAuthentication() {
                       onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      <option value="Admin">Admin</option>
-                      <option value="Manager">Manager</option>
-                      <option value="Chef">Chef</option>
-                      <option value="Cashier">Cashier</option>
-                      <option value="Waiter">Waiter</option>
+                      <option value="admin">Admin</option>
+                      <option value="manager">Manager</option>
+                      <option value="chef">Chef</option>
+                      <option value="cashier">Cashier</option>
+                      <option value="waiter">Waiter</option>
+                      <option value="delivery">Delivery</option>
                     </select>
                   </div>
                   <div className="space-y-2">

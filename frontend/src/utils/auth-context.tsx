@@ -97,7 +97,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const savedUser = localStorage.getItem('rms_current_user');
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
+        const parsed = JSON.parse(savedUser);
+        // Normalize role to lowercase for consistent permissions lookup
+        parsed.role = (parsed.role || 'staff').toLowerCase();
+        setUser(parsed);
       } catch {
         localStorage.removeItem('rms_current_user');
       }
@@ -113,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: result.user.id,
           email: result.user.email,
           name: result.user.name,
-          role: result.user.role as UserRole,
+          role: (result.user.role || 'staff').toLowerCase() as UserRole,
         };
         setUser(userData);
         localStorage.setItem('rms_current_user', JSON.stringify(userData));

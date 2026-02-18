@@ -85,6 +85,10 @@ export function RoleBasedAccessControl() {
       try {
         const data = await rolesApi.getAll();
         setRoles(data || []);
+        // Save to localStorage on initial load
+        if (data && data.length > 0) {
+          saveRolePermissionsToStorage(data);
+        }
       } catch (error) {
         console.error('Failed to load roles:', error);
         toast.error('Failed to load roles');
