@@ -123,7 +123,7 @@ function AppContent() {
       <Toaster position="top-right" />
       
       {/* Header */}
-      <header className="border-b bg-white shadow-sm sticky top-0 z-50">
+      <header className="border-b bg-white sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -131,7 +131,7 @@ function AppContent() {
                 <UtensilsCrossed className="h-6 w-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold tracking-tight" style={{ color: '#000000' }}>{config.restaurantName}</h1>
+                <h1 className="text-xl font-bold tracking-tight" style={{ color: '#000000' }}>{config.restaurantName}</h1>
                 <p className="text-xs text-muted-foreground">Powered by Movicloud Labs</p>
               </div>
             </div>
@@ -142,7 +142,7 @@ function AppContent() {
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-5 w-5" style={{ color: '#000000' }} />
                 {notificationCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-primary text-white">
                     {notificationCount}
                   </Badge>
                 )}
@@ -233,7 +233,7 @@ function AppContent() {
 
       {/* Main Navigation Tabs */}
       <Tabs value={activeTab} onValueChange={(value) => hasPermission(value) && setActiveTab(value)} className="container mx-auto">
-        <div className="border-b bg-white sticky top-[73px] z-40">
+        <div className="bg-white/90 sticky top-[73px] z-40 border-b shadow-md backdrop-blur-sm">
           <div className="relative">
             {/* Collapsible Navigation Container */}
             <div 
@@ -248,7 +248,7 @@ function AppContent() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-10 w-10 rounded-lg hover:bg-primary/10 transition-all"
+                  className="h-10 w-10 rounded-lg"
                   onClick={() => setIsNavExpanded(!isNavExpanded)}
                 >
                   {isNavExpanded ? (
@@ -261,7 +261,7 @@ function AppContent() {
 
               {/* Navigation Tabs */}
               <TabsList 
-                className={`w-full justify-start overflow-x-auto flex-nowrap h-auto p-1 bg-transparent border-0 rounded-none transition-all duration-500 ${
+                className={`w-full justify-start overflow-x-auto flex-nowrap h-auto p-2 bg-transparent border-0 rounded-none transition-all duration-500 ${
                   isNavExpanded ? 'opacity-100 translate-x-0 ml-14' : 'opacity-0 -translate-x-full pointer-events-none'
                 }`}
                 style={{

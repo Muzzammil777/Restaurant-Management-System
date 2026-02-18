@@ -4,7 +4,7 @@
 import { cn } from "@/app/components/ui/utils";
 
 export const buttonStyles = {
-  // Base button styles with all states
+  // Base button styles
   base: "inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
   
   // Height standards
@@ -15,25 +15,31 @@ export const buttonStyles = {
   },
   
   // Primary action (right side)
-  primary: "bg-[#8B5A2B] text-white hover:bg-[#6D421E] hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:shadow-md focus-visible:ring-[#8B5A2B]",
+  primary: "bg-primary text-white hover:bg-primary/90",
   
   // Secondary action (left side)
-  secondary: "bg-white text-[#8B5A2B] border-2 border-[#8B5A2B] hover:bg-[#F5F1ED] hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm",
+  secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
   
   // Destructive action (separated, red)
-  destructive: "bg-red-600 text-white hover:bg-red-700 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:shadow-md focus-visible:ring-red-600",
+  destructive: "bg-red-600 text-white hover:bg-red-700",
   
   // Success state
-  success: "bg-green-600 text-white hover:bg-green-700 hover:shadow-lg",
+  success: "bg-green-600 text-white hover:bg-green-700",
   
   // Disabled state
-  disabled: "opacity-50 cursor-not-allowed pointer-events-none bg-gray-300 text-gray-500",
+  disabled: "opacity-50 cursor-not-allowed pointer-events-none",
   
   // Ghost button
-  ghost: "bg-transparent hover:bg-gray-100 text-gray-700 active:bg-gray-200",
+  ghost: "bg-transparent hover:bg-accent/50 text-gray-700 transition-all",
   
   // Outline button
-  outline: "border-2 border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50",
+  outline: "border-2 border-primary bg-white text-primary hover:bg-primary hover:text-white",
+  
+  // Filter button
+  filter: "border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 font-medium px-4 py-2 rounded-full",
+  
+  // Toggle button
+  toggle: "border border-gray-300 bg-white text-gray-700 data-[state=on]:bg-primary data-[state=on]:text-white data-[state=on]:border-primary font-medium",
 };
 
 // Button spacing in modals
@@ -46,6 +52,12 @@ export const modalButtonLayout = {
 
 // Pressed state animation
 export const pressedAnimation = "active:scale-[0.98] active:shadow-inner";
+
+// Enhanced filter pill buttons (for search results, role filters, etc)
+export const filterPillButton = "px-4 py-2 rounded-full border-2 border-gray-300 bg-white text-gray-700 font-semibold shadow-sm hover:shadow-md hover:border-gray-400 hover:bg-gray-50 active:bg-gray-100 transition-all";
+
+// Enhanced mini button (for badges, small actions)
+export const miniButton = "px-2 py-1 rounded-md text-xs font-semibold bg-white border border-gray-300 hover:shadow-sm active:bg-gray-100 transition-all";
 
 // Usage example:
 // <button className={cn(buttonStyles.base, buttonStyles.heights.md, buttonStyles.primary, pressedAnimation)}>

@@ -2,7 +2,6 @@
 @import './tailwind.css';
 @import './theme.css';
 @import './fonts.css';
-@import './backgrounds.css';
 
 /* Toast notifications - ensure solid background and high z-index */
 [data-sonner-toaster] {
