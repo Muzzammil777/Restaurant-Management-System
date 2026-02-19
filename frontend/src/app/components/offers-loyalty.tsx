@@ -277,15 +277,53 @@ export function OffersLoyalty() {
   const fetchFeedback = async () => {
     try {
       const data = await offersApi.listFeedback();
+      const getNumericRating = (feedback: any): number => {
+        const directRating = Number(feedback?.rating);
+        if (Number.isFinite(directRating) && directRating > 0) {
+          return Math.min(5, Math.max(1, Math.round(directRating)));
+        }
+
+        const foodRatings = feedback?.foodRatings;
+        if (foodRatings && typeof foodRatings === "object") {
+          const values = Object.values(foodRatings)
+            .map((value) => Number(value))
+            .filter((value) => Number.isFinite(value) && value > 0);
+
+          if (values.length > 0) {
+            const avg =
+              values.reduce((sum, value) => sum + value, 0) /
+              values.length;
+            return Math.min(5, Math.max(1, Math.round(avg)));
+          }
+        }
+
+        return 0;
+      };
+
       const mapped = data.map((f: any) => ({
         id: f._id || f.id,
-        customerName: f.customerName,
-        customerId: f.customerId,
-        orderId: f.orderId,
-        rating: f.rating,
-        comment: f.comment,
+        customerName:
+          f.customerName ||
+          f.customer_name ||
+          f.userName ||
+          (typeof f.userId === "string"
+            ? f.userId.split("@")[0]
+            : "Guest"),
+        customerId:
+          f.customerId ||
+          f.customer_id ||
+          f.userId ||
+          f.user_id ||
+          "N/A",
+        orderId: f.orderId || f.order_id || "-",
+        rating: getNumericRating(f),
+        comment: f.comment || f.review || "-",
         pointsAwarded: f.pointsAwarded || 0,
-        submittedAt: f.submittedAt,
+        submittedAt:
+          f.submittedAt ||
+          f.createdAt ||
+          f.created_at ||
+          "",
       }));
       setFeedbacks(mapped);
     } catch (err) {
@@ -588,10 +626,12 @@ export function OffersLoyalty() {
   const feedbackStats = {
     totalFeedback: feedbacks.length,
     averageRating:
-      feedbacks.length > 0
+      feedbacks.filter((f) => f.rating > 0).length > 0
         ? (
-            feedbacks.reduce((sum, f) => sum + f.rating, 0) /
-            feedbacks.length
+            feedbacks
+              .filter((f) => f.rating > 0)
+              .reduce((sum, f) => sum + f.rating, 0) /
+            feedbacks.filter((f) => f.rating > 0).length
           ).toFixed(1)
         : "0.0",
   };
@@ -1913,13 +1953,18 @@ export function OffersLoyalty() {
                           </p>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {new Date(
-                            feedback.submittedAt,
-                          ).toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          })}
+                          {feedback.submittedAt &&
+                          !Number.isNaN(
+                            new Date(feedback.submittedAt).getTime(),
+                          )
+                            ? new Date(
+                                feedback.submittedAt,
+                              ).toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })
+                            : "-"}
                         </TableCell>
                       </TableRow>
                     ))
