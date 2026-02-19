@@ -12,7 +12,21 @@ cd /d "%~dp0"
 REM Install Backend Dependencies
 echo Installing Backend Dependencies...
 cd backend
-pip install -r requirements.txt
+set PIP_CMD=python -m pip
+where python >nul 2>nul
+if errorlevel 1 (
+	set PIP_CMD=py -m pip
+)
+
+%PIP_CMD% install -r requirements.txt
+if errorlevel 1 (
+	echo.
+	echo Failed to install backend dependencies.
+	echo Ensure Python is installed and available as 'python' or 'py'.
+	cd ..
+	pause
+	exit /b 1
+)
 cd ..
 echo Backend dependencies installed.
 echo.
