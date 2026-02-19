@@ -1825,60 +1825,6 @@ export function OffersLoyalty() {
             </Card>
           </div>
 
-          {/* Information Panel */}
-          <Card className="border-2 border-blue-200 bg-blue-50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Info className="h-5 w-5 text-blue-600" />
-                About Customer Feedback
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3 text-sm">
-                <div className="flex items-start gap-3">
-                  <MessageSquare className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold">
-                      Instant Rewards
-                    </p>
-                    <p className="text-muted-foreground">
-                      Customers automatically receive 10 loyalty
-                      points when feedback is submitted
-                    </p>
-                  </div>
-                </div>
-                <Separator />
-                <div className="flex items-start gap-3">
-                  <Star className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold">
-                      Encourage Participation
-                    </p>
-                    <p className="text-muted-foreground">
-                      No approval delays - points are awarded
-                      immediately to motivate more customer
-                      feedback
-                    </p>
-                  </div>
-                </div>
-                <Separator />
-                <div className="flex items-start gap-3">
-                  <TrendingUp className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold">
-                      Track Satisfaction
-                    </p>
-                    <p className="text-muted-foreground">
-                      Monitor customer ratings and reviews to
-                      identify areas of improvement and
-                      celebrate successes
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Feedback Table */}
           <Card>
             <CardHeader>
@@ -1951,8 +1897,8 @@ export function OffersLoyalty() {
                                 key={star}
                                 className={`h-4 w-4 ${
                                   star <= feedback.rating
-                                    ? "fill-yellow-400 text-yellow-400"
-                                    : "text-gray-300"
+                                    ? "fill-current text-yellow-500"
+                                    : "text-muted-foreground/40"
                                 }`}
                               />
                             ))}
@@ -1980,6 +1926,60 @@ export function OffersLoyalty() {
                   )}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+
+          {/* Information Panel */}
+          <Card className="border-2 border-blue-200 bg-blue-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Info className="h-5 w-5 text-blue-600" />
+                About Customer Feedback
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 text-sm">
+                <div className="flex items-start gap-3">
+                  <MessageSquare className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">
+                      Instant Rewards
+                    </p>
+                    <p className="text-muted-foreground">
+                      Customers automatically receive 10 loyalty
+                      points when feedback is submitted
+                    </p>
+                  </div>
+                </div>
+                <Separator />
+                <div className="flex items-start gap-3">
+                  <Star className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">
+                      Encourage Participation
+                    </p>
+                    <p className="text-muted-foreground">
+                      No approval delays - points are awarded
+                      immediately to motivate more customer
+                      feedback
+                    </p>
+                  </div>
+                </div>
+                <Separator />
+                <div className="flex items-start gap-3">
+                  <TrendingUp className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">
+                      Track Satisfaction
+                    </p>
+                    <p className="text-muted-foreground">
+                      Monitor customer ratings and reviews to
+                      identify areas of improvement and
+                      celebrate successes
+                    </p>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
