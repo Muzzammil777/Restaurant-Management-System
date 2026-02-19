@@ -1,19 +1,19 @@
 import { useState } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
-import { 
-  Tabs, 
-  TabsContent, 
+import {
+  Tabs,
+  TabsContent,
 } from '@/app/components/ui/tabs';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/app/components/ui/select';
-import { 
-  Search, 
+import {
+  Search,
   LayoutDashboard,
   Users,
   CalendarCheck,
@@ -58,17 +58,17 @@ export function StaffManagement() {
         <div className="flex items-center gap-3 flex-1">
           <div className="relative w-full md:w-[300px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/60" />
-            <Input 
-              placeholder="Search staff..." 
+            <Input
+              placeholder="Search staff..."
               value={globalSearch}
               onChange={(e) => setGlobalSearch(e.target.value)}
               className="pl-10 bg-white/10 border-white/20 rounded-xl h-10 text-sm text-white placeholder:text-white/50 focus-visible:ring-1 focus-visible:ring-[#8B5A2B]"
             />
           </div>
           <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-[130px] bg-white/10 border-white/20 text-white rounded-xl h-10">
-              <Filter className="h-4 w-4 mr-2 text-white/60" />
-              <SelectValue placeholder="Role" />
+            <SelectTrigger className="w-auto min-w-[140px] max-w-[200px] bg-white/10 border-white/20 text-white rounded-xl h-10">
+              <Filter className="h-4 w-4 mr-2 text-white/60 flex-shrink-0" />
+              <SelectValue placeholder="Role" className="whitespace-normal" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Roles</SelectItem>
@@ -81,9 +81,9 @@ export function StaffManagement() {
             </SelectContent>
           </Select>
           <Select value={shiftFilter} onValueChange={setShiftFilter}>
-            <SelectTrigger className="w-[130px] bg-white/10 border-white/20 text-white rounded-xl h-10">
-              <Clock className="h-4 w-4 mr-2 text-white/60" />
-              <SelectValue placeholder="Shift" />
+            <SelectTrigger className="w-auto min-w-[140px] max-w-[200px] bg-white/10 border-white/20 text-white rounded-xl h-10">
+              <Clock className="h-4 w-4 mr-2 text-white/60 flex-shrink-0" />
+              <SelectValue placeholder="Shift" className="whitespace-normal" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Shifts</SelectItem>
@@ -113,7 +113,7 @@ export function StaffManagement() {
             {tabs.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
-              
+
               return (
                 <button
                   key={item.id}
