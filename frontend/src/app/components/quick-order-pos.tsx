@@ -446,6 +446,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
               .map((combo: any) => ({
                 ...combo,
                 id: combo._id || combo.id,
+                items: combo.items || [],
               }));
             setComboMeals(availableCombos);
             comboFetched = true;
@@ -569,7 +570,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
   // Feature #6: Add combo to order with split select capability
   const addComboToOrder = (combo: ComboMeal) => {
-    const comboItemsDetails = combo.items.map(itemId => 
+    const comboItemsDetails = (combo.items || []).map(itemId => 
       menuItems.find(mi => mi.id === itemId)
     ).filter(Boolean) as MenuItem[];
 
@@ -1182,7 +1183,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                                         ) : (
                                           <>
                                             <ChevronDown className="h-3 w-3 mr-1" />
-                                            View Items ({combo.items.length})
+                                            View Items ({(combo.items || []).length})
                                           </>
                                         )}
                                       </Button>
@@ -1196,7 +1197,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                                             className="overflow-hidden"
                                           >
                                             <div className="border rounded p-2 space-y-1 text-xs bg-gray-50">
-                                              {combo.items.map(itemId => {
+                                              {(combo.items || []).map(itemId => {
                                                 const item = menuItems.find(mi => mi.id === itemId);
                                                 return item ? (
                                                   <div key={itemId} className="flex justify-between">
