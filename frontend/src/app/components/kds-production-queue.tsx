@@ -68,6 +68,7 @@ interface KDSProductionQueueProps {
 
 // Get station for an item based on name patterns and categories
 const getItemStation = (itemName: string): StationType => {
+  if (!itemName) return "CURRY"; // Default if name is undefined
   const name = itemName.toLowerCase();
   
   // FRY Station - fried items, dosa, samosa, pakora, vada
@@ -150,9 +151,10 @@ interface APIOrder {
   tableNumber?: number;
   type: string;
   items: Array<{
-    name: string;
-    quantity: number;
-    price: number;
+    name?: string;
+    dishName?: string;
+    quantity?: number;
+    price?: number;
     menuItemId?: string;
   }>;
   total: number;
@@ -195,6 +197,7 @@ const convertToKitchenOrder = (order: APIOrder, itemStatuses: Map<string, "PENDI
       const itemId = `${orderId}-${index}`;
       const savedStatus = itemStatuses.get(itemId);
       const savedStartTime = itemStartTimes.get(itemId);
+      const itemName = item.name || item.dishName || 'Unknown Item';
       
       // Determine item status based on order status and saved state
       let itemStatus: "PENDING" | "PREPARING" | "COMPLETED" = savedStatus || "PENDING";
@@ -206,9 +209,9 @@ const convertToKitchenOrder = (order: APIOrder, itemStatuses: Map<string, "PENDI
 
       return {
         id: itemId,
-        name: item.name,
-        quantity: item.quantity,
-        station: getItemStation(item.name),
+        name: itemName,
+        quantity: item.quantity || 1,
+        station: getItemStation(itemName),
         status: itemStatus,
         preparationTime: 300, // 5 minutes default
         startedAt: savedStartTime || (itemStatus === "PREPARING" ? new Date() : undefined),
