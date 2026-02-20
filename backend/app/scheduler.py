@@ -8,14 +8,38 @@ from datetime import datetime, timedelta
 from typing import Optional
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+import pytz
 
 scheduler: Optional[AsyncIOScheduler] = None
 backup_job_id = "automatic_backup_job"
+
+# Get local timezone - default to UTC if can't detect
+try:
+    import tzlocal
+    LOCAL_TZ = tzlocal.get_localzone()
+except:
+    LOCAL_TZ = pytz.UTC
+
+
+def run_backup_sync():
+    """Synchronous wrapper to run async backup"""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # Schedule the coroutine in the running loop
+            asyncio.ensure_future(run_automatic_backup())
+        else:
+            loop.run_until_complete(run_automatic_backup())
+    except RuntimeError:
+        # If no event loop, create a new one
+        asyncio.run(run_automatic_backup())
 
 
 async def run_automatic_backup():
     """Execute automatic backup - stores actual data for restore"""
     from .db import get_db
+    
+    print(f"[Scheduler] 🔄 Starting automatic backup at {datetime.now()}")
     
     try:
         db = get_db()
@@ -74,7 +98,7 @@ async def run_automatic_backup():
         else:
             size_str = f"{size_bytes / (1024 * 1024):.0f} MB"
         
-        now = datetime.utcnow()
+        now = datetime.now()
         backup_doc = {
             'name': f"Full Backup - {now.strftime('%Y-%m-%d')}",
             'size': size_str,
@@ -105,10 +129,15 @@ async def run_automatic_backup():
             
     except Exception as e:
         print(f"[Scheduler] ❌ Backup failed: {e}")
+        import traceback
+        traceback.print_exc()
         # Log failed backup
         try:
-            now = datetime.utcnow()
-            await backups_coll.insert_one({
+            from .db import get_db
+            db = get_db()
+            backups_coll_err = db.get_collection('backups')
+            now = datetime.now()
+            await backups_coll_err.insert_one({
                 'name': f"Auto Backup - {now.strftime('%Y-%m-%d')} (Failed)",
                 'size': '0 B',
                 'date': now.strftime('%Y-%m-%d'),
@@ -116,10 +145,10 @@ async def run_automatic_backup():
                 'status': 'failed',
                 'type': 'automatic',
                 'error': str(e),
-                'createdAt': now
+                'createdAt': now.isoformat()
             })
-        except:
-            pass
+        except Exception as e2:
+            print(f"[Scheduler] Could not log failed backup: {e2}")
 
 
 async def update_backup_schedule():
@@ -127,6 +156,7 @@ async def update_backup_schedule():
     global scheduler
     
     if scheduler is None:
+        print("[Scheduler] Scheduler not initialized yet")
         return
     
     from .db import get_db
@@ -147,6 +177,7 @@ async def update_backup_schedule():
         # Remove existing job if any
         try:
             scheduler.remove_job(backup_job_id)
+            print(f"[Scheduler] Removed existing backup job")
         except:
             pass
         
@@ -157,44 +188,61 @@ async def update_backup_schedule():
         frequency = config.get('frequency', 'daily')
         backup_time = config.get('backupTime', '02:00')
         
-        # Parse time
+        # Parse time - handle both "HH:MM" and "HH:MM:SS" formats
         try:
-            hour, minute = map(int, backup_time.split(':'))
-        except:
+            time_parts = backup_time.replace(' AM', '').replace(' PM', '').replace('AM', '').replace('PM', '').split(':')
+            hour = int(time_parts[0])
+            minute = int(time_parts[1]) if len(time_parts) > 1 else 0
+            # Handle 12-hour format if AM/PM was in original
+            if 'PM' in backup_time.upper() and hour < 12:
+                hour += 12
+            elif 'AM' in backup_time.upper() and hour == 12:
+                hour = 0
+        except Exception as e:
+            print(f"[Scheduler] Error parsing time '{backup_time}': {e}, defaulting to 02:00")
             hour, minute = 2, 0
         
-        # Create cron trigger based on frequency
+        # Create cron trigger based on frequency (using local timezone)
         if frequency == 'hourly':
-            trigger = CronTrigger(minute=0)  # Run at the start of every hour
+            trigger = CronTrigger(minute=0, timezone=LOCAL_TZ)
         elif frequency == 'daily':
-            trigger = CronTrigger(hour=hour, minute=minute)
+            trigger = CronTrigger(hour=hour, minute=minute, timezone=LOCAL_TZ)
         elif frequency == 'weekly':
-            trigger = CronTrigger(day_of_week='sun', hour=hour, minute=minute)
+            trigger = CronTrigger(day_of_week='sun', hour=hour, minute=minute, timezone=LOCAL_TZ)
         elif frequency == 'monthly':
-            trigger = CronTrigger(day=1, hour=hour, minute=minute)
+            trigger = CronTrigger(day=1, hour=hour, minute=minute, timezone=LOCAL_TZ)
         else:
-            trigger = CronTrigger(hour=hour, minute=minute)  # Default to daily
+            trigger = CronTrigger(hour=hour, minute=minute, timezone=LOCAL_TZ)
         
+        # Use the sync wrapper that properly handles async execution
         scheduler.add_job(
-            run_automatic_backup,
+            run_backup_sync,
             trigger=trigger,
             id=backup_job_id,
-            replace_existing=True
+            replace_existing=True,
+            name="Automatic Database Backup"
         )
         
-        print(f"[Scheduler] 📅 Backup scheduled: {frequency} at {backup_time}")
+        # Get next run time for logging
+        job = scheduler.get_job(backup_job_id)
+        next_run = job.next_run_time if job else "unknown"
+        
+        print(f"[Scheduler] 📅 Backup scheduled: {frequency} at {hour:02d}:{minute:02d}")
+        print(f"[Scheduler] 📅 Next backup: {next_run}")
         
     except Exception as e:
         print(f"[Scheduler] Error updating schedule: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def init_scheduler():
     """Initialize the scheduler"""
     global scheduler
     
-    scheduler = AsyncIOScheduler()
+    scheduler = AsyncIOScheduler(timezone=LOCAL_TZ)
     scheduler.start()
-    print("[Scheduler] ✅ Scheduler initialized")
+    print(f"[Scheduler] ✅ Scheduler initialized (timezone: {LOCAL_TZ})")
 
 
 async def start_scheduler():
