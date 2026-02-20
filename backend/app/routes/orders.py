@@ -21,6 +21,17 @@ def serialize_doc(doc):
         return None
     doc["_id"] = str(doc["_id"])
     doc["id"] = doc["_id"]  # Add id field for frontend compatibility
+    
+    # Convert datetime fields to ISO format with timezone
+    datetime_fields = ["createdAt", "updatedAt", "statusUpdatedAt", "completedAt", "cancelledAt", "occupiedAt"]
+    for field in datetime_fields:
+        if field in doc and doc[field] is not None:
+            if isinstance(doc[field], datetime):
+                doc[field] = doc[field].isoformat() + 'Z'
+            elif isinstance(doc[field], str) and not doc[field].endswith('Z'):
+                # Already a string but missing Z, add it
+                doc[field] = doc[field] + 'Z' if 'T' in doc[field] else doc[field]
+    
     return doc
 
 

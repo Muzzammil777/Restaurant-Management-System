@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { API_BASE_URL } from '@/utils/supabase/info';
+import { tablesApi } from '@/utils/api';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/app/components/ui/dialog';
 import { restaurantState } from '@/app/services/restaurant-state';
 import { Switch } from '@/app/components/ui/switch';
@@ -77,6 +78,20 @@ interface RecentOrder {
   items: QuickOrderItem[];
   total: number;
   timestamp: Date;
+}
+
+interface TableData {
+  _id: string;
+  name: string;
+  displayNumber: string;
+  capacity: number;
+  location: string;
+  segment: string;
+  status: 'available' | 'occupied' | 'reserved' | 'cleaning';
+  reservationType?: string;
+  guestCount?: number;
+  waiterName?: string | null;
+  waiterId?: string | null;
 }
 
 interface QuickOrderPOSProps {
@@ -144,6 +159,8 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
   const [orderType, setOrderType] = useState<'dine-in' | 'takeaway'>('dine-in');
   const [tableNumber, setTableNumber] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [availableTables, setAvailableTables] = useState<TableData[]>([]);
+  const [tablesLoading, setTablesLoading] = useState(false);
 
   // Menu Data
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -222,6 +239,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
     if (open) {
       fetchMenuData();
       loadRecentOrders();
+      fetchAvailableTables();
     }
   }, [open]);
 
@@ -504,6 +522,29 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
     ];
     
     setRecentOrders(mockRecentOrders);
+  };
+
+  // Fetch available tables from API
+  const fetchAvailableTables = async () => {
+    setTablesLoading(true);
+    try {
+      const result = await tablesApi.list();
+      const tables: TableData[] = result.data || [];
+      // Filter out occupied, reserved, and cleaning tables - only show available
+      const available = tables.filter(t => t.status === 'available');
+      // Sort by location and name
+      available.sort((a, b) => {
+        if (a.location !== b.location) return a.location.localeCompare(b.location);
+        return a.name.localeCompare(b.name);
+      });
+      setAvailableTables(available);
+    } catch (error) {
+      console.error('Error fetching tables:', error);
+      toast.error('Failed to load tables');
+      setAvailableTables([]);
+    } finally {
+      setTablesLoading(false);
+    }
   };
 
   // ========== ORDER ITEM MANAGEMENT ==========
@@ -797,7 +838,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
     try {
       const orderData = {
         type: orderType,
-        tableNumber: orderType === 'dine-in' ? parseInt(tableNumber) : undefined,
+        tableNumber: orderType === 'dine-in' ? tableNumber : undefined,
         customerName: customerName || undefined,
         items: orderItems.map((item) => ({
           name: item.name,
@@ -825,6 +866,20 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
       const result = await response.json();
       // Check if order was created (API returns the order object with _id)
       if (result && (result._id || result.id || result.success)) {
+        // Mark table as occupied (walk-in) for dine-in orders
+        if (orderType === 'dine-in' && tableNumber) {
+          const selectedTable = availableTables.find(t => 
+            (t.displayNumber || t.name) === tableNumber
+          );
+          if (selectedTable) {
+            try {
+              await tablesApi.updateStatus(selectedTable._id, 'occupied', 2);
+            } catch (tableError) {
+              console.warn('Failed to update table status:', tableError);
+            }
+          }
+        }
+        
         // Feature #10: Smart Notification
         toast.success('🎉 Order created successfully!', { duration: 3000 });
         
@@ -972,15 +1027,53 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                   {orderType === 'dine-in' && (
                     <div className="space-y-2">
                       <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                        Table Number *
+                        Select Table *
                       </Label>
-                      <Input
-                        type="number"
-                        placeholder="Enter table #"
+                      <Select
                         value={tableNumber}
-                        onChange={(e) => setTableNumber(e.target.value)}
-                        className="h-12 text-lg font-semibold text-center border-2"
-                      />
+                        onValueChange={(value) => setTableNumber(value)}
+                      >
+                        <SelectTrigger className="h-12 text-base font-medium border-2">
+                          <SelectValue placeholder={tablesLoading ? "Loading tables..." : "Select a table"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableTables.length === 0 ? (
+                            <SelectItem value="no-tables" disabled>
+                              {tablesLoading ? "Loading..." : "No tables available"}
+                            </SelectItem>
+                          ) : (
+                            <>
+                              {/* Group tables by location */}
+                              {['VIP', 'Main Hall', 'AC Hall'].map(location => {
+                                const locationTables = availableTables.filter(t => t.location === location);
+                                if (locationTables.length === 0) return null;
+                                return (
+                                  <div key={location}>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted">
+                                      {location}
+                                    </div>
+                                    {locationTables.map(table => (
+                                      <SelectItem key={table._id} value={table.displayNumber || table.name}>
+                                        <span className="flex items-center gap-2">
+                                          <span className="font-bold">{table.displayNumber || table.name}</span>
+                                          <span className="text-muted-foreground text-xs">
+                                            ({table.capacity} seats)
+                                          </span>
+                                        </span>
+                                      </SelectItem>
+                                    ))}
+                                  </div>
+                                );
+                              })}
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {availableTables.length === 0 && !tablesLoading && (
+                        <p className="text-xs text-amber-600">
+                          All tables are currently occupied. Please wait or use takeaway.
+                        </p>
+                      )}
                     </div>
                   )}
 

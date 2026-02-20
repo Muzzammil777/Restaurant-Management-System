@@ -66,55 +66,59 @@ interface KDSProductionQueueProps {
   onLogout: () => void;
 }
 
-// Map item names to stations (this would ideally come from a recipe database)
-const ITEM_STATION_MAP: Record<string, StationType> = {
-  // FRY items
-  "Vegetable Spring Rolls": "FRY",
-  "Paneer Tikka": "GRILL",
-  "Chicken 65": "FRY",
-  "French Fries": "FRY",
-  "Onion Rings": "FRY",
-  "Samosa": "FRY",
-  "Pakora": "FRY",
-  // CURRY items  
-  "Butter Chicken": "CURRY",
-  "Paneer Butter Masala": "CURRY",
-  "Dal Makhani": "CURRY",
-  "Kadai Chicken": "CURRY",
-  "Chicken Tikka Masala": "CURRY",
-  "Palak Paneer": "CURRY",
-  "Shahi Paneer": "CURRY",
-  // RICE items
-  "Veg Biryani": "RICE",
-  "Chicken Biryani": "RICE",
-  "Jeera Rice": "RICE",
-  "Veg Fried Rice": "RICE",
-  "Pulao": "RICE",
-  "Steamed Rice": "RICE",
-  // PREP items
-  "Green Salad": "PREP",
-  "Caesar Salad": "PREP",
-  "Raita": "PREP",
-  "Mint Chutney": "PREP",
-  "Kachumber": "PREP",
-  // GRILL items
-  "Tandoori Chicken": "GRILL",
-  "Seekh Kebab": "GRILL",
-  "Grilled Fish": "GRILL",
-  "Chicken Tikka": "GRILL",
-  "Malai Tikka": "GRILL",
-  // DESSERT items
-  "Gulab Jamun": "DESSERT",
-  "Ice Cream": "DESSERT",
-  "Brownie": "DESSERT",
-  "Fruit Salad": "DESSERT",
-  "Kheer": "DESSERT",
-  "Rasmalai": "DESSERT",
-};
-
-// Get station for an item, default to PREP if not mapped
+// Get station for an item based on name patterns and categories
 const getItemStation = (itemName: string): StationType => {
-  return ITEM_STATION_MAP[itemName] || "PREP";
+  const name = itemName.toLowerCase();
+  
+  // FRY Station - fried items, dosa, samosa, pakora, vada
+  if (name.includes('fry') || name.includes('fries') || name.includes('fried') ||
+      name.includes('dosa') || name.includes('samosa') || name.includes('pakora') ||
+      name.includes('vada') || name.includes('spring roll') || name.includes('65') ||
+      name.includes('manchurian') || name.includes('crispy') || name.includes('onion ring')) {
+    return "FRY";
+  }
+  
+  // GRILL Station - tandoor, tikka, kebab, grilled items
+  if (name.includes('tikka') || name.includes('tandoor') || name.includes('kebab') ||
+      name.includes('grill') || name.includes('seekh') || name.includes('malai') ||
+      name.includes('naan') || name.includes('roti') || name.includes('paratha') ||
+      name.includes('kulcha')) {
+    return "GRILL";
+  }
+  
+  // CURRY Station - curries, gravies, masala dishes
+  if (name.includes('curry') || name.includes('masala') || name.includes('butter') ||
+      name.includes('paneer') || name.includes('kadai') || name.includes('korma') ||
+      name.includes('dal') || name.includes('gravy') || name.includes('palak') ||
+      name.includes('shahi') || name.includes('makhani') || name.includes('chole') ||
+      name.includes('rajma')) {
+    return "CURRY";
+  }
+  
+  // RICE Station - rice dishes, biryani, pulao
+  if (name.includes('rice') || name.includes('biryani') || name.includes('pulao') ||
+      name.includes('khichdi') || name.includes('jeera')) {
+    return "RICE";
+  }
+  
+  // DESSERT Station - sweets, ice cream, beverages
+  if (name.includes('gulab') || name.includes('jamun') || name.includes('ice cream') ||
+      name.includes('kulfi') || name.includes('kheer') || name.includes('rasmalai') ||
+      name.includes('halwa') || name.includes('brownie') || name.includes('cake') ||
+      name.includes('sweet') || name.includes('dessert') || name.includes('lassi') ||
+      name.includes('shake') || name.includes('juice') || name.includes('coffee') ||
+      name.includes('tea') || name.includes('chai')) {
+    return "DESSERT";
+  }
+  
+  // PREP Station - salads, cold items, chutneys (default)
+  if (name.includes('salad') || name.includes('raita') || name.includes('chutney') ||
+      name.includes('pickle') || name.includes('papad') || name.includes('cold')) {
+    return "PREP";
+  }
+  
+  // Default to CURRY for most cooked dishes
+  return "CURRY";
 };
 
 // API order status type
