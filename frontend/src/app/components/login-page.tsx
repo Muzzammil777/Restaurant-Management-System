@@ -127,16 +127,16 @@ export function LoginPage() {
 
       <div className="w-full max-w-md relative z-10">
         {/* Login Form */}
-        <Card className="shadow-xl border-0">
-          <CardHeader className="space-y-4 pb-6 text-center">
+        <Card className="shadow-xl border-0 bg-gradient-to-br from-[#E8D5C4] via-[#D4B896] to-[#C9A876]">
+          <CardHeader className="space-y-4 pb-6 text-center text-[#2D2D2D]">
             <div className="flex justify-center">
               <div className="p-4 bg-primary rounded-2xl">
                 <UtensilsCrossed className="h-10 w-10 text-primary-foreground" />
               </div>
             </div>
             <div>
-              <CardTitle className="text-2xl">Restaurant Management</CardTitle>
-              <CardDescription className="mt-2">Sign in with your staff credentials</CardDescription>
+              <CardTitle className="text-2xl text-[#2D2D2D]">Restaurant Management</CardTitle>
+              <CardDescription className="mt-2 text-[#4B4B4B]">Sign in with your staff credentials</CardDescription>
             </div>
           </CardHeader>
           <CardContent>
@@ -148,7 +148,7 @@ export function LoginPage() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-[#2D2D2D]">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -162,7 +162,7 @@ export function LoginPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-[#2D2D2D]">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -201,15 +201,15 @@ export function LoginPage() {
               </Button>
             </form>
 
-            <div className="mt-8 pt-6 border-t">
-              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4">
+            <div className="mt-8 pt-6 border-t border-[#C9A876]">
+              <div className="flex items-center justify-center gap-2 text-sm text-[#4B4B4B] mb-4">
                 <Lock className="h-4 w-4" />
                 <span>Role-based access control</span>
               </div>
               <div className="flex justify-center gap-4 flex-wrap">
                 {(['admin', 'manager', 'chef', 'waiter', 'cashier', 'delivery'] as UserRole[]).map((role) => (
-                  <div key={role} className="flex flex-col items-center gap-1 text-muted-foreground">
-                    <div className="p-2 rounded-lg bg-muted">
+                  <div key={role} className="flex flex-col items-center gap-1 text-[#4B4B4B]">
+                    <div className="p-2 rounded-lg bg-[#B89968] bg-opacity-40">
                       {ROLE_ICONS[role]}
                     </div>
                     <span className="text-xs capitalize">{role}</span>
@@ -218,7 +218,7 @@ export function LoginPage() {
               </div>
             </div>
 
-            <div className="mt-6 text-center text-sm text-muted-foreground">
+            <div className="mt-6 text-center text-sm text-[#4B4B4B]">
               <p>Contact admin if you don't have an account</p>
               <p className="mt-2 text-xs">Powered by Movicloud Labs</p>
             </div>
