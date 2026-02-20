@@ -725,45 +725,48 @@ useEffect(() => {
                 </div>
 
                 {/* Dark Brown Container - Bottom Section */}
-                <div className="p-4 space-y-2" style={{ height: '248px', backgroundColor: '#2A1A05' }}>
+                <div className="p-3 flex flex-col overflow-hidden" style={{ height: '248px', backgroundColor: '#2A1A05' }}>
                   {/* Title - WHITE COLOR */}
-                  <h3 className="text-white font-bold text-base leading-tight" style={{ fontFamily: 'Poppins, sans-serif', color: '#FFFFFF' }}>
+                  <h3 className="text-white font-bold text-sm leading-tight truncate" style={{ fontFamily: 'Poppins, sans-serif', color: '#FFFFFF' }}>
                     {combo.name}
                   </h3>
                   
                   {/* Description */}
-                  <p className="text-gray-300 text-sm line-clamp-2 leading-snug" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-gray-300 text-xs line-clamp-2 leading-snug mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                     {combo.description}
                   </p>
 
                   {/* Info Row - Calories and Time */}
-                  <div className="flex items-center justify-between text-white text-xs pt-1">
+                  <div className="flex items-center justify-between text-white text-xs mt-2">
                     <div className="flex items-center gap-1">
-                      <Flame className="h-4 w-4 text-orange-400" />
+                      <Flame className="h-3 w-3 text-orange-400" />
                       <span style={{ fontFamily: 'Inter, sans-serif' }}>{combo.calories} kcal</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4 text-gray-400" />
+                      <Clock className="h-3 w-3 text-gray-400" />
                       <span style={{ fontFamily: 'Inter, sans-serif' }}>{combo.prepTime}</span>
                     </div>
                   </div>
 
                   {/* Divider */}
-                  <div className="h-px bg-white/20 my-2" />
+                  <div className="h-px bg-white/20 my-2 flex-shrink-0" />
 
                   {/* Price Section with Strikethrough */}
-                  <div className="pt-1">
+                  <div>
                     <div className="flex items-baseline gap-2 mb-1">
-                      <p className="text-gray-400 text-sm line-through" style={{ fontFamily: 'Inter, sans-serif' }}>₹{combo.originalPrice}</p>
-                      <Badge className="bg-green-600 text-white text-xs px-2 py-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-gray-400 text-xs line-through" style={{ fontFamily: 'Inter, sans-serif' }}>₹{combo.originalPrice}</p>
+                      <Badge className="bg-green-600 text-white text-[10px] px-1.5 py-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
                         Save ₹{combo.originalPrice - combo.discountedPrice}
                       </Badge>
                     </div>
-                    <p className="text-white font-bold text-xl leading-none" style={{ fontFamily: 'Poppins, sans-serif' }}>₹{combo.discountedPrice}</p>
+                    <p className="text-white font-bold text-lg leading-none" style={{ fontFamily: 'Poppins, sans-serif' }}>₹{combo.discountedPrice}</p>
                   </div>
 
+                  {/* Spacer to push admin actions to bottom */}
+                  <div className="flex-grow" />
+
                   {/* Admin Actions Row */}
-                  <div className="flex items-center justify-between pt-3 border-t border-white/10">
+                  <div className="flex items-center justify-between pt-2 border-t border-white/10 flex-shrink-0">
                     <div className="flex items-center gap-2">
                       <span className="text-white/80 text-xs" style={{ fontFamily: 'Inter, sans-serif' }}>Available</span>
                       <Switch 
