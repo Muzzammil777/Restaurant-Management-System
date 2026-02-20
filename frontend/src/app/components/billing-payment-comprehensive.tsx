@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
@@ -65,7 +67,7 @@ function BillCard({ order, onGenerateBill }: BillCardProps) {
         <CardContent className="space-y-3">
           {/* Items */}
           <div className="space-y-1">
-            {order.items.map((item) => (
+            {(order.items || []).map((item) => (
               <div key={item.id} className="flex justify-between text-sm">
                 <span className="text-gray-700">
                   {item.quantity}x {item.name}
@@ -136,7 +138,7 @@ function BillCalculator({ open, onClose, order, onComplete }: BillCalculatorProp
       tableId: order.tableId,
       tableNumber: order.tableNumber || 'N/A',
       customerName: order.customerName,
-      items: order.items.map(item => ({
+      items: (order.items || []).map(item => ({
         name: item.name,
         quantity: item.quantity,
         price: item.price
@@ -172,7 +174,7 @@ function BillCalculator({ open, onClose, order, onComplete }: BillCalculatorProp
           <div className="space-y-2">
             <h3 className="font-bold text-gray-900">Order Items</h3>
             <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-              {order.items.map((item) => (
+              {(order.items || []).map((item) => (
                 <div key={item.id} className="flex justify-between text-sm">
                   <span className="text-gray-700">
                     {item.quantity}x {item.name}
@@ -331,9 +333,10 @@ function BillCalculator({ open, onClose, order, onComplete }: BillCalculatorProp
 interface InvoiceCardProps {
   invoice: MockInvoice;
   onPrint: (invoice: MockInvoice) => void;
+  onDownload: (invoice: MockInvoice) => void;
 }
 
-function InvoiceCard({ invoice, onPrint }: InvoiceCardProps) {
+function InvoiceCard({ invoice, onPrint, onDownload }: InvoiceCardProps) {
   return (
     <motion.div
       layout
@@ -381,15 +384,26 @@ function InvoiceCard({ invoice, onPrint }: InvoiceCardProps) {
             )}
           </div>
 
-          <Button
-            size="sm"
-            variant="outline"
-            className="w-full mt-2"
-            onClick={() => onPrint(invoice)}
-          >
-            <Printer className="w-3 h-3 mr-2" />
-            Print Receipt
-          </Button>
+          <div className="flex gap-2 mt-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1"
+              onClick={() => onDownload(invoice)}
+            >
+              <Download className="w-3 h-3 mr-2" />
+              PDF
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1"
+              onClick={() => onPrint(invoice)}
+            >
+              <Printer className="w-3 h-3 mr-2" />
+              Print
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </motion.div>
@@ -469,8 +483,195 @@ export function BillingPaymentComprehensive() {
   };
 
   const handlePrintInvoice = (invoice: MockInvoice) => {
-    toast.success(`Printing invoice ${invoice.id}...`);
-    // In a real app, this would trigger the printer
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error('Please allow popups to print invoice');
+      return;
+    }
+    
+    const itemRows = invoice.items?.map(item => `
+      <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.name}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${item.quantity}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">₹${item.price.toFixed(2)}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">₹${(item.price * item.quantity).toFixed(2)}</td>
+      </tr>
+    `).join('') || '';
+    
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Invoice ${invoice.id}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+          .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
+          .header h1 { margin: 0; font-size: 24px; }
+          .header p { margin: 5px 0; color: #666; }
+          .info { display: flex; justify-content: space-between; margin-bottom: 20px; }
+          .info div { font-size: 14px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+          th { background: #333; color: white; padding: 10px; text-align: left; }
+          .totals { text-align: right; }
+          .totals div { margin: 5px 0; }
+          .grand-total { font-size: 18px; font-weight: bold; border-top: 2px solid #333; padding-top: 10px; margin-top: 10px; }
+          .discount { color: green; }
+          .footer { text-align: center; margin-top: 30px; color: #888; font-size: 12px; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Restaurant Management System</h1>
+          <p>Movicloud Labs</p>
+          <p style="font-weight: bold; margin-top: 10px;">Invoice: ${invoice.id}</p>
+        </div>
+        
+        <div class="info">
+          <div>
+            <p><strong>Customer:</strong> ${invoice.customerName}</p>
+            <p><strong>Table:</strong> ${invoice.tableNumber}</p>
+          </div>
+          <div style="text-align: right;">
+            <p><strong>Date:</strong> ${new Date(invoice.createdAt || Date.now()).toLocaleString()}</p>
+            <p><strong>Payment:</strong> ${invoice.paymentMethod}</p>
+          </div>
+        </div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th style="text-align: center;">Qty</th>
+              <th style="text-align: right;">Price</th>
+              <th style="text-align: right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemRows}
+          </tbody>
+        </table>
+        
+        <div class="totals">
+          <div>Subtotal: ₹${invoice.subtotal.toFixed(2)}</div>
+          <div>GST (${invoice.taxPercent}%): ₹${invoice.taxAmount.toFixed(2)}</div>
+          ${invoice.discountAmount > 0 ? `<div class="discount">Discount: -₹${invoice.discountAmount.toFixed(2)}</div>` : ''}
+          <div class="grand-total">Grand Total: ₹${invoice.grandTotal.toFixed(2)}</div>
+        </div>
+        
+        <div class="footer">
+          <p>Thank you for dining with us!</p>
+          <p>This is a computer generated invoice.</p>
+        </div>
+        
+        <script>
+          window.onload = function() {
+            window.print();
+          }
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    toast.success(`Invoice ${invoice.id} sent to printer`);
+  };
+
+  const handleDownloadInvoice = (invoice: MockInvoice) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Header
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Restaurant Management System', pageWidth / 2, 20, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Movicloud Labs', pageWidth / 2, 27, { align: 'center' });
+    
+    // Invoice details
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Invoice: ${invoice.id}`, pageWidth / 2, 38, { align: 'center' });
+    
+    // Separator line
+    doc.setLineWidth(0.5);
+    doc.line(14, 42, pageWidth - 14, 42);
+    
+    // Customer & Invoice info
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    const infoStartY = 50;
+    
+    doc.text(`Customer: ${invoice.customerName}`, 14, infoStartY);
+    doc.text(`Table: ${invoice.tableNumber}`, 14, infoStartY + 6);
+    doc.text(`Date: ${new Date(invoice.createdAt || Date.now()).toLocaleString()}`, pageWidth - 14, infoStartY, { align: 'right' });
+    doc.text(`Payment: ${invoice.paymentMethod}`, pageWidth - 14, infoStartY + 6, { align: 'right' });
+    
+    // Items table
+    const tableData = invoice.items?.map(item => [
+      item.name,
+      item.quantity.toString(),
+      `Rs.${item.price.toFixed(2)}`,
+      `Rs.${(item.price * item.quantity).toFixed(2)}`
+    ]) || [];
+    
+    autoTable(doc, {
+      startY: infoStartY + 15,
+      head: [['Item', 'Qty', 'Price', 'Total']],
+      body: tableData,
+      theme: 'striped',
+      headStyles: { fillColor: [51, 51, 51], textColor: 255 },
+      styles: { fontSize: 10, cellPadding: 3 },
+      columnStyles: {
+        0: { cellWidth: 'auto' },
+        1: { cellWidth: 25, halign: 'center' },
+        2: { cellWidth: 35, halign: 'right' },
+        3: { cellWidth: 35, halign: 'right' }
+      }
+    });
+    
+    // Get the Y position after the table
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    
+    // Totals section
+    const totalsX = pageWidth - 14;
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Subtotal:`, totalsX - 50, finalY);
+    doc.text(`Rs.${invoice.subtotal.toFixed(2)}`, totalsX, finalY, { align: 'right' });
+    
+    doc.text(`GST (${invoice.taxPercent}%):`, totalsX - 50, finalY + 6);
+    doc.text(`Rs.${invoice.taxAmount.toFixed(2)}`, totalsX, finalY + 6, { align: 'right' });
+    
+    let currentY = finalY + 12;
+    if (invoice.discountAmount > 0) {
+      doc.setTextColor(0, 128, 0);
+      doc.text(`Discount:`, totalsX - 50, currentY);
+      doc.text(`-Rs.${invoice.discountAmount.toFixed(2)}`, totalsX, currentY, { align: 'right' });
+      doc.setTextColor(0, 0, 0);
+      currentY += 6;
+    }
+    
+    // Separator line before grand total
+    doc.setLineWidth(0.3);
+    doc.line(pageWidth - 100, currentY + 2, pageWidth - 14, currentY + 2);
+    
+    // Grand total
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text(`Grand Total:`, totalsX - 50, currentY + 10);
+    doc.text(`Rs.${invoice.grandTotal.toFixed(2)}`, totalsX, currentY + 10, { align: 'right' });
+    
+    // Footer
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(128, 128, 128);
+    doc.text('Thank you for dining with us!', pageWidth / 2, currentY + 25, { align: 'center' });
+    doc.text('This is a computer generated invoice.', pageWidth / 2, currentY + 30, { align: 'center' });
+    
+    // Save the PDF
+    doc.save(`${invoice.id}.pdf`);
+    toast.success(`Invoice ${invoice.id} downloaded as PDF`);
   };
 
   const billRequestedOrders = orders.filter(o => o.status === 'bill_requested');
@@ -538,6 +739,7 @@ export function BillingPaymentComprehensive() {
                   key={invoice.id}
                   invoice={invoice}
                   onPrint={handlePrintInvoice}
+                  onDownload={handleDownloadInvoice}
                 />
               ))}
             </AnimatePresence>

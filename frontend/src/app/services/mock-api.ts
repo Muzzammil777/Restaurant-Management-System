@@ -90,7 +90,8 @@ let mockOrders: MockOrder[] = [
     id: 'order:1',
     displayId: 'ORD-001',
     customerName: 'John Doe',
-    tableNumber: 'T5',
+    tableNumber: 'M2',
+    tableId: 'table:5',
     type: 'dine-in',
     status: 'preparing',
     items: [
@@ -108,7 +109,8 @@ let mockOrders: MockOrder[] = [
     id: 'order:2',
     displayId: 'ORD-002',
     customerName: 'Sarah Smith',
-    tableNumber: 'T2',
+    tableNumber: 'V2',
+    tableId: 'table:2',
     type: 'dine-in',
     status: 'placed',
     items: [
@@ -143,7 +145,8 @@ let mockOrders: MockOrder[] = [
     id: 'order:4',
     displayId: 'ORD-004',
     customerName: 'Emily Brown',
-    tableNumber: 'T8',
+    tableNumber: 'M5',
+    tableId: 'table:8',
     type: 'dine-in',
     status: 'completed',
     items: [
