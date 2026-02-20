@@ -99,7 +99,7 @@ export function OrderManagement() {
     
     // Calculate total from items if raw total is invalid
     const rawTotal = safeNumber(rawOrder?.total ?? rawOrder?.totalAmount ?? rawOrder?.grandTotal);
-    const calculatedTotal = normalizedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const calculatedTotal = normalizedItems.reduce((sum: number, item: { name: string; quantity: number; price: number }) => sum + (item.price * item.quantity), 0);
     const finalTotal = rawTotal > 0 ? rawTotal : calculatedTotal;
     
     return {
