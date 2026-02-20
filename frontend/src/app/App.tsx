@@ -8,7 +8,6 @@ import { InventoryManagement } from '@/app/components/inventory-management';
 import { StaffManagement } from '@/app/components/staff-management';
 import { BillingPayment } from '@/app/components/billing-payment';
 import { SecuritySettings } from '@/app/components/security-settings';
-// import { DeliveryManagement } from '@/app/components/delivery-management'; // Hidden for now
 import { OffersLoyalty } from '@/app/components/offers-loyalty';
 import { ReportsAnalytics } from '@/app/components/reports-analytics';
 import { NotificationManagement } from '@/app/components/notification-management';
@@ -36,7 +35,6 @@ import {
   Wrench,
   LogOut,
   CreditCard,
-  Truck,
   Tag,
   BarChart3,
   BellRing,
@@ -280,14 +278,6 @@ function AppContent() {
                 Billing
               </TabsTrigger>
             )}
-            {/* Delivery tab hidden for now
-            {hasPermission('delivery') && (
-              <TabsTrigger value="delivery" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                <Truck className="h-4 w-4" />
-                Delivery
-              </TabsTrigger>
-            )}
-            */}
             {hasPermission('offers') && (
               <TabsTrigger value="offers" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
                 <Tag className="h-4 w-4" />
@@ -350,12 +340,6 @@ function AppContent() {
         <TabsContent value="billing" className="mt-0">
           <BillingPayment />
         </TabsContent>
-
-        {/* Delivery content hidden for now
-        <TabsContent value="delivery" className="mt-0">
-          <DeliveryManagement />
-        </TabsContent>
-        */}
 
         <TabsContent value="offers" className="mt-0">
           <OffersLoyalty />

@@ -27,7 +27,6 @@ SAMPLE_STAFF = [
     {"name": "Chef User", "email": "chef@restaurant.com", "phone": "+91 98765 00003", "role": "chef", "password": "chef123"},
     {"name": "Waiter User", "email": "waiter@restaurant.com", "phone": "+91 98765 00004", "role": "waiter", "password": "waiter123"},
     {"name": "Cashier User", "email": "cashier@restaurant.com", "phone": "+91 98765 00005", "role": "cashier", "password": "cashier123"},
-    {"name": "Delivery User", "email": "delivery@restaurant.com", "phone": "+91 98765 00006", "role": "delivery", "password": "delivery123"},
 ]
 
 # Sample Data

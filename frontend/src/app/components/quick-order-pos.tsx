@@ -458,13 +458,15 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
           // Handle both array response and {success, data} format
           const comboData = Array.isArray(comboResult) ? comboResult : (comboResult.data || []);
           if (comboData.length >= 0) {
-            // Map _id to id for frontend compatibility
+            // Map _id to id for frontend compatibility and normalize prices
             const availableCombos = comboData
               .filter((combo: ComboMeal) => combo.available !== false)
               .map((combo: any) => ({
                 ...combo,
                 id: combo._id || combo.id,
                 items: combo.items || [],
+                originalPrice: Number(combo.originalPrice) || Number(combo.discountedPrice) || Number(combo.price) || 0,
+                discountedPrice: Number(combo.discountedPrice) || Number(combo.price) || Number(combo.originalPrice) || 0,
               }));
             setComboMeals(availableCombos);
             comboFetched = true;
@@ -619,8 +621,8 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
       menuItems.find(mi => mi.id === itemId)
     ).filter(Boolean) as MenuItem[];
 
-    // Ensure price is a valid number - use discountedPrice, fall back to originalPrice
-    const comboPrice = Number(combo.discountedPrice) || Number(combo.originalPrice) || 0;
+    // Ensure price is a valid number - use discountedPrice, fall back to originalPrice or price
+    const comboPrice = Number(combo.discountedPrice) || Number(combo.originalPrice) || Number((combo as any).price) || 0;
     const comboName = combo.name || 'Unknown Combo';
 
     const newCombo: QuickOrderItem = {

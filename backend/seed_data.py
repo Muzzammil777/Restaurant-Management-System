@@ -34,7 +34,7 @@ async def seed():
             'permissions': {
                 'dashboard': True, 'menu': True, 'orders': True, 'kitchen': True,
                 'tables': True, 'inventory': True, 'staff': True, 'billing': True,
-                'delivery': True, 'offers': True, 'reports': True, 'notifications': True,
+                'offers': True, 'reports': True, 'notifications': True,
                 'settings': True
             },
             'createdAt': datetime.utcnow().isoformat()
@@ -46,7 +46,7 @@ async def seed():
             'permissions': {
                 'dashboard': True, 'menu': True, 'orders': True, 'kitchen': True,
                 'tables': True, 'inventory': True, 'staff': True, 'billing': True,
-                'delivery': True, 'offers': True, 'reports': True, 'notifications': True,
+                'offers': True, 'reports': True, 'notifications': True,
                 'settings': False
             },
             'createdAt': datetime.utcnow().isoformat()
@@ -58,7 +58,7 @@ async def seed():
             'permissions': {
                 'dashboard': True, 'menu': True, 'orders': True, 'kitchen': True,
                 'tables': False, 'inventory': True, 'staff': False, 'billing': False,
-                'delivery': False, 'offers': False, 'reports': False, 'notifications': True,
+                'offers': False, 'reports': False, 'notifications': True,
                 'settings': False
             },
             'createdAt': datetime.utcnow().isoformat()
@@ -70,7 +70,7 @@ async def seed():
             'permissions': {
                 'dashboard': True, 'menu': True, 'orders': True, 'kitchen': False,
                 'tables': True, 'inventory': False, 'staff': False, 'billing': True,
-                'delivery': False, 'offers': False, 'reports': False, 'notifications': True,
+                'offers': False, 'reports': False, 'notifications': True,
                 'settings': False
             },
             'createdAt': datetime.utcnow().isoformat()
@@ -82,7 +82,7 @@ async def seed():
             'permissions': {
                 'dashboard': True, 'menu': True, 'orders': True, 'kitchen': False,
                 'tables': False, 'inventory': False, 'staff': False, 'billing': True,
-                'delivery': False, 'offers': True, 'reports': True, 'notifications': True,
+                'offers': True, 'reports': True, 'notifications': True,
                 'settings': False
             },
             'createdAt': datetime.utcnow().isoformat()

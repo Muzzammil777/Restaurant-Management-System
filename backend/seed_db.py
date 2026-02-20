@@ -25,7 +25,6 @@ def import_seed_data():
     collections_data = {
         'riders': 'riders.json',
         'orders': 'orders.json',
-        'delivery_zones': 'delivery_zones.json',
         'menu': 'menu.json',
         'staff': 'staff.json',
         'ingredients': 'ingredients.json',

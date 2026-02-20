@@ -2,19 +2,18 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { authApi } from './api';
 
 // Define user roles
-export type UserRole = 'admin' | 'manager' | 'chef' | 'waiter' | 'cashier' | 'delivery' | 'staff';
+export type UserRole = 'admin' | 'manager' | 'chef' | 'waiter' | 'cashier' | 'staff';
 
 // Local storage key for role permissions
 const ROLE_PERMISSIONS_STORAGE_KEY = 'rms_role_permissions';
 
 // Default role permissions - which tabs each role can access
 const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-  admin: ['dashboard', 'menu', 'orders', 'kitchen', 'tables', 'inventory', 'staff', 'billing', 'delivery', 'offers', 'reports', 'notifications', 'settings'],
-  manager: ['dashboard', 'menu', 'orders', 'kitchen', 'tables', 'inventory', 'staff', 'billing', 'delivery', 'offers', 'reports', 'notifications'],
+  admin: ['dashboard', 'menu', 'orders', 'kitchen', 'tables', 'inventory', 'staff', 'billing', 'offers', 'reports', 'notifications', 'settings'],
+  manager: ['dashboard', 'menu', 'orders', 'kitchen', 'tables', 'inventory', 'staff', 'billing', 'offers', 'reports', 'notifications'],
   chef: ['kitchen', 'orders', 'inventory'],
   waiter: ['orders', 'tables', 'menu'],
   cashier: ['orders', 'billing', 'tables'],
-  delivery: ['delivery', 'orders'],
   staff: ['orders', 'menu'], // Default permissions for generic staff
 };
 
@@ -43,7 +42,6 @@ export const DEFAULT_TAB: Record<UserRole, string> = {
   chef: 'kitchen',
   waiter: 'orders',
   cashier: 'billing',
-  delivery: 'delivery',
   staff: 'orders',
 };
 

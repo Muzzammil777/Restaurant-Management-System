@@ -17,7 +17,6 @@ import {
   Timer,
   Search,
   Utensils,
-  Truck,
   ShoppingBag,
   LayoutGrid,
   Map as MapIcon,
@@ -33,7 +32,7 @@ import { toast } from "sonner";
 import { ordersApi } from "@/utils/api";
 
 type OrderStatus = "NEW" | "COOKING" | "READY" | "DELIVERED";
-type OrderType = "DINE_IN" | "DELIVERY" | "PARCEL";
+type OrderType = "DINE_IN" | "PARCEL";
 type StationType = "FRY" | "CURRY" | "RICE" | "PREP" | "GRILL" | "DESSERT" | "HEAD_CHEF";
 type ViewMode = "ORDERS" | "BATCH" | "STATS";
 
@@ -173,9 +172,7 @@ const convertToKitchenOrder = (order: APIOrder, itemStatuses: Map<string, "PENDI
   // Determine order type from type field
   let orderType: OrderType = "DINE_IN";
   const orderTypeStr = (order.type || '').toLowerCase();
-  if (orderTypeStr === 'delivery') {
-    orderType = "DELIVERY";
-  } else if (orderTypeStr === 'takeaway' || orderTypeStr === 'parcel') {
+  if (orderTypeStr === 'takeaway' || orderTypeStr === 'parcel') {
     orderType = "PARCEL";
   }
 
@@ -626,15 +623,6 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                   Dine In
                 </Button>
                 <Button
-                  variant={activeFilter === "DELIVERY" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setActiveFilter("DELIVERY")}
-                  className={cn("gap-1", activeFilter === "DELIVERY" && "bg-green-600 text-white")}
-                >
-                  <Truck className="h-4 w-4" />
-                  Delivery
-                </Button>
-                <Button
                   variant={activeFilter === "PARCEL" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setActiveFilter("PARCEL")}
@@ -801,11 +789,9 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                         <Badge variant="outline" className={cn(
                           "text-xs",
                           order.orderType === "DINE_IN" && "border-blue-400 text-blue-600",
-                          order.orderType === "DELIVERY" && "border-green-400 text-green-600",
                           order.orderType === "PARCEL" && "border-purple-400 text-purple-600"
                         )}>
                           {order.orderType === "DINE_IN" && <Utensils className="h-3 w-3 mr-1" />}
-                          {order.orderType === "DELIVERY" && <Truck className="h-3 w-3 mr-1" />}
                           {order.orderType === "PARCEL" && <ShoppingBag className="h-3 w-3 mr-1" />}
                           {order.orderType.replace("_", " ")}
                         </Badge>
@@ -922,7 +908,6 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                         <Badge variant="outline" className={cn(
                           "text-xs",
                           order.orderType === "DINE_IN" && "border-blue-400 text-blue-600",
-                          order.orderType === "DELIVERY" && "border-green-400 text-green-600",
                           order.orderType === "PARCEL" && "border-purple-400 text-purple-600"
                         )}>
                           {order.orderType.replace("_", " ")}
@@ -1061,7 +1046,6 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                         <Badge variant="outline" className={cn(
                           "text-xs",
                           order.orderType === "DINE_IN" && "border-blue-400 text-blue-600",
-                          order.orderType === "DELIVERY" && "border-green-400 text-green-600",
                           order.orderType === "PARCEL" && "border-purple-400 text-purple-600"
                         )}>
                           {order.orderType.replace("_", " ")}

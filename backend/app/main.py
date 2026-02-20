@@ -21,7 +21,6 @@ from .routes import orders as orders_router
 from .routes import tables as tables_router
 from .routes import inventory as inventory_router
 from .routes import customers as customers_router
-from .routes import delivery as delivery_router
 from .routes import offers as offers_router
 from .routes import notifications as notifications_router
 from .routes import billing as billing_router
@@ -70,9 +69,8 @@ app.include_router(tables_router.router, prefix='/api/tables')
 app.include_router(inventory_router.router, prefix='/api/inventory')
 app.include_router(recipes_router.router, prefix='/api/recipes')
 
-# Customer & Delivery
+# Customer Operations
 app.include_router(customers_router.router, prefix='/api/customers')
-app.include_router(delivery_router.router, prefix='/api/delivery')
 
 # Marketing & Communications
 app.include_router(offers_router.router, prefix='/api/offers')
@@ -123,7 +121,6 @@ async def seed_database(secret: str = ''):
         {"name": "Chef User", "email": "chef@restaurant.com", "phone": "+91 98765 00003", "role": "chef", "password": "chef123"},
         {"name": "Waiter User", "email": "waiter@restaurant.com", "phone": "+91 98765 00004", "role": "waiter", "password": "waiter123"},
         {"name": "Cashier User", "email": "cashier@restaurant.com", "phone": "+91 98765 00005", "role": "cashier", "password": "cashier123"},
-        {"name": "Delivery User", "email": "delivery@restaurant.com", "phone": "+91 98765 00006", "role": "delivery", "password": "delivery123"},
     ]
     
     try:

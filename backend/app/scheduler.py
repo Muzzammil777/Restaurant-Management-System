@@ -31,7 +31,7 @@ async def run_automatic_backup():
         # Collections to backup
         collection_names = ['staff', 'settings', 'system_config', 'roles', 'audit_logs', 
                           'attendance', 'shifts', 'menu', 'orders', 'tables', 'inventory',
-                          'customers', 'delivery', 'offers', 'notifications', 'billing']
+                          'customers', 'offers', 'notifications', 'billing']
         
         # Export data from each collection
         backup_content = {

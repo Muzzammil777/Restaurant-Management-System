@@ -11,7 +11,6 @@ class StaffRole(str, Enum):
     chef = "chef"
     waiter = "waiter"
     cashier = "cashier"
-    delivery = "delivery"
     staff = "staff"
 
 
@@ -222,7 +221,6 @@ class RolePermissions(BaseModel):
     inventory: bool = False
     staff: bool = False
     billing: bool = False
-    delivery: bool = False
     offers: bool = False
     reports: bool = False
     notifications: bool = False
