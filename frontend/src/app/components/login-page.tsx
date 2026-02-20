@@ -5,7 +5,7 @@ import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Alert, AlertDescription } from '@/app/components/ui/alert';
-import { UtensilsCrossed, LogIn, Eye, EyeOff, ChefHat, UserCog, CreditCard, Truck, Users, Shield, Lock } from 'lucide-react';
+import { UtensilsCrossed, LogIn, Eye, EyeOff, ChefHat, UserCog, CreditCard, Users, Shield, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ROLE_ICONS: Record<UserRole, React.ReactNode> = {
@@ -14,7 +14,6 @@ const ROLE_ICONS: Record<UserRole, React.ReactNode> = {
   chef: <ChefHat className="h-5 w-5" />,
   waiter: <Users className="h-5 w-5" />,
   cashier: <CreditCard className="h-5 w-5" />,
-  delivery: <Truck className="h-5 w-5" />,
   staff: <Users className="h-5 w-5" />,
 };
 
