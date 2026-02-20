@@ -17,6 +17,7 @@ import { QuickOrderPOS } from '@/app/components/quick-order-pos';
 
 interface Order {
   id: string;
+  orderNumber?: string;
   tableNumber?: number;
   customerName?: string;
   items: Array<{
@@ -84,13 +85,15 @@ export function OrderManagement() {
     const rawItems = Array.isArray(rawOrder?.items) ? rawOrder.items : [];
     return {
       ...rawOrder,
+      id: rawOrder?._id || rawOrder?.id || '',
+      orderNumber: rawOrder?.orderNumber || rawOrder?.order_number,
       items: rawItems.map((item: any) => ({
-        name: item?.name || 'Unknown Item',
-        quantity: Number(item?.quantity) || 0,
-        price: Number(item?.price) || 0,
+        name: item?.name || item?.dishName || item?.itemName || 'Unknown Item',
+        quantity: Number(item?.quantity) || Number(item?.qty) || 1,
+        price: Number(item?.price) || Number(item?.unitPrice) || 0,
       })),
-      total: Number(rawOrder?.total) || 0,
-      createdAt: rawOrder?.createdAt || new Date().toISOString(),
+      total: Number(rawOrder?.total) || Number(rawOrder?.totalAmount) || Number(rawOrder?.grandTotal) || 0,
+      createdAt: rawOrder?.createdAt || rawOrder?.created_at || new Date().toISOString(),
     };
   };
 
@@ -225,7 +228,9 @@ export function OrderManagement() {
     return type === 'dine-in' ? 'Dine-In' : type === 'takeaway' ? 'Takeaway' : 'Delivery';
   };
 
-  const generateOrderDisplayId = (orderId: string | undefined) => {
+  const generateOrderDisplayId = (orderId: string | undefined, orderNumber?: string) => {
+    // Prefer orderNumber from backend if available
+    if (orderNumber) return orderNumber;
     if (!orderId) return '#UNKNOWN';
     const parts = orderId.split('-');
     const hash = parts[parts.length - 1] || orderId;
@@ -286,7 +291,7 @@ export function OrderManagement() {
     if (filterStatus !== 'all' && order.status !== filterStatus) return false;
     if (filterType !== 'all' && order.type !== filterType) return false;
     if (filterTable !== 'all' && order.tableNumber?.toString() !== filterTable) return false;
-    if (searchQuery && !generateOrderDisplayId(order.id).toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (searchQuery && !generateOrderDisplayId(order.id, order.orderNumber).toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
 
@@ -558,7 +563,7 @@ export function OrderManagement() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <CardTitle className="text-lg font-semibold">
-                          {generateOrderDisplayId(order.id)}
+                          {generateOrderDisplayId(order.id, order.orderNumber)}
                         </CardTitle>
                         {/* Innovation #3: Priority Badge */}
                         {!['served', 'completed', 'cancelled'].includes(order.status) && (
@@ -782,7 +787,7 @@ export function OrderManagement() {
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>Order Details {generateOrderDisplayId(order.id)}</DialogTitle>
+                            <DialogTitle>Order Details {generateOrderDisplayId(order.id, order.orderNumber)}</DialogTitle>
                             <DialogDescription>
                               Complete order information
                             </DialogDescription>

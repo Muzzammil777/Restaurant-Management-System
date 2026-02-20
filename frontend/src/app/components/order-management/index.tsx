@@ -101,14 +101,15 @@ export function OrderManagement() {
         ...order,
         // Map MongoDB _id to id for frontend consistency
         id: order._id || order.id,
-        total: order.total || order.totalAmount || 0,
+        orderNumber: order.orderNumber || order.order_number,
+        total: order.total || order.totalAmount || order.grandTotal || 0,
         status: order.status || 'placed',
         type: order.type || 'dine-in',
-        createdAt: order.createdAt || new Date().toISOString(),
+        createdAt: order.createdAt || order.created_at || new Date().toISOString(),
         items: (order.items || []).map((item: any) => ({
           ...item,
-          price: item.price || 0,
-          quantity: item.quantity || 0,
+          price: item.price || item.unitPrice || 0,
+          quantity: item.quantity || item.qty || 1,
           name: item.name || item.dishName || item.itemName || 'Unknown Item'
         }))
       })));
@@ -237,7 +238,7 @@ export function OrderManagement() {
     if (filterStatus !== 'all' && order.status !== filterStatus) return false;
     if (filterType !== 'all' && order.type !== filterType) return false;
     if (filterTable !== 'all' && order.tableNumber?.toString() !== filterTable) return false;
-    if (searchQuery && !generateOrderDisplayId(order.id).toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (searchQuery && !generateOrderDisplayId(order.id, order.orderNumber).toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
 
@@ -779,7 +780,7 @@ export function OrderManagement() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <CardTitle className="text-xl font-bold gradient-text">
-                            {generateOrderDisplayId(order.id)}
+                            {generateOrderDisplayId(order.id, order.orderNumber)}
                           </CardTitle>
                           {!['served', 'completed', 'cancelled'].includes(order.status) && (
                             <motion.div
@@ -1088,7 +1089,7 @@ export function OrderManagement() {
                           </DialogTrigger>
                           <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
                             <DialogHeader>
-                              <DialogTitle className="gradient-text text-xl">Order {generateOrderDisplayId(order.id)}</DialogTitle>
+                              <DialogTitle className="gradient-text text-xl">Order {generateOrderDisplayId(order.id, order.orderNumber)}</DialogTitle>
                               <DialogDescription>Complete order information</DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 mt-4">
