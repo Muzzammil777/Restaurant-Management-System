@@ -14,7 +14,7 @@ backup_job_id = "automatic_backup_job"
 
 
 async def run_automatic_backup():
-    """Execute automatic backup"""
+    """Execute automatic backup - stores actual data for restore"""
     from .db import get_db
     
     try:
@@ -28,24 +28,23 @@ async def run_automatic_backup():
             print("[Scheduler] Auto backup is disabled, skipping...")
             return
         
-        # Collections to backup
-        collection_names = ['staff', 'settings', 'system_config', 'roles', 'audit_logs', 
-                          'attendance', 'shifts', 'menu', 'orders', 'tables', 'inventory',
-                          'customers', 'offers', 'notifications', 'billing']
+        # Collections to backup - comprehensive list
+        collection_names = [
+            'staff', 'settings', 'system_config', 'roles', 'audit_logs', 
+            'attendance', 'shifts', 'menu_items', 'combo_meals', 'orders', 
+            'tables', 'ingredients', 'recipes', 'customers', 'offers', 
+            'notifications', 'billing'
+        ]
         
-        # Export data from each collection
-        backup_content = {
-            'collections': collection_names,
-            'data': {},
-            'exportedAt': datetime.utcnow().isoformat(),
-            'type': 'automatic'
-        }
-        
+        # Export data from each collection  
+        backup_data = {}
         document_counts = {}
+        total_docs = 0
+        
         for coll_name in collection_names:
             try:
                 coll = db.get_collection(coll_name)
-                docs = await coll.find().to_list(None)
+                docs = await coll.find().to_list(50000)
                 # Serialize ObjectId to string
                 serialized_docs = []
                 for doc in docs:
@@ -56,39 +55,43 @@ async def run_automatic_backup():
                         else:
                             serialized_doc[key] = value
                     serialized_docs.append(serialized_doc)
-                backup_content['data'][coll_name] = serialized_docs
+                backup_data[coll_name] = serialized_docs
                 document_counts[coll_name] = len(docs)
+                total_docs += len(docs)
             except Exception as e:
                 print(f"[Scheduler] Error backing up {coll_name}: {e}")
-                backup_content['data'][coll_name] = []
+                backup_data[coll_name] = []
                 document_counts[coll_name] = 0
         
-        # Calculate backup size (approximate)
+        # Calculate backup size
         import json
-        backup_json = json.dumps(backup_content, default=str)
+        backup_json = json.dumps(backup_data, default=str)
         size_bytes = len(backup_json.encode('utf-8'))
         if size_bytes < 1024:
             size_str = f"{size_bytes} B"
         elif size_bytes < 1024 * 1024:
-            size_str = f"{size_bytes / 1024:.1f} KB"
+            size_str = f"{size_bytes / 1024:.0f} KB"
         else:
-            size_str = f"{size_bytes / (1024 * 1024):.1f} MB"
+            size_str = f"{size_bytes / (1024 * 1024):.0f} MB"
         
         now = datetime.utcnow()
         backup_doc = {
-            'name': f"Auto Backup - {now.strftime('%Y-%m-%d')}",
+            'name': f"Full Backup - {now.strftime('%Y-%m-%d')}",
             'size': size_str,
             'date': now.strftime('%Y-%m-%d'),
-            'time': now.strftime('%H:%M'),
+            'time': now.strftime('%H:%M:%S'),
             'status': 'completed',
             'type': 'automatic',
+            'collections': collection_names,
             'documentCounts': document_counts,
-            'content': backup_content,
-            'createdAt': now
+            'totalDocuments': total_docs,
+            'createdAt': now.isoformat(),
+            # Store actual backup data for restore
+            'backupData': backup_data
         }
         
         result = await backups_coll.insert_one(backup_doc)
-        print(f"[Scheduler] ✅ Automatic backup created: {result.inserted_id}")
+        print(f"[Scheduler] ✅ Automatic backup created: {result.inserted_id} ({total_docs} documents, {size_str})")
         
         # Clean up old backups based on retention period
         retention_days = config.get('retentionDays', 30)

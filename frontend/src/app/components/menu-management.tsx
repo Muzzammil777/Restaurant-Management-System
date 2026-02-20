@@ -222,14 +222,23 @@ useEffect(() => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
 
+    // Parse prices with validation
+    const discountedPrice = parseFloat(fd.get("price") as string) || 0;
+    const originalPrice = parseFloat(fd.get("originalPrice") as string) || 0;
+
+    if (discountedPrice <= 0 || originalPrice <= 0) {
+      toast.error("Please enter valid prices (must be greater than 0)");
+      return;
+    }
+
     const payload = {
       name: fd.get("name") as string,
       cuisine: fd.get("cuisine") as CuisineType,
-      discountedPrice: parseFloat(fd.get("price") as string),
-      calories: parseInt(fd.get("calories") as string),
+      discountedPrice: discountedPrice,
+      calories: parseInt(fd.get("calories") as string) || 0,
       prepTime: fd.get("prepTime") as string,
       description: fd.get("desc") as string,
-      originalPrice: editingCombo?.originalPrice ?? parseFloat(fd.get("originalPrice") as string),
+      originalPrice: originalPrice,
       image: editingCombo?.image ?? "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800",
       available: editingCombo?.available ?? true,
     };
@@ -974,15 +983,13 @@ useEffect(() => {
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              {!editingCombo && (
-                <div className="space-y-2">
-                  <Label htmlFor="originalPrice" style={{ fontFamily: 'Inter, sans-serif' }}>Original Price (₹)</Label>
-                  <Input id="originalPrice" name="originalPrice" type="number" required />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="originalPrice" style={{ fontFamily: 'Inter, sans-serif' }}>Original Price (₹)</Label>
+                <Input id="originalPrice" name="originalPrice" type="number" defaultValue={editingCombo?.originalPrice || ''} min="1" required />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="comboPrice" style={{ fontFamily: 'Inter, sans-serif' }}>Discounted Price (₹)</Label>
-                <Input id="comboPrice" name="price" type="number" defaultValue={editingCombo?.discountedPrice} required />
+                <Input id="comboPrice" name="price" type="number" defaultValue={editingCombo?.discountedPrice || ''} min="1" required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="comboCalories" style={{ fontFamily: 'Inter, sans-serif' }}>Calories</Label>

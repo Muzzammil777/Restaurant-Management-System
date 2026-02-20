@@ -467,10 +467,11 @@ async def reset_password_request(payload: PasswordReset, request: Request):
 # ============ BACKUP & RECOVERY ============
 @router.get('/backups', tags=['backup'])
 async def list_backups():
-    """List all backups"""
+    """List all backups (excludes large backupData field for performance)"""
     db = get_db()
     coll = db.get_collection('backups')
-    docs = await coll.find().sort('createdAt', -1).to_list(100)
+    # Exclude the large backupData field when listing
+    docs = await coll.find({}, {'backupData': 0}).sort('createdAt', -1).to_list(100)
     return serialize_doc(docs)
 
 
@@ -531,7 +532,7 @@ async def update_backup_config(config: BackupConfig, request: Request):
 
 @router.post('/backups', tags=['backup'])
 async def create_backup(payload: BackupCreate, request: Request):
-    """Create a new backup and optionally upload to Google Drive"""
+    """Create a new backup - stores actual data for later restore"""
     db = get_db()
     coll = db.get_collection('backups')
     config_coll = db.get_collection('backup_config')
@@ -541,48 +542,56 @@ async def create_backup(payload: BackupCreate, request: Request):
     google_drive_enabled = backup_config.get('googleDriveEnabled', False) if backup_config else False
     google_drive_folder_id = backup_config.get('googleDriveFolderId') if backup_config else None
     
-    # Get list of collections to backup
-    collection_names = payload.collections or ['staff', 'settings', 'system_config', 'roles', 'audit_logs', 'attendance', 'shifts', 'performance_logs']
+    # Get list of collections to backup - include all important data collections
+    collection_names = payload.collections or [
+        'staff', 'settings', 'system_config', 'roles', 'audit_logs', 
+        'attendance', 'shifts', 'performance_logs', 'menu_items', 
+        'combo_meals', 'orders', 'customers', 'tables', 'ingredients',
+        'recipes', 'offers', 'notifications'
+    ]
     
     # Export actual data from each collection
-    backup_content = {
-        'collections': collection_names,
-        'data': {},
-        'metadata': {}
-    }
+    backup_data = {}
+    metadata = {}
     total_docs = 0
     
     for coll_name in collection_names:
-        collection = db.get_collection(coll_name)
-        docs = await collection.find().to_list(10000)
-        backup_content['data'][coll_name] = serialize_doc(docs)
-        backup_content['metadata'][coll_name] = len(docs)
-        total_docs += len(docs)
+        try:
+            collection = db.get_collection(coll_name)
+            docs = await collection.find().to_list(50000)
+            backup_data[coll_name] = serialize_doc(docs)
+            metadata[coll_name] = len(docs)
+            total_docs += len(docs)
+        except Exception as e:
+            print(f"[Backup] Warning: Could not backup collection {coll_name}: {e}")
+            backup_data[coll_name] = []
+            metadata[coll_name] = 0
     
     now = datetime.utcnow()
-    backup_name = payload.name or f"Backup - {now.strftime('%Y-%m-%d %H:%M')}"
-    backup_content['exportedAt'] = now.isoformat()
-    backup_content['backupName'] = backup_name
+    backup_name = payload.name or f"{payload.type.title() if payload.type else 'Manual'} Backup - {now.strftime('%Y-%m-%d')}"
     
-    # Calculate approximate size
-    backup_size_bytes = len(json.dumps(backup_content, default=str))
+    # Calculate size of actual data
+    data_json = json.dumps(backup_data, default=str)
+    backup_size_bytes = len(data_json)
     if backup_size_bytes > 1024 * 1024:
-        size_str = f"{backup_size_bytes / (1024 * 1024):.2f} MB"
+        size_str = f"{backup_size_bytes / (1024 * 1024):.0f} MB"
     else:
         size_str = f"{backup_size_bytes / 1024:.2f} KB"
     
-    # Create backup document
+    # Create backup document WITH the actual data stored
     backup_doc = {
         'name': backup_name,
         'type': payload.type or 'manual',
         'collections': collection_names,
-        'documentCounts': backup_content['metadata'],
+        'documentCounts': metadata,
         'totalDocuments': total_docs,
         'size': size_str,
         'date': now.strftime('%Y-%m-%d'),
         'time': now.strftime('%H:%M:%S'),
         'status': 'completed',
-        'createdAt': now.isoformat()
+        'createdAt': now.isoformat(),
+        # Store the actual backup data for restore
+        'backupData': backup_data
     }
     
     res = await coll.insert_one(backup_doc)
@@ -595,18 +604,20 @@ async def create_backup(payload: BackupCreate, request: Request):
         userName=request.headers.get('x-user-name'),
         details={
             'collections': collection_names, 
-            'totalDocs': total_docs
+            'totalDocs': total_docs,
+            'size': size_str
         },
         ip=request.client.host if request.client else None
     )
     
-    result = serialize_doc(await coll.find_one({'_id': res.inserted_id}))
+    # Return without the large backupData field for response
+    result = serialize_doc(await coll.find_one({'_id': res.inserted_id}, {'backupData': 0}))
     return result
 
 
 @router.post('/backups/{backup_id}/restore', tags=['backup'])
 async def restore_backup(backup_id: str, request: Request):
-    """Restore from a backup"""
+    """Restore from a backup - replaces current data with backup data"""
     db = get_db()
     coll = db.get_collection('backups')
     
@@ -614,23 +625,78 @@ async def restore_backup(backup_id: str, request: Request):
     if not backup:
         raise HTTPException(status_code=404, detail='Backup not found')
     
-    # In production, would actually restore data from backup file
+    # Support both new format (backupData) and old format (content.data)
+    backup_data = backup.get('backupData')
+    if not backup_data and backup.get('content'):
+        backup_data = backup.get('content', {}).get('data')
+    
+    if not backup_data:
+        raise HTTPException(status_code=400, detail='This backup does not contain restorable data. It may be an old backup created before the fix.')
+    
+    collections_restored = []
+    total_restored = 0
+    errors = []
+    
+    # Restore each collection from backup
+    for coll_name, docs in backup_data.items():
+        if not docs:
+            continue
+        try:
+            collection = db.get_collection(coll_name)
+            
+            # Clear existing data in the collection
+            await collection.delete_many({})
+            
+            # Convert string IDs back to ObjectIds where needed
+            restored_docs = []
+            for doc in docs:
+                if '_id' in doc:
+                    try:
+                        doc['_id'] = ObjectId(doc['_id'])
+                    except:
+                        pass  # Keep as string if not valid ObjectId
+                restored_docs.append(doc)
+            
+            # Insert backup data
+            if restored_docs:
+                await collection.insert_many(restored_docs)
+                collections_restored.append(coll_name)
+                total_restored += len(restored_docs)
+        except Exception as e:
+            errors.append(f"{coll_name}: {str(e)}")
+            print(f"[Restore] Error restoring {coll_name}: {e}")
+    
     await log_audit(
         action='restore_backup',
         resource='backup',
         resourceId=backup_id,
         userId=request.headers.get('x-user-id'),
         userName=request.headers.get('x-user-name'),
-        details={'backup_name': backup.get('name')},
+        details={
+            'backup_name': backup.get('name'),
+            'collections_restored': collections_restored,
+            'total_documents': total_restored,
+            'errors': errors
+        },
         ip=request.client.host if request.client else None
     )
     
-    return {'success': True, 'message': f"Backup '{backup.get('name')}' restored successfully"}
+    if errors:
+        return {
+            'success': True, 
+            'message': f"Backup '{backup.get('name')}' partially restored. {len(collections_restored)} collections, {total_restored} documents.",
+            'warnings': errors
+        }
+    
+    return {
+        'success': True, 
+        'message': f"Backup '{backup.get('name')}' restored successfully. {len(collections_restored)} collections, {total_restored} documents."
+    }
 
 
 @router.get('/backups/{backup_id}/download', tags=['backup'])
 async def download_backup(backup_id: str):
-    """Download backup data as JSON"""
+    """Download backup data as JSON - returns the actual stored backup data"""
     db = get_db()
     coll = db.get_collection('backups')
     
@@ -638,23 +704,28 @@ async def download_backup(backup_id: str):
     if not backup:
         raise HTTPException(status_code=404, detail='Backup not found')
     
-    # Get the collections that were backed up
-    collection_names = backup.get('collections', ['staff', 'settings', 'system_config', 'roles'])
+    # Support both new format (backupData) and old format (content.data)
+    backup_data = backup.get('backupData')
+    if not backup_data and backup.get('content'):
+        backup_data = backup.get('content', {}).get('data')
     
-    # Export data from each collection
-    backup_data = {
-        'backupInfo': serialize_doc(backup),
-        'collections': collection_names,
-        'data': {},
-        'exportedAt': datetime.utcnow().isoformat()
+    if not backup_data:
+        raise HTTPException(status_code=400, detail='This backup does not contain downloadable data. It may be an old backup.')
+    
+    # Return the stored backup data with metadata
+    return {
+        'backupInfo': {
+            'name': backup.get('name'),
+            'date': backup.get('date'),
+            'time': backup.get('time'),
+            'totalDocuments': backup.get('totalDocuments'),
+            'collections': backup.get('collections'),
+            'documentCounts': backup.get('documentCounts')
+        },
+        'collections': backup.get('collections', []),
+        'data': backup_data,
+        'exportedAt': backup.get('createdAt')
     }
-    
-    for coll_name in collection_names:
-        collection = db.get_collection(coll_name)
-        docs = await collection.find().to_list(10000)
-        backup_data['data'][coll_name] = serialize_doc(docs)
-    
-    return backup_data
 
 
 @router.post('/backups/upload', tags=['backup'])
