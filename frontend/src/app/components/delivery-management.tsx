@@ -117,9 +117,10 @@ export function DeliveryManagement() {
     const fetchData = async () => {
       try {
         setLoading(true);
+        const API_URL = import.meta.env.VITE_API_URL || 'https://restaurant-management-system-24c2.onrender.com/api';
         const [ridersRes, ordersRes] = await Promise.all([
-          fetch('http://localhost:8000/api/delivery/riders'),
-          fetch('http://localhost:8000/api/delivery/orders'),
+          fetch(`${API_URL}/delivery/riders`),
+          fetch(`${API_URL}/delivery/orders`),
         ]);
 
         if (ridersRes.ok) {
@@ -139,7 +140,9 @@ export function DeliveryManagement() {
         }
 
         if (ordersRes.ok) {
-          const ordersData = await ordersRes.json();
+          const ordersResult = await ordersRes.json();
+          // API returns {data: [], total: number} or array directly
+          const ordersData = ordersResult.data || ordersResult;
           if (ordersData.length > 0) {
             setOrders(ordersData.map((o: any) => ({
               id: o._id,
@@ -183,7 +186,8 @@ export function DeliveryManagement() {
     if (!selectedOrder) return;
     
     try {
-      const res = await fetch(`http://localhost:8000/api/delivery/orders/${selectedOrder.id}/assign`, {
+      const API_URL = import.meta.env.VITE_API_URL || 'https://restaurant-management-system-24c2.onrender.com/api';
+      const res = await fetch(`${API_URL}/delivery/orders/${selectedOrder.id}/assign`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rider_id: riderId }),

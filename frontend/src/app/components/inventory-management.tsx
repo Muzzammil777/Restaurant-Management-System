@@ -218,11 +218,14 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
   useEffect(() => {
     const fetchIngredients = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/inventory');
+        const API_URL = import.meta.env.VITE_API_URL || 'https://restaurant-management-system-24c2.onrender.com/api';
+        const response = await fetch(`${API_URL}/inventory`);
         if (response.ok) {
-          const data = await response.json();
+          const result = await response.json();
+          // API returns {data: [], total: number}
+          const items = result.data || result;
           // Map API response to component state
-          const mappedIngredients = data.map((ing: any) => ({
+          const mappedIngredients = items.map((ing: any) => ({
             id: ing._id || ing.id,
             name: ing.name,
             category: ing.category,

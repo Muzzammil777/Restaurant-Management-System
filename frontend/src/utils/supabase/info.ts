@@ -1,7 +1,7 @@
-// API Configuration - Using local FastAPI backend
-// When deploying, change this to your production API URL
+// API Configuration - Using FastAPI backend
+// Uses environment variable or defaults to production URL
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://restaurant-management-system-24c2.onrender.com/api';
 
 // Legacy exports (kept for compatibility, not used with local backend)
 export const projectId = 'localhost';
