@@ -540,6 +540,10 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
       (oi) => oi.name === item.name && !oi.isCombo
     );
 
+    // Ensure price is a valid number
+    const itemPrice = Number(item.price) || 0;
+    const itemName = item.name || 'Unknown Item';
+
     if (existingItem) {
       setOrderItems(
         orderItems.map((oi) =>
@@ -551,9 +555,9 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
     } else {
       const newItem: QuickOrderItem = {
         id: `${Date.now()}-${Math.random()}`,
-        name: item.name,
+        name: itemName,
         quantity: 1,
-        price: item.price,
+        price: itemPrice,
         isCombo: false,
         category: item.category,
         cookingStation: station,
@@ -562,7 +566,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
     }
 
     // Feature #10: Smart Notification
-    toast.success(`${item.name} added!`, { duration: 1500 });
+    toast.success(`${itemName} added!`, { duration: 1500 });
     
     // Feature #13: Sound Feedback
     playSound('add', soundEnabled);
@@ -574,11 +578,15 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
       menuItems.find(mi => mi.id === itemId)
     ).filter(Boolean) as MenuItem[];
 
+    // Ensure price is a valid number - use discountedPrice, fall back to originalPrice
+    const comboPrice = Number(combo.discountedPrice) || Number(combo.originalPrice) || 0;
+    const comboName = combo.name || 'Unknown Combo';
+
     const newCombo: QuickOrderItem = {
       id: `combo-${Date.now()}-${Math.random()}`,
-      name: combo.name,
+      name: comboName,
       quantity: 1,
-      price: combo.discountedPrice,
+      price: comboPrice,
       isCombo: true,
       comboItems: comboItemsDetails,
     };
@@ -586,7 +594,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
     setOrderItems([...orderItems, newCombo]);
     
     // Feature #10: Smart Notification
-    toast.success(`${combo.name} combo added!`, { duration: 1500 });
+    toast.success(`${comboName} combo added!`, { duration: 1500 });
     
     // Feature #13: Sound Feedback
     playSound('add', soundEnabled);
@@ -628,10 +636,15 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
   // Feature #8: Repeat recent order
   const repeatOrder = (order: RecentOrder) => {
-    setOrderItems([...orderItems, ...order.items.map(item => ({
+    const validatedItems = order.items.map(item => ({
       ...item,
-      id: `${Date.now()}-${Math.random()}`
-    }))]);
+      id: `${Date.now()}-${Math.random()}`,
+      name: item.name || 'Unknown Item',
+      price: Number(item.price) || 0,
+      quantity: Number(item.quantity) || 1
+    }));
+    
+    setOrderItems([...orderItems, ...validatedItems]);
     
     // Feature #10: Smart Notification
     toast.success('Order repeated!', { duration: 2000 });
@@ -721,12 +734,18 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
   // ========== ORDER CREATION ==========
 
-  // Calculate totals
+  // Safely parse numeric values
+  const safeNumber = (val: any, fallback: number = 0): number => {
+    const num = Number(val);
+    return isNaN(num) ? fallback : num;
+  };
+
+  // Calculate totals with safe number handling
   const subtotal = orderItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+    (sum, item) => sum + (safeNumber(item.price) * safeNumber(item.quantity, 1)),
     0
   );
-  const totalItems = orderItems.reduce((sum, item) => sum + item.quantity, 0);
+  const totalItems = orderItems.reduce((sum, item) => sum + safeNumber(item.quantity, 1), 0);
 
   // Feature #9: Order Flow Restriction - Validation
   const isOrderValid =

@@ -71,6 +71,9 @@ export function CustomerView() {
 
   const addToCart = (item: MenuItem) => {
     const existingItem = cart.find(cartItem => cartItem.id === item.id);
+    const itemName = item.name || 'Unknown Item';
+    const itemPrice = Number(item.price) || 0;
+    
     if (existingItem) {
       setCart(cart.map(cartItem =>
         cartItem.id === item.id
@@ -78,9 +81,9 @@ export function CustomerView() {
           : cartItem
       ));
     } else {
-      setCart([...cart, { ...item, quantity: 1 }]);
+      setCart([...cart, { ...item, name: itemName, price: itemPrice, quantity: 1 }]);
     }
-    toast.success(`${item.name} added to cart`);
+    toast.success(`${itemName} added to cart`);
   };
 
   const updateQuantity = (itemId: string, newQuantity: number) => {
@@ -99,7 +102,11 @@ export function CustomerView() {
   };
 
   const getTotalPrice = () => {
-    return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    return cart.reduce((sum, item) => {
+      const price = Number(item.price) || 0;
+      const quantity = Number(item.quantity) || 1;
+      return sum + (price * quantity);
+    }, 0);
   };
 
   const getTotalPrepTime = () => {

@@ -97,22 +97,38 @@ export function OrderManagement() {
           ? (result as any)
           : [];
       
-      setOrders(rawOrders.map((order: any) => ({
-        ...order,
-        // Map MongoDB _id to id for frontend consistency
-        id: order._id || order.id,
-        orderNumber: order.orderNumber || order.order_number,
-        total: order.total || order.totalAmount || order.grandTotal || 0,
-        status: order.status || 'placed',
-        type: order.type || 'dine-in',
-        createdAt: order.createdAt || order.created_at || new Date().toISOString(),
-        items: (order.items || []).map((item: any) => ({
+      // Safely parse numeric values, using ?? to handle 0 correctly
+      const safeNumber = (val: any, fallback: number = 0): number => {
+        const num = Number(val);
+        return isNaN(num) ? fallback : num;
+      };
+      
+      setOrders(rawOrders.map((order: any) => {
+        // Normalize items first so we can calculate total as fallback
+        const normalizedItems = (order.items || []).map((item: any) => ({
           ...item,
-          price: item.price || item.unitPrice || 0,
-          quantity: item.quantity || item.qty || 1,
-          name: item.name || item.dishName || item.itemName || 'Unknown Item'
-        }))
-      })));
+          price: safeNumber(item.price ?? item.unitPrice ?? item.Price, 0),
+          quantity: Math.max(1, safeNumber(item.quantity ?? item.qty ?? item.Qty, 1)),
+          name: item.name || item.dishName || item.itemName || item.Name || 'Unknown Item'
+        }));
+        
+        // Calculate total from items if raw total is invalid
+        const rawTotal = safeNumber(order.total ?? order.totalAmount ?? order.grandTotal);
+        const calculatedTotal = normalizedItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+        const finalTotal = rawTotal > 0 ? rawTotal : calculatedTotal;
+        
+        return {
+          ...order,
+          // Map MongoDB _id to id for frontend consistency
+          id: order._id || order.id,
+          orderNumber: order.orderNumber || order.order_number,
+          total: finalTotal,
+          status: order.status || 'placed',
+          type: order.type || 'dine-in',
+          createdAt: order.createdAt || order.created_at || new Date().toISOString(),
+          items: normalizedItems
+        };
+      }));
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to fetch orders. Please check your connection.');

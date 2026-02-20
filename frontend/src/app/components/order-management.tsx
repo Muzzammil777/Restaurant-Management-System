@@ -83,16 +83,31 @@ export function OrderManagement() {
 
   const normalizeOrder = (rawOrder: any): Order => {
     const rawItems = Array.isArray(rawOrder?.items) ? rawOrder.items : [];
+    
+    // Safely parse numeric values, using ?? to handle 0 correctly
+    const safeNumber = (val: any, fallback: number = 0): number => {
+      const num = Number(val);
+      return isNaN(num) ? fallback : num;
+    };
+    
+    // Normalize items with proper fallbacks
+    const normalizedItems = rawItems.map((item: any) => ({
+      name: item?.name || item?.dishName || item?.itemName || item?.Name || 'Unknown Item',
+      quantity: Math.max(1, safeNumber(item?.quantity ?? item?.qty ?? item?.Qty, 1)),
+      price: safeNumber(item?.price ?? item?.unitPrice ?? item?.Price, 0),
+    }));
+    
+    // Calculate total from items if raw total is invalid
+    const rawTotal = safeNumber(rawOrder?.total ?? rawOrder?.totalAmount ?? rawOrder?.grandTotal);
+    const calculatedTotal = normalizedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const finalTotal = rawTotal > 0 ? rawTotal : calculatedTotal;
+    
     return {
       ...rawOrder,
       id: rawOrder?._id || rawOrder?.id || '',
       orderNumber: rawOrder?.orderNumber || rawOrder?.order_number,
-      items: rawItems.map((item: any) => ({
-        name: item?.name || item?.dishName || item?.itemName || 'Unknown Item',
-        quantity: Number(item?.quantity) || Number(item?.qty) || 1,
-        price: Number(item?.price) || Number(item?.unitPrice) || 0,
-      })),
-      total: Number(rawOrder?.total) || Number(rawOrder?.totalAmount) || Number(rawOrder?.grandTotal) || 0,
+      items: normalizedItems,
+      total: finalTotal,
       createdAt: rawOrder?.createdAt || rawOrder?.created_at || new Date().toISOString(),
     };
   };
