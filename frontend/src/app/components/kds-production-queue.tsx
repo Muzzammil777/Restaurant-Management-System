@@ -30,7 +30,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
-import { restaurantState, type RestaurantOrder, type OrderStatus as RestaurantOrderStatus } from "@/app/services/restaurant-state";
+import { ordersApi } from "@/utils/api";
 
 type OrderStatus = "NEW" | "COOKING" | "READY" | "DELIVERED";
 type OrderType = "DINE_IN" | "DELIVERY" | "PARCEL";
@@ -117,45 +117,70 @@ const getItemStation = (itemName: string): StationType => {
   return ITEM_STATION_MAP[itemName] || "PREP";
 };
 
-// Map restaurant order status to kitchen order status
-const mapOrderStatus = (status: RestaurantOrderStatus): OrderStatus => {
+// API order status type
+type APIOrderStatus = 'placed' | 'preparing' | 'ready' | 'served' | 'completed' | 'cancelled';
+
+// Map API order status to kitchen order status
+const mapOrderStatus = (status: string): OrderStatus => {
   switch (status) {
-    case 'created':
-    case 'accepted':
+    case 'placed':
       return 'NEW';
-    case 'cooking':
+    case 'preparing':
       return 'COOKING';
     case 'ready':
       return 'READY';
     case 'served':
     case 'completed':
-      return 'DELIVERED';
     case 'cancelled':
-      return 'DELIVERED'; // Don't show cancelled orders
+      return 'DELIVERED';
     default:
       return 'NEW';
   }
 };
 
-// Convert RestaurantOrder to KitchenOrder
-const convertToKitchenOrder = (order: RestaurantOrder, itemStatuses: Map<string, "PENDING" | "PREPARING" | "COMPLETED">, itemStartTimes: Map<string, Date>): KitchenOrder => {
+// API Order type
+interface APIOrder {
+  _id: string;
+  id?: string;
+  orderNumber: string;
+  tableNumber?: number;
+  type: string;
+  items: Array<{
+    name: string;
+    quantity: number;
+    price: number;
+    menuItemId?: string;
+  }>;
+  total: number;
+  status: string;
+  createdAt: string;
+  statusUpdatedAt?: string;
+  customerName?: string;
+  notes?: string;
+}
+
+// Convert API Order to KitchenOrder
+const convertToKitchenOrder = (order: APIOrder, itemStatuses: Map<string, "PENDING" | "PREPARING" | "COMPLETED">, itemStartTimes: Map<string, Date>): KitchenOrder => {
   const kdsStatus = mapOrderStatus(order.status);
+  const orderId = order._id || order.id || '';
   
-  // Determine order type from table number
+  // Determine order type from type field
   let orderType: OrderType = "DINE_IN";
-  if (order.tableNumber.startsWith("WEB") || order.tableNumber.startsWith("APP") || order.tableNumber.includes("DELIVERY")) {
+  const orderTypeStr = (order.type || '').toLowerCase();
+  if (orderTypeStr === 'delivery') {
     orderType = "DELIVERY";
-  } else if (order.tableNumber.startsWith("PARCEL") || order.tableNumber.startsWith("PKG")) {
+  } else if (orderTypeStr === 'takeaway' || orderTypeStr === 'parcel') {
     orderType = "PARCEL";
   }
 
   // Calculate total prep time (5 minutes per item as default)
-  const totalPrepTime = order.items.reduce((acc, item) => acc + (item.quantity * 300), 0);
+  const totalPrepTime = order.items.reduce((acc, item) => acc + ((item.quantity || 1) * 300), 0);
+  const tableNum = order.tableNumber?.toString() || order.customerName || 'N/A';
 
   return {
-    id: order.id,
-    orderNumber: `#${order.id.slice(-4).toUpperCase()}`,
-    tableNumber: order.tableNumber,
+    id: orderId,
+    orderNumber: order.orderNumber || `#${orderId.slice(-4).toUpperCase()}`,
+    tableNumber: tableNum,
     orderType,
     guestCount: Math.max(1, Math.ceil(order.items.length / 2)),
     status: kdsStatus,
@@ -163,7 +188,7 @@ const convertToKitchenOrder = (order: RestaurantOrder, itemStatuses: Map<string,
     createdAt: new Date(order.createdAt),
     totalPrepTime,
     items: order.items.map((item, index) => {
-      const itemId = `${order.id}-${index}`;
+      const itemId = `${orderId}-${index}`;
       const savedStatus = itemStatuses.get(itemId);
       const savedStartTime = itemStartTimes.get(itemId);
       
@@ -197,6 +222,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
   const [isRecallOpen, setIsRecallOpen] = useState(false);
   const [recallInput, setRecallInput] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<KitchenOrder | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   
   // Track item statuses and start times locally (for KDS-specific state)
   const [itemStatuses, setItemStatuses] = useState<Map<string, "PENDING" | "PREPARING" | "COMPLETED">>(new Map());
@@ -204,47 +230,52 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
 
   const isHeadChef = station === "HEAD_CHEF";
 
-  // Load orders from restaurant state
-  const loadOrders = useCallback(() => {
-    const allOrders = restaurantState.getAllOrders();
-    
-    // Filter orders that should show in kitchen (not completed/cancelled)
-    const activeOrders = allOrders.filter(order => 
-      order.status !== 'completed' && order.status !== 'cancelled'
-    );
+  // Load orders from API
+  const loadOrders = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const result = await ordersApi.list();
+      const allOrders: APIOrder[] = result.data || [];
+      
+      // Filter orders that should show in kitchen (not completed/cancelled/served)
+      const activeOrders = allOrders.filter(order => 
+        order.status !== 'completed' && order.status !== 'cancelled' && order.status !== 'served'
+      );
 
-    // Convert to kitchen orders
-    const kitchenOrders = activeOrders.map(order => 
-      convertToKitchenOrder(order, itemStatuses, itemStartTimes)
-    );
+      // Convert to kitchen orders
+      let kitchenOrders = activeOrders.map(order => 
+        convertToKitchenOrder(order, itemStatuses, itemStartTimes)
+      );
 
-    // Sort by creation time (newest first)
-    kitchenOrders.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      // Filter by station: only show orders with items for this station (except head chef sees all)
+      if (!isHeadChef) {
+        kitchenOrders = kitchenOrders.filter(order => 
+          order.items.some(item => item.station === station)
+        );
+      }
 
-    setOrders(kitchenOrders);
-  }, [itemStatuses, itemStartTimes]);
+      // Sort by creation time (oldest first for kitchen processing)
+      kitchenOrders.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+
+      setOrders(kitchenOrders);
+    } catch (error) {
+      console.error('Error loading orders:', error);
+      toast.error('Failed to load orders');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [itemStatuses, itemStartTimes, station, isHeadChef]);
 
   useEffect(() => {
     // Load initial orders
     loadOrders();
-    
-    // Subscribe to order events
-    const unsubscribe = restaurantState.subscribe((event) => {
-      if (
-        event.type === 'ORDER_CREATED' ||
-        event.type === 'ORDER_STATUS_CHANGED' ||
-        event.type === 'CHECKOUT_COMPLETED'
-      ) {
-        loadOrders();
-      }
-    });
     
     // Timer for updating elapsed times
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
 
-    // Refresh orders periodically
+    // Refresh orders periodically from API
     const refreshInterval = setInterval(() => {
       loadOrders();
     }, 5000);
@@ -252,7 +283,6 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
     return () => {
       clearInterval(timer);
       clearInterval(refreshInterval);
-      unsubscribe();
     };
   }, [station, loadOrders]);
 
@@ -293,51 +323,60 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
     }
   };
 
-  const handleStartCooking = (orderId: string) => {
-    // Update restaurant state to cooking
-    restaurantState.updateOrderStatus(orderId, 'cooking');
-    
-    // Update local item states
-    const order = orders.find(o => o.id === orderId);
-    if (order) {
-      const newStatuses = new Map(itemStatuses);
-      const newStartTimes = new Map(itemStartTimes);
-      order.items.forEach(item => {
-        newStatuses.set(item.id, "PREPARING");
-        newStartTimes.set(item.id, new Date());
-      });
-      setItemStatuses(newStatuses);
-      setItemStartTimes(newStartTimes);
-    }
-    
-    setOrders(prev => prev.map(order => {
-      if (order.id === orderId) {
-        return {
-          ...order,
-          status: "COOKING" as OrderStatus,
-          items: order.items.map(item => ({
-            ...item,
-            status: "PREPARING" as const,
-            startedAt: new Date()
-          }))
-        };
+  const handleStartCooking = async (orderId: string) => {
+    try {
+      // Update via API - placed → preparing
+      await ordersApi.updateStatus(orderId, 'preparing');
+      
+      // Update local item states
+      const order = orders.find(o => o.id === orderId);
+      if (order) {
+        const newStatuses = new Map(itemStatuses);
+        const newStartTimes = new Map(itemStartTimes);
+        order.items.forEach(item => {
+          newStatuses.set(item.id, "PREPARING");
+          newStartTimes.set(item.id, new Date());
+        });
+        setItemStatuses(newStatuses);
+        setItemStartTimes(newStartTimes);
       }
-      return order;
-    }));
-    toast.success("Order Started", {
-      description: `Now cooking order ${orders.find(o => o.id === orderId)?.orderNumber}`
-    });
+      
+      setOrders(prev => prev.map(order => {
+        if (order.id === orderId) {
+          return {
+            ...order,
+            status: "COOKING" as OrderStatus,
+            items: order.items.map(item => ({
+              ...item,
+              status: "PREPARING" as const,
+              startedAt: new Date()
+            }))
+          };
+        }
+        return order;
+      }));
+      toast.success("Order Accepted & Preparing", {
+        description: `Now cooking order ${orders.find(o => o.id === orderId)?.orderNumber}`
+      });
+    } catch (error) {
+      console.error('Error starting cooking:', error);
+      toast.error('Failed to start cooking');
+    }
   };
 
-  const handleStartItem = (orderId: string, itemId: string) => {
+  const handleStartItem = async (orderId: string, itemId: string) => {
     // Update local item state tracking
     setItemStatuses(prev => new Map(prev).set(itemId, "PREPARING"));
     setItemStartTimes(prev => new Map(prev).set(itemId, new Date()));
     
-    // Update restaurant state if this is the first item being started
+    // Update API if this is the first item being started
     const order = orders.find(o => o.id === orderId);
     if (order && order.status === "NEW") {
-      restaurantState.updateOrderStatus(orderId, 'cooking');
+      try {
+        await ordersApi.updateStatus(orderId, 'preparing');
+      } catch (error) {
+        console.error('Error updating order status:', error);
+      }
     }
     
     setOrders(prev => prev.map(order => {
@@ -353,7 +392,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
     toast.success("Item Started");
   };
 
-  const handleFinishItem = (orderId: string, itemId: string) => {
+  const handleFinishItem = async (orderId: string, itemId: string) => {
     // Update local item state tracking
     setItemStatuses(prev => new Map(prev).set(itemId, "COMPLETED"));
     
@@ -364,9 +403,11 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
       );
       const allDone = updatedItems.every(i => i.status === "COMPLETED");
       
-      // Update restaurant state if all items are done
+      // Update API if all items are done
       if (allDone) {
-        restaurantState.updateOrderStatus(orderId, 'ready');
+        ordersApi.updateStatus(orderId, 'ready').catch(err => {
+          console.error('Error marking order ready:', err);
+        });
       }
       
       return { ...order, items: updatedItems, status: allDone ? "READY" : order.status };
@@ -374,53 +415,68 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
     toast.success("Item Completed");
   };
 
-  const handleMarkReady = (orderId: string) => {
+  const handleMarkReady = async (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     
-    // Update restaurant state
-    restaurantState.updateOrderStatus(orderId, 'ready');
-    
-    // Mark all items as completed
-    if (order) {
-      const newStatuses = new Map(itemStatuses);
-      order.items.forEach(item => {
-        newStatuses.set(item.id, "COMPLETED");
+    try {
+      // Update API - preparing → ready
+      await ordersApi.updateStatus(orderId, 'ready');
+      
+      // Mark all items as completed
+      if (order) {
+        const newStatuses = new Map(itemStatuses);
+        order.items.forEach(item => {
+          newStatuses.set(item.id, "COMPLETED");
+        });
+        setItemStatuses(newStatuses);
+      }
+      
+      setOrders(prev => prev.map(o => 
+        o.id === orderId 
+          ? { ...o, status: "READY" as OrderStatus, items: o.items.map(i => ({ ...i, status: "COMPLETED" as const })) }
+          : o
+      ));
+      toast.success("Order Ready!", {
+        description: `Order ${order?.orderNumber} is ready for serving`
       });
-      setItemStatuses(newStatuses);
+    } catch (error) {
+      console.error('Error marking order ready:', error);
+      toast.error('Failed to mark order as ready');
     }
-    
-    setOrders(prev => prev.map(o => 
-      o.id === orderId 
-        ? { ...o, status: "READY" as OrderStatus, items: o.items.map(i => ({ ...i, status: "COMPLETED" as const })) }
-        : o
-    ));
-    toast.success("Items Ready!", {
-      description: `Order ${order?.orderNumber} completed at ${station} station`
-    });
   };
 
-  const handleDeliverOrder = (orderId: string) => {
+  const handleDeliverOrder = async (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     
-    // Update restaurant state to served
-    restaurantState.updateOrderStatus(orderId, 'served');
-    
-    setOrders(prev => prev.filter(o => o.id !== orderId));
-    toast.success("Order Delivered!", {
-      description: `Order ${order?.orderNumber} sent to service`
-    });
+    try {
+      // Update API - ready → served
+      await ordersApi.updateStatus(orderId, 'served');
+      
+      setOrders(prev => prev.filter(o => o.id !== orderId));
+      toast.success("Order Served!", {
+        description: `Order ${order?.orderNumber} has been served`
+      });
+    } catch (error) {
+      console.error('Error serving order:', error);
+      toast.error('Failed to serve order');
+    }
   };
 
-  const handleRejectOrder = (orderId: string) => {
+  const handleRejectOrder = async (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     
-    // Update restaurant state to cancelled
-    restaurantState.updateOrderStatus(orderId, 'cancelled');
-    
-    setOrders(prev => prev.filter(o => o.id !== orderId));
-    toast.error("Order Rejected", {
-      description: `Order ${order?.orderNumber} has been rejected`
-    });
+    try {
+      // Update API - cancel order
+      await ordersApi.updateStatus(orderId, 'cancelled');
+      
+      setOrders(prev => prev.filter(o => o.id !== orderId));
+      toast.error("Order Cancelled", {
+        description: `Order ${order?.orderNumber} has been cancelled`
+      });
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      toast.error('Failed to cancel order');
+    }
   };
 
   const handleRecallSearch = (orderNum: string) => {
@@ -797,20 +853,21 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                             onClick={() => handleStartItem(order.id, item.id)}
                           >
                             <Play className="h-3 w-3 mr-1" />
-                            START
+                            Accept & Prepare
                           </Button>
                         )}
                       </div>
                     ))}
 
                     <div className="flex gap-2 pt-2">
-                      {isHeadChef && (
+                      {/* Accept Order button - available to head chef and station chefs with items for their station */}
+                      {(isHeadChef || order.items.some(item => item.station === station)) && (
                         <Button
                           onClick={() => handleStartCooking(order.id)}
-                          className="flex-1 bg-[#8B5A2B] hover:bg-[#6D421E] text-white"
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                         >
-                          <Play className="h-4 w-4 mr-2" />
-                          Start All
+                          <Check className="h-4 w-4 mr-2" />
+                          Accept Order
                         </Button>
                       )}
                       <Button
@@ -932,7 +989,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                                 onClick={() => handleStartItem(order.id, item.id)}
                               >
                                 <Play className="h-3 w-3 mr-1" />
-                                START
+                                Prepare
                               </Button>
                             )}
                             {item.status === "PREPARING" && (
@@ -942,7 +999,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                                 onClick={() => handleFinishItem(order.id, item.id)}
                               >
                                 <Check className="h-3 w-3 mr-1" />
-                                FINISH
+                                Done
                               </Button>
                             )}
                           </div>
@@ -950,14 +1007,14 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                       </div>
                     ))}
 
-                    {/* Mark all ready button for Head Chef */}
-                    {isHeadChef && (
+                    {/* Mark Ready button - available to head chef and station chefs */}
+                    {(isHeadChef || order.items.some(item => item.station === station)) && (
                       <Button
                         onClick={() => handleMarkReady(order.id)}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                        className="w-full bg-amber-600 hover:bg-amber-700 text-white"
                       >
                         <CheckCircle2 className="h-4 w-4 mr-2" />
-                        Mark All Ready
+                        Mark Ready
                       </Button>
                     )}
                   </CardContent>
@@ -1029,8 +1086,8 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                         onClick={() => handleDeliverOrder(order.id)}
                         className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                       >
-                        <Truck className="h-4 w-4 mr-2" />
-                        Deliver
+                        <Utensils className="h-4 w-4 mr-2" />
+                        Serve Order
                       </Button>
                     </div>
                   </CardContent>

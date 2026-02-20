@@ -329,7 +329,8 @@ export function OrderManagement() {
     if (aDelay === 'warning' && bDelay !== 'warning') return -1;
     if (bDelay === 'warning' && aDelay !== 'warning') return 1;
 
-    return bAge - aAge; // Most recent first for same priority
+    // Most recent first for same priority (higher timestamp = newer)
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
   // Calculate statistics

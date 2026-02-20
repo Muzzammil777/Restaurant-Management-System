@@ -119,9 +119,9 @@ async def create_order(data: dict):
     # Generate order number
     count = await db.orders.count_documents({})
     data["orderNumber"] = f"#ORD-{count + 1001}"
-    data["createdAt"] = datetime.utcnow()
+    data["createdAt"] = datetime.utcnow().isoformat() + 'Z'
     data["status"] = data.get("status", "placed")
-    data["statusUpdatedAt"] = datetime.utcnow()
+    data["statusUpdatedAt"] = datetime.utcnow().isoformat() + 'Z'
     
     result = await db.orders.insert_one(data)
     created = await db.orders.find_one({"_id": result.inserted_id})
@@ -139,7 +139,7 @@ async def update_order(order_id: str, data: dict):
     """Update order"""
     db = get_db()
     
-    data["updatedAt"] = datetime.utcnow()
+    data["updatedAt"] = datetime.utcnow().isoformat() + 'Z'
     data.pop("_id", None)
     
     result = await db.orders.update_one(
@@ -191,7 +191,7 @@ async def update_order_status(order_id: str, status: str, deduct_inventory: bool
     # Update status
     result = await db.orders.update_one(
         {"_id": ObjectId(order_id)},
-        {"$set": {"status": status, "statusUpdatedAt": datetime.utcnow()}}
+        {"$set": {"status": status, "statusUpdatedAt": datetime.utcnow().isoformat() + 'Z'}}
     )
     
     if result.matched_count == 0:
@@ -219,7 +219,7 @@ async def update_order_status(order_id: str, status: str, deduct_inventory: bool
             "orderNumber": order.get("orderNumber"),
             "tableNumber": order.get("tableNumber"),
             "message": f"Order {order.get('orderNumber')} is ready for serving",
-            "createdAt": datetime.utcnow()
+            "createdAt": datetime.utcnow().isoformat() + 'Z'
         }
         await db.notifications.insert_one(notification)
     
@@ -227,7 +227,7 @@ async def update_order_status(order_id: str, status: str, deduct_inventory: bool
     if status == "completed" and order.get("paymentStatus") != "paid":
         await db.orders.update_one(
             {"_id": ObjectId(order_id)},
-            {"$set": {"paymentStatus": "settled", "completedAt": datetime.utcnow()}}
+            {"$set": {"paymentStatus": "settled", "completedAt": datetime.utcnow().isoformat() + 'Z'}}
         )
     
     await log_audit("status_update", "order", order_id, {
@@ -252,7 +252,7 @@ async def delete_order(order_id: str):
     
     result = await db.orders.update_one(
         {"_id": ObjectId(order_id)},
-        {"$set": {"status": "cancelled", "cancelledAt": datetime.utcnow()}}
+        {"$set": {"status": "cancelled", "cancelledAt": datetime.utcnow().isoformat() + 'Z'}}
     )
     
     if result.matched_count == 0:

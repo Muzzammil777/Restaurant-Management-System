@@ -1323,7 +1323,8 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                         </div>
                       ) : (
                         <ScrollArea className="h-[450px] pr-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">\n                            {filteredMenuItems.map((item) => (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
+                            {filteredMenuItems.map((item) => (
                               <Card
                                 key={item.id}
                                 className="cursor-pointer hover:shadow-lg transition-shadow duration-150 border-2 hover:border-[#8B5E34]/50 group active:scale-[0.98]"
