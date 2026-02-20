@@ -456,6 +456,8 @@ async def checkout_order(data: dict):
         "tips": 50.00  // optional
     }
     """
+    db = get_db()
+    
     # First process payment
     payment_result = await process_order_payment(data)
     

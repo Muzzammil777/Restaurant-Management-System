@@ -71,7 +71,9 @@ async def list_tables(
         await db.tables.insert_many(default_tables)
         tables = await db.tables.find({}).sort("name", 1).to_list(100)
     
-    return [serialize_doc(table) for table in tables]
+    total = await db.tables.count_documents(query if query else {})
+    
+    return {"data": [serialize_doc(table) for table in tables], "total": total}
 
 
 @router.get("/stats")
@@ -318,6 +320,47 @@ async def create_reservation(data: dict):
     await log_audit("create", "reservation", str(result.inserted_id))
     
     return serialize_doc(created)
+
+
+@router.put("/reservations/{reservation_id}")
+async def update_reservation(reservation_id: str, data: dict):
+    """Update reservation details"""
+    db = get_db()
+    
+    existing = await db.reservations.find_one({"_id": ObjectId(reservation_id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+    
+    data["updatedAt"] = datetime.utcnow()
+    data.pop("_id", None)
+    
+    # If table is changing, update table statuses
+    old_table_id = existing.get("tableId")
+    new_table_id = data.get("tableId")
+    
+    if old_table_id != new_table_id:
+        # Free old table
+        if old_table_id:
+            await db.tables.update_one(
+                {"_id": ObjectId(old_table_id)},
+                {"$set": {"status": "available", "reservedFor": None}}
+            )
+        # Reserve new table
+        if new_table_id:
+            await db.tables.update_one(
+                {"_id": ObjectId(new_table_id)},
+                {"$set": {"status": "reserved", "reservedFor": data.get("customerName")}}
+            )
+    
+    await db.reservations.update_one(
+        {"_id": ObjectId(reservation_id)},
+        {"$set": data}
+    )
+    
+    updated = await db.reservations.find_one({"_id": ObjectId(reservation_id)})
+    await log_audit("update", "reservation", reservation_id)
+    
+    return serialize_doc(updated)
 
 
 @router.patch("/reservations/{reservation_id}/status")

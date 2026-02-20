@@ -203,7 +203,7 @@ async def update_coupon(coupon_id: str, data: dict, request: Request):
     return serialize_doc(updated)
 
 
-@router.patch("/coupons/{coupon_id}/use")
+@router.post("/coupons/{coupon_id}/use")
 async def use_coupon(coupon_id: str):
     """Increment coupon usage count"""
     db = get_db()

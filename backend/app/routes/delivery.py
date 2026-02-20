@@ -153,6 +153,7 @@ async def list_delivery_orders(
         query["riderId"] = rider_id
     
     orders = await db.orders.find(query).sort("createdAt", -1).to_list(100)
+    total = await db.orders.count_documents(query)
     
     # Populate rider info
     for order in orders:
@@ -161,7 +162,7 @@ async def list_delivery_orders(
             if rider:
                 order["rider"] = serialize_doc(rider)
     
-    return [serialize_doc(order) for order in orders]
+    return {"data": [serialize_doc(order) for order in orders], "total": total}
 
 
 @router.get("/orders/stats")

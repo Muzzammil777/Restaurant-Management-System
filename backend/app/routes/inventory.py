@@ -55,7 +55,9 @@ async def list_ingredients(
         query["name"] = {"$regex": search, "$options": "i"}
     
     ingredients = await db.ingredients.find(query).sort("name", 1).to_list(500)
-    return [serialize_doc(ing) for ing in ingredients]
+    total = await db.ingredients.count_documents(query)
+    
+    return {"data": [serialize_doc(ing) for ing in ingredients], "total": total}
 
 
 @router.get("/stats")

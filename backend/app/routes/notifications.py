@@ -112,9 +112,35 @@ async def create_notification(data: dict):
 
 
 @router.post("/send")
-async def send_notification(data: dict):
+async def send_notification(notification_id: Optional[str] = None, data: Optional[dict] = None):
     """Send a notification (simulated)"""
     db = get_db()
+    
+    # If notification_id is provided, mark existing notification as sent
+    if notification_id:
+        notification = await db.notifications.find_one({"_id": ObjectId(notification_id)})
+        if not notification:
+            raise HTTPException(status_code=404, detail="Notification not found")
+        
+        await db.notifications.update_one(
+            {"_id": ObjectId(notification_id)},
+            {"$set": {
+                "status": "sent",
+                "sentAt": datetime.utcnow()
+            }}
+        )
+        
+        await log_audit("send", "notification", notification_id, {
+            "type": notification.get("type"),
+            "channel": notification.get("channel")
+        })
+        
+        updated = await db.notifications.find_one({"_id": ObjectId(notification_id)})
+        return serialize_doc(updated)
+    
+    # Otherwise create and send new notification
+    if not data:
+        data = {}
     
     data["timestamp"] = datetime.utcnow()
     data["status"] = "sent"  # In real implementation, this would be based on actual send result
@@ -131,7 +157,7 @@ async def send_notification(data: dict):
     return serialize_doc(created)
 
 
-@router.patch("/{notification_id}/retry")
+@router.post("/{notification_id}/retry")
 async def retry_notification(notification_id: str):
     """Retry a failed notification"""
     db = get_db()
@@ -220,7 +246,8 @@ async def send_broadcast(data: dict):
     """Send broadcast notification to multiple recipients"""
     db = get_db()
     
-    recipients = data.get("recipients", [])
+    # Accept both recipientIds (frontend) and recipients for compatibility
+    recipients = data.get("recipientIds", data.get("recipients", []))
     message = data.get("message", "")
     title = data.get("title", "")
     channel = data.get("channel", "push")
