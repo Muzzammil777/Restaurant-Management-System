@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/app/components/ui/card";
 import { Badge } from "@/app/components/ui/badge";
@@ -15,20 +15,36 @@ import {
   X,
   ArrowRight,
   Timer,
+  Search,
+  Utensils,
+  Truck,
+  ShoppingBag,
+  LayoutGrid,
+  Map as MapIcon,
+  Layers,
+  BarChart3,
+  AlertTriangle,
+  Delete,
+  Hash,
+  Target,
+  TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
+import { restaurantState, type RestaurantOrder, type OrderStatus as RestaurantOrderStatus } from "@/app/services/restaurant-state";
 
 type OrderStatus = "NEW" | "COOKING" | "READY" | "DELIVERED";
+type OrderType = "DINE_IN" | "DELIVERY" | "PARCEL";
 type StationType = "FRY" | "CURRY" | "RICE" | "PREP" | "GRILL" | "DESSERT" | "HEAD_CHEF";
+type ViewMode = "ORDERS" | "BATCH" | "STATS";
 
 interface OrderItem {
   id: string;
   name: string;
   quantity: number;
   station: StationType;
-  status: OrderStatus;
+  status: "PENDING" | "PREPARING" | "COMPLETED";
   specialInstructions?: string;
-  preparationTime: number; // in seconds
+  preparationTime: number;
   startedAt?: Date;
 }
 
@@ -36,6 +52,7 @@ interface KitchenOrder {
   id: string;
   orderNumber: string;
   tableNumber: string;
+  orderType: OrderType;
   guestCount: number;
   items: OrderItem[];
   status: OrderStatus;
@@ -49,138 +66,201 @@ interface KDSProductionQueueProps {
   onLogout: () => void;
 }
 
-// Mock Data Generator
-const generateMockOrders = (station: StationType): KitchenOrder[] => {
-  const now = new Date();
-  
-  const stationItems: Record<StationType, string[]> = {
-    FRY: ["Vegetable Spring Rolls", "Paneer Tikka", "Chicken 65", "French Fries", "Onion Rings"],
-    CURRY: ["Butter Chicken", "Paneer Butter Masala", "Dal Makhani", "Kadai Chicken"],
-    RICE: ["Veg Biryani", "Chicken Biryani", "Jeera Rice", "Veg Fried Rice"],
-    PREP: ["Green Salad", "Caesar Salad", "Raita", "Mint Chutney"],
-    GRILL: ["Tandoori Chicken", "Paneer Tikka", "Seekh Kebab", "Grilled Fish"],
-    DESSERT: ["Gulab Jamun", "Ice Cream", "Brownie", "Fruit Salad"],
-    HEAD_CHEF: []
-  };
+// Map item names to stations (this would ideally come from a recipe database)
+const ITEM_STATION_MAP: Record<string, StationType> = {
+  // FRY items
+  "Vegetable Spring Rolls": "FRY",
+  "Paneer Tikka": "GRILL",
+  "Chicken 65": "FRY",
+  "French Fries": "FRY",
+  "Onion Rings": "FRY",
+  "Samosa": "FRY",
+  "Pakora": "FRY",
+  // CURRY items  
+  "Butter Chicken": "CURRY",
+  "Paneer Butter Masala": "CURRY",
+  "Dal Makhani": "CURRY",
+  "Kadai Chicken": "CURRY",
+  "Chicken Tikka Masala": "CURRY",
+  "Palak Paneer": "CURRY",
+  "Shahi Paneer": "CURRY",
+  // RICE items
+  "Veg Biryani": "RICE",
+  "Chicken Biryani": "RICE",
+  "Jeera Rice": "RICE",
+  "Veg Fried Rice": "RICE",
+  "Pulao": "RICE",
+  "Steamed Rice": "RICE",
+  // PREP items
+  "Green Salad": "PREP",
+  "Caesar Salad": "PREP",
+  "Raita": "PREP",
+  "Mint Chutney": "PREP",
+  "Kachumber": "PREP",
+  // GRILL items
+  "Tandoori Chicken": "GRILL",
+  "Seekh Kebab": "GRILL",
+  "Grilled Fish": "GRILL",
+  "Chicken Tikka": "GRILL",
+  "Malai Tikka": "GRILL",
+  // DESSERT items
+  "Gulab Jamun": "DESSERT",
+  "Ice Cream": "DESSERT",
+  "Brownie": "DESSERT",
+  "Fruit Salad": "DESSERT",
+  "Kheer": "DESSERT",
+  "Rasmalai": "DESSERT",
+};
 
-  const tables = ["T-01", "T-02", "T-03", "T-04", "T-05", "T-06", "T-07", "T-08"];
+// Get station for an item, default to PREP if not mapped
+const getItemStation = (itemName: string): StationType => {
+  return ITEM_STATION_MAP[itemName] || "PREP";
+};
+
+// Map restaurant order status to kitchen order status
+const mapOrderStatus = (status: RestaurantOrderStatus): OrderStatus => {
+  switch (status) {
+    case 'created':
+    case 'accepted':
+      return 'NEW';
+    case 'cooking':
+      return 'COOKING';
+    case 'ready':
+      return 'READY';
+    case 'served':
+    case 'completed':
+      return 'DELIVERED';
+    case 'cancelled':
+      return 'DELIVERED'; // Don't show cancelled orders
+    default:
+      return 'NEW';
+  }
+};
+
+// Convert RestaurantOrder to KitchenOrder
+const convertToKitchenOrder = (order: RestaurantOrder, itemStatuses: Map<string, "PENDING" | "PREPARING" | "COMPLETED">, itemStartTimes: Map<string, Date>): KitchenOrder => {
+  const kdsStatus = mapOrderStatus(order.status);
   
-  return [
-    {
-      id: "ORD-001",
-      orderNumber: "#4521",
-      tableNumber: tables[0],
-      guestCount: 4,
-      status: "NEW",
-      priority: "high",
-      createdAt: new Date(now.getTime() - 120000), // 2 mins ago
-      totalPrepTime: 900,
-      items: [
-        {
-          id: "ITM-001",
-          name: stationItems[station][0],
-          quantity: 2,
-          station: station,
-          status: "NEW",
-          preparationTime: 450,
-          specialInstructions: "Extra spicy"
-        },
-        {
-          id: "ITM-002",
-          name: stationItems[station][1],
-          quantity: 1,
-          station: station,
-          status: "NEW",
-          preparationTime: 450
-        }
-      ]
-    },
-    {
-      id: "ORD-002",
-      orderNumber: "#4522",
-      tableNumber: tables[1],
-      guestCount: 2,
-      status: "COOKING",
-      priority: "normal",
-      createdAt: new Date(now.getTime() - 300000), // 5 mins ago
-      totalPrepTime: 600,
-      items: [
-        {
-          id: "ITM-003",
-          name: stationItems[station][2] || stationItems[station][0],
-          quantity: 3,
-          station: station,
-          status: "COOKING",
-          preparationTime: 600,
-          startedAt: new Date(now.getTime() - 180000)
-        }
-      ]
-    },
-    {
-      id: "ORD-003",
-      orderNumber: "#4523",
-      tableNumber: tables[2],
-      guestCount: 6,
-      status: "NEW",
-      priority: "urgent",
-      createdAt: new Date(now.getTime() - 480000), // 8 mins ago
-      totalPrepTime: 720,
-      items: [
-        {
-          id: "ITM-004",
-          name: stationItems[station][1],
-          quantity: 2,
-          station: station,
-          status: "NEW",
-          preparationTime: 360
-        },
-        {
-          id: "ITM-005",
-          name: stationItems[station][3] || stationItems[station][0],
-          quantity: 4,
-          station: station,
-          status: "NEW",
-          preparationTime: 360
-        }
-      ]
-    },
-    {
-      id: "ORD-004",
-      orderNumber: "#4524",
-      tableNumber: tables[3],
-      guestCount: 2,
-      status: "COOKING",
-      priority: "normal",
-      createdAt: new Date(now.getTime() - 240000), // 4 mins ago
-      totalPrepTime: 540,
-      items: [
-        {
-          id: "ITM-006",
-          name: stationItems[station][0],
-          quantity: 2,
-          station: station,
-          status: "COOKING",
-          preparationTime: 540,
-          startedAt: new Date(now.getTime() - 120000)
-        }
-      ]
-    }
-  ];
+  // Determine order type from table number
+  let orderType: OrderType = "DINE_IN";
+  if (order.tableNumber.startsWith("WEB") || order.tableNumber.startsWith("APP") || order.tableNumber.includes("DELIVERY")) {
+    orderType = "DELIVERY";
+  } else if (order.tableNumber.startsWith("PARCEL") || order.tableNumber.startsWith("PKG")) {
+    orderType = "PARCEL";
+  }
+
+  // Calculate total prep time (5 minutes per item as default)
+  const totalPrepTime = order.items.reduce((acc, item) => acc + (item.quantity * 300), 0);
+
+  return {
+    id: order.id,
+    orderNumber: `#${order.id.slice(-4).toUpperCase()}`,
+    tableNumber: order.tableNumber,
+    orderType,
+    guestCount: Math.max(1, Math.ceil(order.items.length / 2)),
+    status: kdsStatus,
+    priority: kdsStatus === 'NEW' && (Date.now() - new Date(order.createdAt).getTime() > 300000) ? 'urgent' : 'normal',
+    createdAt: new Date(order.createdAt),
+    totalPrepTime,
+    items: order.items.map((item, index) => {
+      const itemId = `${order.id}-${index}`;
+      const savedStatus = itemStatuses.get(itemId);
+      const savedStartTime = itemStartTimes.get(itemId);
+      
+      // Determine item status based on order status and saved state
+      let itemStatus: "PENDING" | "PREPARING" | "COMPLETED" = savedStatus || "PENDING";
+      if (kdsStatus === 'READY' || kdsStatus === 'DELIVERED') {
+        itemStatus = "COMPLETED";
+      } else if (kdsStatus === 'COOKING' && !savedStatus) {
+        itemStatus = "PREPARING";
+      }
+
+      return {
+        id: itemId,
+        name: item.name,
+        quantity: item.quantity,
+        station: getItemStation(item.name),
+        status: itemStatus,
+        preparationTime: 300, // 5 minutes default
+        startedAt: savedStartTime || (itemStatus === "PREPARING" ? new Date() : undefined),
+        specialInstructions: undefined
+      };
+    })
+  };
 };
 
 export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProps) {
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [activeFilter, setActiveFilter] = useState<OrderType | "ALL">("ALL");
+  const [viewMode, setViewMode] = useState<ViewMode>("ORDERS");
+  const [isRecallOpen, setIsRecallOpen] = useState(false);
+  const [recallInput, setRecallInput] = useState("");
+  const [selectedOrder, setSelectedOrder] = useState<KitchenOrder | null>(null);
+  
+  // Track item statuses and start times locally (for KDS-specific state)
+  const [itemStatuses, setItemStatuses] = useState<Map<string, "PENDING" | "PREPARING" | "COMPLETED">>(new Map());
+  const [itemStartTimes, setItemStartTimes] = useState<Map<string, Date>>(new Map());
+
+  const isHeadChef = station === "HEAD_CHEF";
+
+  // Load orders from restaurant state
+  const loadOrders = useCallback(() => {
+    const allOrders = restaurantState.getAllOrders();
+    
+    // Filter orders that should show in kitchen (not completed/cancelled)
+    const activeOrders = allOrders.filter(order => 
+      order.status !== 'completed' && order.status !== 'cancelled'
+    );
+
+    // Convert to kitchen orders
+    const kitchenOrders = activeOrders.map(order => 
+      convertToKitchenOrder(order, itemStatuses, itemStartTimes)
+    );
+
+    // Sort by creation time (newest first)
+    kitchenOrders.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    setOrders(kitchenOrders);
+  }, [itemStatuses, itemStartTimes]);
 
   useEffect(() => {
-    setOrders(generateMockOrders(station));
+    // Load initial orders
+    loadOrders();
     
+    // Subscribe to order events
+    const unsubscribe = restaurantState.subscribe((event) => {
+      if (
+        event.type === 'ORDER_CREATED' ||
+        event.type === 'ORDER_STATUS_CHANGED' ||
+        event.type === 'CHECKOUT_COMPLETED'
+      ) {
+        loadOrders();
+      }
+    });
+    
+    // Timer for updating elapsed times
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, [station]);
+    // Refresh orders periodically
+    const refreshInterval = setInterval(() => {
+      loadOrders();
+    }, 5000);
+
+    return () => {
+      clearInterval(timer);
+      clearInterval(refreshInterval);
+      unsubscribe();
+    };
+  }, [station, loadOrders]);
+
+  // Filter orders by type
+  const filteredOrders = useMemo(() => {
+    if (activeFilter === "ALL") return orders;
+    return orders.filter(o => o.orderType === activeFilter);
+  }, [orders, activeFilter]);
 
   const getElapsedTime = (createdAt: Date): string => {
     const elapsed = Math.floor((currentTime.getTime() - createdAt.getTime()) / 1000);
@@ -214,6 +294,22 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
   };
 
   const handleStartCooking = (orderId: string) => {
+    // Update restaurant state to cooking
+    restaurantState.updateOrderStatus(orderId, 'cooking');
+    
+    // Update local item states
+    const order = orders.find(o => o.id === orderId);
+    if (order) {
+      const newStatuses = new Map(itemStatuses);
+      const newStartTimes = new Map(itemStartTimes);
+      order.items.forEach(item => {
+        newStatuses.set(item.id, "PREPARING");
+        newStartTimes.set(item.id, new Date());
+      });
+      setItemStatuses(newStatuses);
+      setItemStartTimes(newStartTimes);
+    }
+    
     setOrders(prev => prev.map(order => {
       if (order.id === orderId) {
         return {
@@ -221,7 +317,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
           status: "COOKING" as OrderStatus,
           items: order.items.map(item => ({
             ...item,
-            status: "COOKING" as OrderStatus,
+            status: "PREPARING" as const,
             startedAt: new Date()
           }))
         };
@@ -233,11 +329,69 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
     });
   };
 
+  const handleStartItem = (orderId: string, itemId: string) => {
+    // Update local item state tracking
+    setItemStatuses(prev => new Map(prev).set(itemId, "PREPARING"));
+    setItemStartTimes(prev => new Map(prev).set(itemId, new Date()));
+    
+    // Update restaurant state if this is the first item being started
+    const order = orders.find(o => o.id === orderId);
+    if (order && order.status === "NEW") {
+      restaurantState.updateOrderStatus(orderId, 'cooking');
+    }
+    
+    setOrders(prev => prev.map(order => {
+      if (order.id !== orderId) return order;
+      const updatedItems = order.items.map(item =>
+        item.id === itemId && item.status === "PENDING"
+          ? { ...item, status: "PREPARING" as const, startedAt: new Date() }
+          : item
+      );
+      const hasPreparingItems = updatedItems.some(i => i.status === "PREPARING");
+      return { ...order, items: updatedItems, status: hasPreparingItems ? "COOKING" : order.status };
+    }));
+    toast.success("Item Started");
+  };
+
+  const handleFinishItem = (orderId: string, itemId: string) => {
+    // Update local item state tracking
+    setItemStatuses(prev => new Map(prev).set(itemId, "COMPLETED"));
+    
+    setOrders(prev => prev.map(order => {
+      if (order.id !== orderId) return order;
+      const updatedItems = order.items.map(item =>
+        item.id === itemId ? { ...item, status: "COMPLETED" as const } : item
+      );
+      const allDone = updatedItems.every(i => i.status === "COMPLETED");
+      
+      // Update restaurant state if all items are done
+      if (allDone) {
+        restaurantState.updateOrderStatus(orderId, 'ready');
+      }
+      
+      return { ...order, items: updatedItems, status: allDone ? "READY" : order.status };
+    }));
+    toast.success("Item Completed");
+  };
+
   const handleMarkReady = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
+    
+    // Update restaurant state
+    restaurantState.updateOrderStatus(orderId, 'ready');
+    
+    // Mark all items as completed
+    if (order) {
+      const newStatuses = new Map(itemStatuses);
+      order.items.forEach(item => {
+        newStatuses.set(item.id, "COMPLETED");
+      });
+      setItemStatuses(newStatuses);
+    }
+    
     setOrders(prev => prev.map(o => 
       o.id === orderId 
-        ? { ...o, status: "READY" as OrderStatus, items: o.items.map(i => ({ ...i, status: "READY" as OrderStatus })) }
+        ? { ...o, status: "READY" as OrderStatus, items: o.items.map(i => ({ ...i, status: "COMPLETED" as const })) }
         : o
     ));
     toast.success("Items Ready!", {
@@ -245,17 +399,97 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
     });
   };
 
+  const handleDeliverOrder = (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    
+    // Update restaurant state to served
+    restaurantState.updateOrderStatus(orderId, 'served');
+    
+    setOrders(prev => prev.filter(o => o.id !== orderId));
+    toast.success("Order Delivered!", {
+      description: `Order ${order?.orderNumber} sent to service`
+    });
+  };
+
   const handleRejectOrder = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
+    
+    // Update restaurant state to cancelled
+    restaurantState.updateOrderStatus(orderId, 'cancelled');
+    
     setOrders(prev => prev.filter(o => o.id !== orderId));
     toast.error("Order Rejected", {
       description: `Order ${order?.orderNumber} has been rejected`
     });
   };
 
-  const newOrders = orders.filter(o => o.status === "NEW");
-  const cookingOrders = orders.filter(o => o.status === "COOKING");
-  const readyOrders = orders.filter(o => o.status === "READY");
+  const handleRecallSearch = (orderNum: string) => {
+    const found = orders.find(o => 
+      o.orderNumber.includes(orderNum) || 
+      o.id.includes(orderNum) || 
+      o.tableNumber.includes(orderNum)
+    );
+    if (found) { 
+      setSelectedOrder(found); 
+      setIsRecallOpen(false); 
+      setRecallInput("");
+    } else { 
+      toast.error(`Order "${orderNum}" not found.`);
+    }
+  };
+
+  // Batch view aggregated items
+  const batchedItems = useMemo(() => {
+    const map = new Map<string, { 
+      name: string; 
+      total: number; 
+      pendingCount: number;
+      preparingCount: number;
+      instances: { orderId: string; itemId: string; status: string }[];
+      station: StationType;
+    }>();
+    
+    filteredOrders.forEach(order => {
+      if (order.status === "NEW" || order.status === "COOKING") {
+        order.items.forEach(item => {
+          if (item.status !== "COMPLETED") {
+            const key = `${item.name}-${item.station}`;
+            const existing = map.get(key) || { 
+              name: item.name, 
+              total: 0, 
+              pendingCount: 0,
+              preparingCount: 0,
+              instances: [], 
+              station: item.station 
+            };
+            existing.total += item.quantity;
+            if (item.status === "PENDING") existing.pendingCount += item.quantity;
+            if (item.status === "PREPARING") existing.preparingCount += item.quantity;
+            existing.instances.push({ orderId: order.id, itemId: item.id, status: item.status });
+            map.set(key, existing);
+          }
+        });
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+  }, [filteredOrders]);
+
+  const handleStartBatch = (instances: { orderId: string; itemId: string; status: string }[]) => {
+    instances.filter(i => i.status === "PENDING").forEach(inst => {
+      handleStartItem(inst.orderId, inst.itemId);
+    });
+  };
+
+  const handleFinishBatch = (instances: { orderId: string; itemId: string; status: string }[]) => {
+    instances.filter(i => i.status !== "COMPLETED").forEach(inst => {
+      handleFinishItem(inst.orderId, inst.itemId);
+    });
+  };
+
+  const newOrders = filteredOrders.filter(o => o.status === "NEW");
+  const cookingOrders = filteredOrders.filter(o => o.status === "COOKING");
+  const readyOrders = filteredOrders.filter(o => o.status === "READY");
 
   const stationColors: Record<StationType, string> = {
     FRY: "#FF6B35",
@@ -308,6 +542,78 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
             </div>
 
             <div className="flex items-center gap-4">
+              {/* Order Type Filters */}
+              <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+                <Button
+                  variant={activeFilter === "ALL" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setActiveFilter("ALL")}
+                  className={cn("gap-1", activeFilter === "ALL" && "bg-[#8B5A2B] text-white")}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  All
+                </Button>
+                <Button
+                  variant={activeFilter === "DINE_IN" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setActiveFilter("DINE_IN")}
+                  className={cn("gap-1", activeFilter === "DINE_IN" && "bg-blue-600 text-white")}
+                >
+                  <Utensils className="h-4 w-4" />
+                  Dine In
+                </Button>
+                <Button
+                  variant={activeFilter === "DELIVERY" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setActiveFilter("DELIVERY")}
+                  className={cn("gap-1", activeFilter === "DELIVERY" && "bg-green-600 text-white")}
+                >
+                  <Truck className="h-4 w-4" />
+                  Delivery
+                </Button>
+                <Button
+                  variant={activeFilter === "PARCEL" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setActiveFilter("PARCEL")}
+                  className={cn("gap-1", activeFilter === "PARCEL" && "bg-purple-600 text-white")}
+                >
+                  <ShoppingBag className="h-4 w-4" />
+                  Parcel
+                </Button>
+              </div>
+
+              {/* View Mode Tabs */}
+              <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+                <Button
+                  variant={viewMode === "ORDERS" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("ORDERS")}
+                  className={cn(viewMode === "ORDERS" && "bg-[#8B5A2B] text-white")}
+                >
+                  Orders
+                </Button>
+                <Button
+                  variant={viewMode === "BATCH" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("BATCH")}
+                  className={cn(viewMode === "BATCH" && "bg-[#8B5A2B] text-white")}
+                >
+                  <Layers className="h-4 w-4 mr-1" />
+                  Batch
+                </Button>
+              </div>
+
+              {/* Recall Search */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsRecallOpen(true)}
+                className="gap-2 border-2"
+              >
+                <Search className="h-4 w-4" />
+                Recall
+              </Button>
+
               {/* Stats */}
               <div className="flex items-center gap-6 px-6 py-3 bg-gray-100 rounded-lg">
                 <div>
@@ -339,9 +645,55 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
         </div>
       </div>
 
-      {/* Order Columns */}
+      {/* Recall Search Modal */}
+      {isRecallOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-xl p-6 w-96 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-[#2D2D2D]">Recall Order</h3>
+              <Button variant="ghost" size="sm" onClick={() => { setIsRecallOpen(false); setRecallInput(""); }}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <input
+              type="text"
+              value={recallInput}
+              onChange={(e) => setRecallInput(e.target.value)}
+              placeholder="Order # or Table #"
+              className="w-full p-3 border-2 rounded-lg mb-4 text-lg font-mono"
+              autoFocus
+            />
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {[1,2,3,4,5,6,7,8,9,'C',0,'⌫'].map((key) => (
+                <Button
+                  key={key}
+                  variant="outline"
+                  className="h-14 text-xl font-bold"
+                  onClick={() => {
+                    if (key === 'C') setRecallInput("");
+                    else if (key === '⌫') setRecallInput(prev => prev.slice(0, -1));
+                    else setRecallInput(prev => prev + key);
+                  }}
+                >
+                  {key}
+                </Button>
+              ))}
+            </div>
+            <Button
+              className="w-full h-12 bg-[#8B5A2B] hover:bg-[#6D421E] text-white text-lg"
+              onClick={() => handleRecallSearch(recallInput)}
+            >
+              <Search className="h-5 w-5 mr-2" />
+              Search
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
       <div className="container mx-auto px-6 py-8">
-        <div className="grid grid-cols-3 gap-6">
+        {viewMode === "ORDERS" ? (
+          <div className="grid grid-cols-3 gap-6">
           
           {/* NEW ORDERS */}
           <div>
@@ -382,6 +734,18 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                             HIGH
                           </Badge>
                         )}
+                        {/* Order Type Badge */}
+                        <Badge variant="outline" className={cn(
+                          "text-xs",
+                          order.orderType === "DINE_IN" && "border-blue-400 text-blue-600",
+                          order.orderType === "DELIVERY" && "border-green-400 text-green-600",
+                          order.orderType === "PARCEL" && "border-purple-400 text-purple-600"
+                        )}>
+                          {order.orderType === "DINE_IN" && <Utensils className="h-3 w-3 mr-1" />}
+                          {order.orderType === "DELIVERY" && <Truck className="h-3 w-3 mr-1" />}
+                          {order.orderType === "PARCEL" && <ShoppingBag className="h-3 w-3 mr-1" />}
+                          {order.orderType.replace("_", " ")}
+                        </Badge>
                       </div>
                       <div 
                         className="flex items-center gap-1 font-bold text-sm"
@@ -410,9 +774,14 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                           <p className="font-semibold text-[#2D2D2D]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                             {item.quantity}x {item.name}
                           </p>
-                          <Badge variant="outline" className="text-xs">
-                            {Math.floor(item.preparationTime / 60)} min
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs bg-gray-100">
+                              {item.station}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {Math.floor(item.preparationTime / 60)} min
+                            </Badge>
+                          </div>
                         </div>
                         {item.specialInstructions && (
                           <p className="text-xs text-amber-700 flex items-center gap-1 mt-1">
@@ -420,17 +789,30 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                             {item.specialInstructions}
                           </p>
                         )}
+                        {/* Item-level START button */}
+                        {item.status === "PENDING" && (isHeadChef || item.station === station) && (
+                          <Button
+                            size="sm"
+                            className="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white"
+                            onClick={() => handleStartItem(order.id, item.id)}
+                          >
+                            <Play className="h-3 w-3 mr-1" />
+                            START
+                          </Button>
+                        )}
                       </div>
                     ))}
 
                     <div className="flex gap-2 pt-2">
-                      <Button
-                        onClick={() => handleStartCooking(order.id)}
-                        className="flex-1 bg-[#8B5A2B] hover:bg-[#6D421E] text-white"
-                      >
-                        <Play className="h-4 w-4 mr-2" />
-                        Start Cooking
-                      </Button>
+                      {isHeadChef && (
+                        <Button
+                          onClick={() => handleStartCooking(order.id)}
+                          className="flex-1 bg-[#8B5A2B] hover:bg-[#6D421E] text-white"
+                        >
+                          <Play className="h-4 w-4 mr-2" />
+                          Start All
+                        </Button>
+                      )}
                       <Button
                         onClick={() => handleRejectOrder(order.id)}
                         variant="outline"
@@ -466,12 +848,22 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                 <Card key={order.id} className="border-l-4 border-l-orange-600 shadow-md">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <Badge 
-                        className="text-white font-bold"
-                        style={{ backgroundColor: stationColors[station] }}
-                      >
-                        {order.orderNumber}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge 
+                          className="text-white font-bold"
+                          style={{ backgroundColor: stationColors[station] }}
+                        >
+                          {order.orderNumber}
+                        </Badge>
+                        <Badge variant="outline" className={cn(
+                          "text-xs",
+                          order.orderType === "DINE_IN" && "border-blue-400 text-blue-600",
+                          order.orderType === "DELIVERY" && "border-green-400 text-green-600",
+                          order.orderType === "PARCEL" && "border-purple-400 text-purple-600"
+                        )}>
+                          {order.orderType.replace("_", " ")}
+                        </Badge>
+                      </div>
                       <div 
                         className="flex items-center gap-1 font-bold text-sm"
                         style={{ color: getTimeColor(order.createdAt) }}
@@ -491,36 +883,83 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
 
                   <CardContent className="space-y-3">
                     {order.items.map((item) => (
-                      <div key={item.id} className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                      <div 
+                        key={item.id} 
+                        className={cn(
+                          "p-3 rounded-lg border",
+                          item.status === "PENDING" && "bg-gray-50 border-gray-200",
+                          item.status === "PREPARING" && "bg-orange-50 border-orange-200",
+                          item.status === "COMPLETED" && "bg-green-50 border-green-200"
+                        )}
+                      >
                         <div className="flex items-start justify-between mb-2">
                           <p className="font-semibold text-[#2D2D2D]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                            {item.status === "COMPLETED" && <Check className="h-4 w-4 inline mr-1 text-green-600" />}
                             {item.quantity}x {item.name}
                           </p>
-                          <div className="flex items-center gap-1 text-orange-700 font-bold text-sm">
-                            <Timer className="h-4 w-4" />
-                            {getPreparationTime(item)}
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs bg-white">
+                              {item.station}
+                            </Badge>
+                            {item.status === "PREPARING" && item.startedAt && (
+                              <div className="flex items-center gap-1 text-orange-700 font-bold text-sm">
+                                <Timer className="h-4 w-4" />
+                                {getPreparationTime(item)}
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-orange-600 h-2 rounded-full transition-all duration-1000"
-                            style={{ 
-                              width: item.startedAt 
-                                ? `${Math.min(100, ((currentTime.getTime() - item.startedAt.getTime()) / 1000 / item.preparationTime) * 100)}%`
-                                : '0%'
-                            }}
-                          />
-                        </div>
+                        
+                        {/* Progress bar for PREPARING items */}
+                        {item.status === "PREPARING" && item.startedAt && (
+                          <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                            <div 
+                              className="bg-orange-600 h-2 rounded-full transition-all duration-1000"
+                              style={{ 
+                                width: `${Math.min(100, ((currentTime.getTime() - item.startedAt.getTime()) / 1000 / item.preparationTime) * 100)}%`
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        {/* Item-level actions */}
+                        {(isHeadChef || item.station === station) && (
+                          <div className="flex gap-2 mt-2">
+                            {item.status === "PENDING" && (
+                              <Button
+                                size="sm"
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                                onClick={() => handleStartItem(order.id, item.id)}
+                              >
+                                <Play className="h-3 w-3 mr-1" />
+                                START
+                              </Button>
+                            )}
+                            {item.status === "PREPARING" && (
+                              <Button
+                                size="sm"
+                                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                                onClick={() => handleFinishItem(order.id, item.id)}
+                              >
+                                <Check className="h-3 w-3 mr-1" />
+                                FINISH
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
 
-                    <Button
-                      onClick={() => handleMarkReady(order.id)}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Mark as Ready
-                    </Button>
+                    {/* Mark all ready button for Head Chef */}
+                    {isHeadChef && (
+                      <Button
+                        onClick={() => handleMarkReady(order.id)}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Mark All Ready
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -548,12 +987,22 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                 <Card key={order.id} className="border-l-4 border-l-green-600 shadow-md bg-green-50">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <Badge 
-                        className="text-white font-bold"
-                        style={{ backgroundColor: stationColors[station] }}
-                      >
-                        {order.orderNumber}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge 
+                          className="text-white font-bold"
+                          style={{ backgroundColor: stationColors[station] }}
+                        >
+                          {order.orderNumber}
+                        </Badge>
+                        <Badge variant="outline" className={cn(
+                          "text-xs",
+                          order.orderType === "DINE_IN" && "border-blue-400 text-blue-600",
+                          order.orderType === "DELIVERY" && "border-green-400 text-green-600",
+                          order.orderType === "PARCEL" && "border-purple-400 text-purple-600"
+                        )}>
+                          {order.orderType.replace("_", " ")}
+                        </Badge>
+                      </div>
                       <CheckCircle2 className="h-5 w-5 text-green-600" />
                     </div>
                     
@@ -575,10 +1024,14 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                       </div>
                     ))}
 
-                    <div className="pt-2 text-center">
-                      <p className="text-sm font-semibold text-green-700" style={{ fontFamily: 'Inter, sans-serif' }}>
-                        ✓ Waiting for service
-                      </p>
+                    <div className="pt-2 flex gap-2">
+                      <Button
+                        onClick={() => handleDeliverOrder(order.id)}
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <Truck className="h-4 w-4 mr-2" />
+                        Deliver
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -595,6 +1048,99 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
           </div>
 
         </div>
+        ) : (
+          /* BATCH VIEW */
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-[#2D2D2D]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                Batch Production View
+              </h2>
+              <Badge className="bg-[#8B5A2B] text-white px-4 py-2 text-lg">
+                {batchedItems.length} Items to Prepare
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {batchedItems.map((batch, index) => (
+                <Card 
+                  key={index} 
+                  className={cn(
+                    "border-l-4 shadow-md hover:shadow-lg transition-all",
+                    batch.preparingCount > 0 && "border-l-orange-600 bg-orange-50"
+                  )}
+                  style={{ 
+                    borderLeftColor: batch.preparingCount === 0 ? stationColors[batch.station] : undefined 
+                  }}
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <Badge 
+                        className="text-white font-bold"
+                        style={{ backgroundColor: stationColors[batch.station] }}
+                      >
+                        {batch.station}
+                      </Badge>
+                      <Badge className="bg-gray-800 text-white text-lg px-3">
+                        x{batch.total}
+                      </Badge>
+                    </div>
+                    <p className="text-lg font-bold text-[#2D2D2D] mt-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                      {batch.name}
+                    </p>
+                  </CardHeader>
+
+                  <CardContent className="space-y-3">
+                    <div className="flex gap-2 text-sm">
+                      <Badge variant="outline" className="bg-gray-100">
+                        {batch.pendingCount} pending
+                      </Badge>
+                      {batch.preparingCount > 0 && (
+                        <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-300">
+                          {batch.preparingCount} cooking
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Batch action buttons */}
+                    {(isHeadChef || batch.station === station) && (
+                      <div className="flex gap-2">
+                        {batch.pendingCount > 0 && (
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                            onClick={() => handleStartBatch(batch.instances)}
+                          >
+                            <Play className="h-3 w-3 mr-1" />
+                            START ALL
+                          </Button>
+                        )}
+                        {batch.preparingCount > 0 && (
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => handleFinishBatch(batch.instances)}
+                          >
+                            <Check className="h-3 w-3 mr-1" />
+                            FINISH ALL
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+
+              {batchedItems.length === 0 && (
+                <Card className="col-span-full p-12 text-center border-dashed">
+                  <ChefHat className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <p className="text-xl text-[#6B6B6B]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    No items to prepare
+                  </p>
+                </Card>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
