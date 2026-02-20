@@ -646,6 +646,10 @@ export function OffersLoyalty() {
     );
   });
 
+  const activeMembershipPlans = membershipPlans.filter(
+    (plan) => plan.status === "active",
+  ).length;
+
   return (
     <div className="bg-offers-module min-h-screen p-6 space-y-6">
       {/* Header */}
@@ -745,12 +749,12 @@ export function OffersLoyalty() {
           {/* Search & Create Button */}
           <div className="flex items-center justify-between gap-4">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
               <Input
                 placeholder="Search coupons by code / type / status..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-9 bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
               />
             </div>
 
@@ -792,7 +796,7 @@ export function OffersLoyalty() {
                           code: e.target.value.toUpperCase(),
                         })
                       }
-                      className="uppercase font-mono"
+                      className="uppercase font-mono bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                     />
                   </div>
 
@@ -810,7 +814,7 @@ export function OffersLoyalty() {
                           })
                         }
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="bg-input-background text-foreground border-input dark:bg-input-background">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -840,6 +844,7 @@ export function OffersLoyalty() {
                             value: e.target.value,
                           })
                         }
+                        className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                       />
                     </div>
                   </div>
@@ -857,6 +862,7 @@ export function OffersLoyalty() {
                             min_order: e.target.value,
                           })
                         }
+                        className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                       />
                     </div>
 
@@ -872,6 +878,7 @@ export function OffersLoyalty() {
                             max_discount: e.target.value,
                           })
                         }
+                        className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                       />
                     </div>
                   </div>
@@ -888,6 +895,7 @@ export function OffersLoyalty() {
                             valid_from: e.target.value,
                           })
                         }
+                        className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                       />
                     </div>
 
@@ -902,6 +910,7 @@ export function OffersLoyalty() {
                             valid_to: e.target.value,
                           })
                         }
+                        className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                       />
                     </div>
                   </div>
@@ -918,6 +927,7 @@ export function OffersLoyalty() {
                           usage_limit: e.target.value,
                         })
                       }
+                      className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                     />
                   </div>
                 </div>
@@ -1187,10 +1197,10 @@ export function OffersLoyalty() {
         <TabsContent value="membership" className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold">
+              <h2 className="text-2xl font-bold text-white drop-shadow-lg">
                 Membership Plans
               </h2>
-              <p className="text-muted-foreground mt-1">
+              <p className="text-gray-200 mt-1">
                 Manage subscription plans for customers
               </p>
             </div>
@@ -1208,7 +1218,7 @@ export function OffersLoyalty() {
             {membershipPlans.map((plan) => (
               <Card
                 key={plan.id}
-                className={`border-2 ${plan.borderColor} ${plan.bgColor}`}
+                className="border-2 border-border bg-card"
               >
                 <CardHeader>
                   <div className="flex items-center justify-between">
@@ -1356,6 +1366,41 @@ export function OffersLoyalty() {
             ))}
           </div>
 
+          {/* Membership Statistics */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Plans
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {membershipPlans.length}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  All membership plans
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Active Plans
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {activeMembershipPlans}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Currently active
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Edit/Add Plan Dialog */}
           <Dialog
             open={planDialogOpen}
@@ -1384,6 +1429,7 @@ export function OffersLoyalty() {
                           name: e.target.value,
                         })
                       }
+                      className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                     />
                   </div>
 
@@ -1399,7 +1445,7 @@ export function OffersLoyalty() {
                       }
                       disabled={!!editingPlan}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-input-background text-foreground border-input dark:bg-input-background">
                         <SelectValue placeholder="Select tier" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1439,6 +1485,7 @@ export function OffersLoyalty() {
                           monthlyPrice: e.target.value,
                         })
                       }
+                      className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                     />
                   </div>
 
@@ -1454,6 +1501,7 @@ export function OffersLoyalty() {
                           loyaltyBonus: e.target.value,
                         })
                       }
+                      className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                     />
                   </div>
                 </div>
@@ -1540,10 +1588,10 @@ export function OffersLoyalty() {
         {/* ==================== TAB 3: LOYALTY POINTS CONFIGURATION ==================== */}
         <TabsContent value="loyalty" className="space-y-4">
           <div>
-            <h2 className="text-2xl font-bold">
+            <h2 className="text-2xl font-bold text-white drop-shadow-lg">
               Loyalty Points Configuration
             </h2>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-gray-200 mt-1">
               Reward customers for repeat orders
             </p>
           </div>
@@ -1574,6 +1622,7 @@ export function OffersLoyalty() {
                         ),
                       })
                     }
+                    className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                   />
                   <p className="text-xs text-muted-foreground">
                     Customers earn{" "}
@@ -1595,6 +1644,7 @@ export function OffersLoyalty() {
                         ),
                       })
                     }
+                    className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                   />
                   <p className="text-xs text-muted-foreground">
                     Cap points earned at{" "}
@@ -1653,6 +1703,7 @@ export function OffersLoyalty() {
                         pointsPerRupee: Number(e.target.value),
                       })
                     }
+                    className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                   />
                   <p className="text-xs text-muted-foreground">
                     {loyaltyConfig.pointsPerRupee} points = ₹1
@@ -1673,6 +1724,7 @@ export function OffersLoyalty() {
                         ),
                       })
                     }
+                    className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                   />
                   <p className="text-xs text-muted-foreground">
                     Customers must have at least{" "}
@@ -1707,6 +1759,7 @@ export function OffersLoyalty() {
                       expiryMonths: Number(e.target.value),
                     })
                   }
+                  className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                 />
                 <p className="text-xs text-muted-foreground">
                   Points will expire after{" "}
@@ -1802,10 +1855,10 @@ export function OffersLoyalty() {
         <TabsContent value="feedback" className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold">
+              <h2 className="text-2xl font-bold text-white drop-shadow-lg">
                 Customer Feedback
               </h2>
-              <p className="text-muted-foreground mt-1">
+              <p className="text-gray-200 mt-1">
                 Collect and manage customer reviews
               </p>
             </div>
