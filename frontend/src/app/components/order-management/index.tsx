@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useSpring, useTransform } from 'motion/react';
+import { motion, AnimatePresence, useSpring, useTransform } from 'framer-motion';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
@@ -28,7 +28,7 @@ import { ordersApi, menuApi } from '@/utils/api';
 // Animated Counter Component for count-up effect
 function AnimatedCounter({ value, className = '' }: { value: number; className?: string }) {
   const spring = useSpring(0, { stiffness: 75, damping: 15 });
-  const display = useTransform(spring, (current) => Math.round(current));
+  const display = useTransform(spring, (current: number) => Math.round(current));
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

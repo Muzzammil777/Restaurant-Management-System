@@ -20,7 +20,7 @@ import {
   FileText
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';

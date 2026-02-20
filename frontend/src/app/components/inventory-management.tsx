@@ -34,7 +34,7 @@ import {
   Bar,
   Cell
 } from 'recharts';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 
 import { Button } from '@/app/components/ui/button';

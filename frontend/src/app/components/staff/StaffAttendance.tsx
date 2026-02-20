@@ -31,7 +31,7 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react';
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { attendanceApi, staffApi } from '@/utils/api';
 import { toast } from 'sonner';
 

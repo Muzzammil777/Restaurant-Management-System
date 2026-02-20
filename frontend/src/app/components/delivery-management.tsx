@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { 
   motion, 
   AnimatePresence 
-} from 'motion/react';
+} from 'framer-motion';
 import { 
   Truck, 
   MapPin, 
