@@ -69,6 +69,7 @@ interface ComboMeal {
   available: boolean;
   calories: number;
   prepTime: string;
+  items?: string[]; // Array of menu item IDs included in this combo
 }
 
 const SPICE_LEVELS = ["None", "Mild", "Medium", "Hot", "Extra Hot"];
@@ -106,6 +107,7 @@ const normalizeComboMeals = (items: any[]): ComboMeal[] =>
     available: combo.available ?? true,
     calories: Number(combo.calories ?? 0),
     prepTime: combo.prepTime ?? "",
+    items: Array.isArray(combo.items) ? combo.items : [],
   }));
 
 export function MenuManagement() {
@@ -122,6 +124,7 @@ export function MenuManagement() {
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [editingCombo, setEditingCombo] = useState<ComboMeal | null>(null);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+  const [selectedComboItems, setSelectedComboItems] = useState<string[]>([]);
 
   // DATA: Menu Items
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -241,6 +244,7 @@ useEffect(() => {
       originalPrice: originalPrice,
       image: editingCombo?.image ?? "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800",
       available: editingCombo?.available ?? true,
+      items: selectedComboItems, // Include selected menu item IDs
     };
 
     try {
@@ -261,6 +265,7 @@ useEffect(() => {
 
       setComboDialogOpen(false);
       setEditingCombo(null);
+      setSelectedComboItems([]); // Reset selected items
     } catch (error) {
       console.error("Failed to save combo:", error);
       toast.error("Failed to save combo");
@@ -373,7 +378,7 @@ useEffect(() => {
               <Plus className="mr-2 h-4 w-4" /> Add Item
             </Button>
             <Button 
-              onClick={() => { setEditingCombo(null); setComboDialogOpen(true); }}
+              onClick={() => { setEditingCombo(null); setSelectedComboItems([]); setComboDialogOpen(true); }}
               className="h-11 px-6 bg-white hover:bg-gray-50 text-[#8B5A2B] border-2 border-[#8B5A2B] rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-200"
               style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}
             >
@@ -784,6 +789,7 @@ useEffect(() => {
                         className="h-8 w-8 text-white hover:bg-white/10"
                         onClick={() => { 
                           setEditingCombo(combo); 
+                          setSelectedComboItems(combo.items || []);
                           setComboDialogOpen(true); 
                         }}
                       >
@@ -1003,11 +1009,55 @@ useEffect(() => {
               <Label htmlFor="comboPrepTime" style={{ fontFamily: 'Inter, sans-serif' }}>Prep Time</Label>
               <Input id="comboPrepTime" name="prepTime" defaultValue={editingCombo?.prepTime} placeholder="e.g., 25mins" required />
             </div>
+            {/* Menu Items Selection */}
+            <div className="space-y-2">
+              <Label style={{ fontFamily: 'Inter, sans-serif' }}>Included Items ({selectedComboItems.length} selected)</Label>
+              <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2 bg-gray-50">
+                {menuItems.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No menu items available</p>
+                ) : (
+                  menuItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`flex items-center justify-between p-2 rounded cursor-pointer transition-colors ${
+                        selectedComboItems.includes(item.id) 
+                          ? 'bg-[#8B5A2B]/10 border border-[#8B5A2B]' 
+                          : 'bg-white hover:bg-gray-100 border border-transparent'
+                      }`}
+                      onClick={() => {
+                        setSelectedComboItems(prev => 
+                          prev.includes(item.id) 
+                            ? prev.filter(id => id !== item.id)
+                            : [...prev, item.id]
+                        );
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${
+                          selectedComboItems.includes(item.id) 
+                            ? 'bg-[#8B5A2B] border-[#8B5A2B]' 
+                            : 'border-gray-300'
+                        }`}>
+                          {selectedComboItems.includes(item.id) && (
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                        <span className="text-sm font-medium">{item.name}</span>
+                        <Badge variant="outline" className="text-xs">{item.category}</Badge>
+                      </div>
+                      <span className="text-sm text-muted-foreground">₹{item.price}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
             <div className="flex gap-3 pt-4">
               <Button type="submit" className="flex-1 bg-[#8B5A2B] hover:bg-[#6D421E]">
                 {editingCombo ? "Update Combo" : "Add Combo"}
               </Button>
-              <Button type="button" variant="outline" onClick={() => { setComboDialogOpen(false); setEditingCombo(null); }}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => { setComboDialogOpen(false); setEditingCombo(null); setSelectedComboItems([]); }}>Cancel</Button>
             </div>
           </form>
         </DialogContent>
