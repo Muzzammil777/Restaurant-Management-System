@@ -1305,6 +1305,73 @@ export const recipesApi = {
 };
 
 
+// ============ WORKFLOW API ============
+export const workflowApi = {
+  // 1. Walk-in Booking - Block table for 15 minutes
+  walkInBooking: (tableId: string, guestCount: number, customerName: string) =>
+    fetchApi<any>(`/workflow/walk-in-booking/${tableId}`, {
+      method: 'POST',
+      body: JSON.stringify({ guestCount, customerName }),
+    }),
+
+  // 2. Guest Arrived - Transition from reserved/walk-in-blocked to occupied
+  guestArrived: (tableId: string) =>
+    fetchApi<any>(`/workflow/guest-arrived/${tableId}`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }),
+
+  // 3. Waiter Assigned - Assign waiter to table
+  waiterAssigned: (tableId: string, waiterId: string, waiterName: string) =>
+    fetchApi<any>(`/workflow/waiter-assigned/${tableId}`, {
+      method: 'POST',
+      body: JSON.stringify({ waiterId, waiterName }),
+    }),
+
+  // 4. Order Created - Link order to table
+  orderCreated: (tableId: string, orderId: string, orderNumber: string) =>
+    fetchApi<any>(`/workflow/order-created/${tableId}`, {
+      method: 'POST',
+      body: JSON.stringify({ orderId, orderNumber }),
+    }),
+
+  // 5. Order Accepted - Send order to kitchen
+  orderAccepted: (tableId: string, orderId: string) =>
+    fetchApi<any>(`/workflow/order-accepted/${tableId}`, {
+      method: 'POST',
+      body: JSON.stringify({ orderId }),
+    }),
+
+  // 6. Order Preparing - Chef starts preparing
+  orderPreparing: (tableId: string, orderId: string, chefId: string, estimatedTimeMinutes: number) =>
+    fetchApi<any>(`/workflow/order-preparing/${tableId}`, {
+      method: 'POST',
+      body: JSON.stringify({ orderId, chefId, estimatedTimeMinutes }),
+    }),
+
+  // 7. Order Ready - Order is ready to serve
+  orderReady: (tableId: string, orderId: string) =>
+    fetchApi<any>(`/workflow/order-ready/${tableId}`, {
+      method: 'POST',
+      body: JSON.stringify({ orderId }),
+    }),
+
+  // 8. Bill Generated - Bill is created
+  billGenerated: (tableId: string, orderId: string, billId: string, totalAmount: number, billDetails?: any) =>
+    fetchApi<any>(`/workflow/bill-generated/${tableId}`, {
+      method: 'POST',
+      body: JSON.stringify({ orderId, billId, totalAmount, billDetails }),
+    }),
+
+  // 9. Payment Completed - Payment processed, cleaning starts
+  paymentCompleted: (tableId: string, billId: string, paymentId: string, amount: number, paymentMethod: string, originalStatus: string = 'available') =>
+    fetchApi<any>(`/workflow/payment-completed/${tableId}`, {
+      method: 'POST',
+      body: JSON.stringify({ billId, paymentId, amount, paymentMethod, originalStatus }),
+    }),
+};
+
+
 // Export all APIs
 export default {
   staff: staffApi,
@@ -1328,4 +1395,5 @@ export default {
   billing: billingApi,
   analytics: analyticsApi,
   recipes: recipesApi,
+  workflow: workflowApi,
 };

@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { tablesApi } from '@/utils/api';
 import { staffApi } from '@/utils/api';
 import { ordersApi } from '@/utils/api';
+import { workflowApi } from '@/utils/api';
 import { useAuth } from '@/utils/auth-context';
 
 // ============================================================================
@@ -406,11 +407,12 @@ interface WalkInModalProps {
   open: boolean;
   onClose: () => void;
   tables: any[];
-  onSelectTable: (tableId: string, guestCount: number) => void;
+  onSelectTable: (tableId: string, guestCount: number, customerName: string) => void;
 }
 
 function WalkInModal({ open, onClose, tables, onSelectTable }: WalkInModalProps) {
   const [guestCount, setGuestCount] = useState(2);
+  const [customerName, setCustomerName] = useState('');
   const [location, setLocation] = useState<Location | 'All'>('All');
   const [segment, setSegment] = useState<Segment | 'All'>('All');
   const [timeSlot, setTimeSlot] = useState(TIME_SLOTS[0]);
@@ -451,6 +453,17 @@ function WalkInModal({ open, onClose, tables, onSelectTable }: WalkInModalProps)
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
+          </div>
+
+          {/* Customer Name */}
+          <div className="space-y-2">
+            <Label>Customer Name</Label>
+            <Input
+              placeholder="Enter customer/guest name"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              className="text-base"
+            />
           </div>
 
           {/* Location Filter */}
@@ -509,7 +522,15 @@ function WalkInModal({ open, onClose, tables, onSelectTable }: WalkInModalProps)
                     key={table.id}
                     variant="outline"
                     className="h-auto py-4 flex flex-col items-center gap-2 hover:bg-emerald-50 hover:border-emerald-500"
-                    onClick={() => { onSelectTable(table.id, guestCount); onClose(); }}
+                    onClick={() => { 
+                      if (!customerName.trim()) {
+                        toast.error('Please enter customer name');
+                        return;
+                      }
+                      onSelectTable(table.id, guestCount, customerName);
+                      onClose();
+                      setCustomerName('');
+                    }}
                   >
                     <TableIllustration capacity={table.capacity} />
                     <div className="font-bold text-gray-900">{table.displayNumber}</div>
@@ -609,6 +630,14 @@ export function TableManagementComprehensive() {
   const handleAssignWaiter = async (tableId: string, waiterId: string, waiterName: string) => {
     try {
       await tablesApi.assignWaiter(tableId, waiterId, waiterName);
+      
+      // Call workflow endpoint to register waiter assignment
+      try {
+        await workflowApi.waiterAssigned(tableId, waiterId, waiterName);
+      } catch (e) {
+        console.warn('Could not notify workflow of waiter assignment:', e);
+      }
+      
       // Also update existing order for this table with the waiter info
       const table = tables.find(t => t.id === tableId);
       if (table?.currentOrderId) {
@@ -646,13 +675,15 @@ export function TableManagementComprehensive() {
     setWalkInModalOpen(true);
   };
 
-  const handleSelectTableForWalkIn = async (tableId: string, guestCount: number) => {
+  const handleSelectTableForWalkIn = async (tableId: string, guestCount: number, customerName: string) => {
     try {
-      await tablesApi.updateStatus(tableId, 'occupied', guestCount);
-      toast.success('Table marked as Occupied');
+      // Call workflow API to block table for 15 minutes
+      await workflowApi.walkInBooking(tableId, guestCount, customerName);
+      toast.success(`${customerName}'s table blocked for 15 minutes`);
       fetchData();
     } catch (error) {
-      toast.error('Failed to assign table');
+      console.error('Walk-in booking failed:', error);
+      toast.error('Failed to book walk-in table');
     }
   };
 
@@ -669,6 +700,14 @@ export function TableManagementComprehensive() {
   const handleSeatGuests = async (tableId: string, guestCount: number) => {
     try {
       await tablesApi.updateStatus(tableId, 'occupied', guestCount);
+      
+      // Call workflow endpoint to notify guest arrival
+      try {
+        await workflowApi.guestArrived(tableId);
+      } catch (e) {
+        console.warn('Could not notify workflow of guest arrival:', e);
+      }
+      
       toast.success(`Table seated with ${guestCount} guest${guestCount !== 1 ? 's' : ''}`);
       fetchData();
     } catch (error) {
@@ -723,6 +762,15 @@ export function TableManagementComprehensive() {
       }
       
       await tablesApi.update(tableId, { currentOrderId: orderId, status: 'occupied' });
+      
+      // Call workflow endpoint to register order creation
+      try {
+        const orderNumber = `#ORD-${Date.now().toString().slice(-4)}`;
+        await workflowApi.orderCreated(tableId, orderId, orderNumber);
+      } catch (e) {
+        console.warn('Could not notify workflow of order creation:', e);
+      }
+      
       toast.success(`Order created for table ${table.displayNumber}`);
       fetchData();
     } catch (error) {

@@ -26,6 +26,7 @@ from .routes import notifications as notifications_router
 from .routes import billing as billing_router
 from .routes import analytics as analytics_router
 from .routes import recipes as recipes_router
+from .routes import workflow as workflow_router
 
 
 app = FastAPI(title='RMS Backend (FastAPI)')
@@ -78,6 +79,9 @@ app.include_router(orders_router.router, prefix='/api/orders')
 app.include_router(tables_router.router, prefix='/api/tables')
 app.include_router(inventory_router.router, prefix='/api/inventory')
 app.include_router(recipes_router.router, prefix='/api/recipes')
+
+# Workflow Integration (Tables → Orders → Kitchen → Billing)
+app.include_router(workflow_router.router, prefix='/api/workflow')
 
 # Customer Operations
 app.include_router(customers_router.router, prefix='/api/customers')

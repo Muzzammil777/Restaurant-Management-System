@@ -15,7 +15,7 @@ import {
   Timer, AlertTriangle, Coffee, Ban, Activity
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { ordersApi } from '@/utils/api';
+import { ordersApi, workflowApi } from '@/utils/api';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -339,6 +339,15 @@ export function OrderManagementComprehensive() {
 
     try {
       await ordersApi.updateStatus(orderId, newStatus);
+      
+      // Call workflow endpoint if order is being accepted
+      if (newStatus === 'accepted' && order.tableId) {
+        try {
+          await workflowApi.orderAccepted(order.tableId, orderId);
+        } catch (e) {
+          console.warn('Could not notify workflow of order acceptance:', e);
+        }
+      }
       
       // Set undo state
       setUndoState({
