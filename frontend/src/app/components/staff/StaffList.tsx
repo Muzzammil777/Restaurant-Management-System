@@ -186,7 +186,8 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
       role: member.role,
       shift: member.shift,
       department: member.department || 'service',
-      salary: member.salary?.toString() || ''
+      salary: member.salary?.toString() || '',
+      password: ''
     });
     setEditDialogOpen(true);
   };

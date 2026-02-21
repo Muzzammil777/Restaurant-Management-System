@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { authApi } from './api';
 
 // Define user roles
-export type UserRole = 'admin' | 'manager' | 'waiter' | 'cashier';
+export type UserRole = 'admin' | 'manager' | 'waiter' | 'cashier' | 'chef';
 
 // Local storage key for role permissions
 const ROLE_PERMISSIONS_STORAGE_KEY = 'rms_role_permissions';
@@ -13,6 +13,7 @@ const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   manager: ['dashboard', 'menu', 'orders', 'kitchen', 'tables', 'inventory', 'staff', 'billing', 'offers', 'reports', 'notifications'],
   waiter: ['orders', 'tables', 'menu'],
   cashier: ['orders', 'billing', 'tables'],
+  chef: ['kitchen', 'orders'],
 };
 
 // Get role permissions from localStorage or use defaults
@@ -39,6 +40,7 @@ export const DEFAULT_TAB: Record<UserRole, string> = {
   manager: 'dashboard',
   waiter: 'orders',
   cashier: 'billing',
+  chef: 'kitchen',
 };
 
 export interface User {
@@ -94,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const parsed = JSON.parse(savedUser);
         // Normalize role to lowercase, fallback unknown roles to 'cashier'
         const rawRole = (parsed.role || 'cashier').toLowerCase();
-        parsed.role = (['admin', 'manager', 'waiter', 'cashier'].includes(rawRole) ? rawRole : 'cashier') as UserRole;
+        parsed.role = (['admin', 'manager', 'waiter', 'cashier', 'chef'].includes(rawRole) ? rawRole : 'cashier') as UserRole;
         setUser(parsed);
       } catch {
         localStorage.removeItem('rms_current_user');
@@ -111,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: result.user.id,
           email: result.user.email,
           name: result.user.name,
-          role: (['admin', 'manager', 'waiter', 'cashier'].includes((result.user.role || '').toLowerCase())
+          role: (['admin', 'manager', 'waiter', 'cashier', 'chef'].includes((result.user.role || '').toLowerCase())
             ? result.user.role.toLowerCase()
             : 'cashier') as UserRole,
         };
