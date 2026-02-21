@@ -29,6 +29,7 @@ interface Order {
   }>;
   total: number;
   status: 'placed' | 'preparing' | 'ready' | 'served' | 'completed' | 'cancelled';
+  paymentStatus?: 'pending_payment' | 'paid' | 'payment_failed' | 'cancelled' | 'expired';
   type: 'dine-in' | 'takeaway' | 'delivery';
   createdAt: string;
   paymentMethod?: 'cash' | 'upi' | 'card';

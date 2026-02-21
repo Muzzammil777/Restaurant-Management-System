@@ -297,16 +297,20 @@ export function AdminDashboard() {
                           </td>
                           <td className="p-3 text-center">
                             <Badge variant="outline" className="font-semibold">
-                              {item.count}
+                              {item.count || 0}
                             </Badge>
                           </td>
                           <td className="p-3 text-center font-semibold" style={{ color: '#8B5A2B' }}>
+<<<<<<< HEAD
+                            ₹{(item.revenue || 0).toFixed(2)}
+=======
                             ₹{(item.revenue ?? 0).toFixed(2)}
+>>>>>>> d3e0b6370a1e1a0ae381e316c1750084767230a1
                           </td>
                           <td className="p-3 text-center">
                             <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground">
                               <Clock className="h-3 w-3" />
-                              {item.avgPrepTime} min
+                              {item.avgPrepTime || 0} min
                             </div>
                           </td>
                         </tr>

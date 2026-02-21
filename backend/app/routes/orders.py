@@ -280,6 +280,11 @@ async def delete_order(order_id: str):
     """Delete order (soft delete - mark as cancelled)"""
     db = get_db()
     
+    # Get order details before cancelling
+    order = await db.orders.find_one({"_id": ObjectId(order_id)})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
     result = await db.orders.update_one(
         {"_id": ObjectId(order_id)},
         {"$set": {"status": "cancelled", "cancelledAt": datetime.utcnow().isoformat() + 'Z'}}
@@ -287,6 +292,21 @@ async def delete_order(order_id: str):
     
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Create notification for cancelled order
+    order_number = order.get("orderNumber", "N/A")
+    table_number = order.get("tableNumber", "N/A")
+    total = order.get("total", 0)
+    
+    await db.notifications.insert_one({
+        "type": "order-cancelled",
+        "title": f"Order {order_number} Cancelled",
+        "message": f"Table {table_number} - Order cancelled (₹{total:.2f})",
+        "recipient": "Admin",
+        "channel": "system",
+        "status": "unread",
+        "created_at": datetime.utcnow(),
+    })
     
     await log_audit("cancel", "order", order_id)
     

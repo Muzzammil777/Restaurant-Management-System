@@ -1153,6 +1153,16 @@ export const notificationsApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // Mark as read
+  markAsRead: (id: string) => fetchApi<{ success: boolean }>(`/notifications/${id}/read`, {
+    method: 'PATCH',
+  }),
+
+  // Mark all as read
+  markAllRead: () => fetchApi<{ success: boolean }>('/notifications/mark-all-read', {
+    method: 'PATCH',
+  }),
 };
 
 
@@ -1196,6 +1206,16 @@ export const billingApi = {
     });
   },
 
+<<<<<<< HEAD
+  // Retry payment
+  retryPayment: (paymentId: string, method?: string) => {
+    const query = new URLSearchParams();
+    if (method) query.append('method', method);
+    return fetchApi<any>(`/billing/${paymentId}/retry?${query.toString()}`, {
+      method: 'POST',
+    });
+  },
+=======
   // ===== ORDER-BILLING INTEGRATION =====
   
   // Process payment for an order
@@ -1214,6 +1234,7 @@ export const billingApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+>>>>>>> d3e0b6370a1e1a0ae381e316c1750084767230a1
 
   // Invoices
   listInvoices: (params?: { date_from?: string; date_to?: string }) => {

@@ -191,7 +191,7 @@ useEffect(() => {
       offerDiscount: (fd.get("offerDiscount") as string) || undefined,
       offerLabel: (fd.get("offerLabel") as string) || undefined,
       addons: selectedAddons,
-      image: editingItem?.image ?? "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800",
+      image: (fd.get("image") as string) || editingItem?.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800",
       available: editingItem?.available ?? true,
       badges: baseBadges,
     };
@@ -872,6 +872,17 @@ useEffect(() => {
             <div className="space-y-2">
               <Label htmlFor="description" style={{ fontFamily: 'Inter, sans-serif' }}>Description</Label>
               <Input id="description" name="description" defaultValue={editingItem?.description} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="image" style={{ fontFamily: 'Inter, sans-serif' }}>Image URL</Label>
+              <Input 
+                id="image" 
+                name="image" 
+                type="url" 
+                defaultValue={editingItem?.image} 
+                placeholder="https://example.com/image.jpg" 
+              />
+              <p className="text-xs text-gray-500">Enter the URL of the dish image</p>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
