@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, List
 from datetime import datetime
 from bson import ObjectId
+from pydantic import BaseModel, Field
 from ..db import get_db
 from ..audit import log_audit
 
@@ -21,6 +22,52 @@ def serialize_doc(doc):
         return None
     doc["_id"] = str(doc["_id"])
     return doc
+
+
+# ---- Pydantic models ----
+class RiderBase(BaseModel):
+    name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    vehicle: Optional[str] = None
+    status: Optional[str] = "Available"
+    rating: Optional[float] = 5.0
+
+
+class RiderCreate(RiderBase):
+    pass
+
+
+class RiderUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    vehicle: Optional[str] = None
+    status: Optional[str] = None
+    rating: Optional[float] = None
+    totalDeliveries: Optional[int] = None
+
+
+class DeliveryItem(BaseModel):
+    name: str
+    quantity: int = 1
+    price: Optional[float] = 0.0
+    notes: Optional[str] = None
+
+
+class DeliveryOrderCreate(BaseModel):
+    customerName: Optional[str] = None
+    customerAddress: Optional[str] = None
+    customerPhone: Optional[str] = None
+    items: List[DeliveryItem] = Field(default_factory=list)
+    total: Optional[float] = None
+    tip: Optional[float] = 0.0
+    riderId: Optional[str] = None
+    deliveryZoneId: Optional[str] = None
+    paymentMethod: Optional[str] = "cash"
+    notes: Optional[str] = None
+    deliveryStatus: Optional[str] = "cooking"
+
 
 
 # ============ RIDERS ============
@@ -67,39 +114,41 @@ async def get_rider(rider_id: str):
 
 
 @router.post("/riders")
-async def create_rider(data: dict):
+async def create_rider(data: RiderCreate):
     """Create new rider"""
     db = get_db()
-    
-    data["createdAt"] = datetime.utcnow()
-    data["status"] = data.get("status", "Available")
-    data["rating"] = data.get("rating", 5.0)
-    data["totalDeliveries"] = data.get("totalDeliveries", 0)
-    
-    result = await db.riders.insert_one(data)
+    data_dict = data.dict(exclude_none=True)
+
+    data_dict["createdAt"] = datetime.utcnow()
+    data_dict["status"] = data_dict.get("status", "Available")
+    data_dict["rating"] = data_dict.get("rating", 5.0)
+    data_dict["totalDeliveries"] = data_dict.get("totalDeliveries", 0)
+
+    result = await db.riders.insert_one(data_dict)
     created = await db.riders.find_one({"_id": result.inserted_id})
-    
-    await log_audit("create", "rider", str(result.inserted_id), {"name": data.get("name")})
-    
+
+    await log_audit("create", "rider", str(result.inserted_id), {"name": data_dict.get("name")})
+
     return serialize_doc(created)
 
 
 @router.put("/riders/{rider_id}")
-async def update_rider(rider_id: str, data: dict):
+async def update_rider(rider_id: str, data: RiderUpdate):
     """Update rider"""
     db = get_db()
-    
-    data["updatedAt"] = datetime.utcnow()
-    data.pop("_id", None)
-    
+
+    data_dict = data.dict(exclude_none=True)
+    data_dict["updatedAt"] = datetime.utcnow()
+    data_dict.pop("_id", None)
+
     result = await db.riders.update_one(
         {"_id": ObjectId(rider_id)},
-        {"$set": data}
+        {"$set": data_dict}
     )
-    
+
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Rider not found")
-    
+
     updated = await db.riders.find_one({"_id": ObjectId(rider_id)})
     return serialize_doc(updated)
 
@@ -162,6 +211,61 @@ async def list_delivery_orders(
                 order["rider"] = serialize_doc(rider)
     
     return [serialize_doc(order) for order in orders]
+
+
+@router.get("/orders/{order_id}")
+async def get_delivery_order(order_id: str):
+    """Get single delivery order"""
+    db = get_db()
+    order = await db.orders.find_one({"_id": ObjectId(order_id), "type": "delivery"})
+    if not order:
+        raise HTTPException(status_code=404, detail="Delivery order not found")
+    # Populate rider info if present
+    if order.get("riderId"):
+        try:
+            rider = await db.riders.find_one({"_id": ObjectId(order["riderId"])})
+            if rider:
+                order["rider"] = serialize_doc(rider)
+        except Exception:
+            pass
+    return serialize_doc(order)
+
+
+@router.post("/orders")
+async def create_delivery_order(data: DeliveryOrderCreate):
+    """Create a delivery order (wrapper around orders collection)
+
+    Ensures `type` is set to 'delivery' and sets defaults for delivery-specific fields.
+    """
+    db = get_db()
+    data_dict = data.dict(exclude_none=True)
+
+    # Basic order defaults
+    data_dict["type"] = "delivery"
+    data_dict["createdAt"] = datetime.utcnow()
+    data_dict["status"] = data_dict.get("status", "pending")
+    data_dict["deliveryStatus"] = data_dict.get("deliveryStatus", "cooking")
+
+    # Compute total if not provided
+    if data_dict.get("total") is None and data_dict.get("items"):
+        try:
+            data_dict["total"] = sum([(it.get("price", 0) or 0) * (it.get("quantity", 1) or 1) for it in data_dict.get("items", [])])
+        except Exception:
+            pass
+
+    # Generate a simple order number
+    try:
+        count = await db.orders.count_documents({})
+        data_dict["orderNumber"] = f"#ORD-{count + 1001}"
+    except Exception:
+        data_dict["orderNumber"] = data_dict.get("orderNumber") or "#ORD-UNKNOWN"
+
+    result = await db.orders.insert_one(data_dict)
+    created = await db.orders.find_one({"_id": result.inserted_id})
+
+    await log_audit("create", "delivery_order", str(result.inserted_id), {"orderNumber": data_dict.get("orderNumber")})
+
+    return serialize_doc(created)
 
 
 @router.get("/orders/stats")
