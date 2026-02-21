@@ -78,7 +78,7 @@ async def login(payload: LoginIn, request: Request):
         'id': str(user['_id']),
         'email': user['email'],
         'name': user.get('name', ''),
-        'role': user.get('role', 'staff'),
+        'role': user.get('role', 'waiter'),
         'phone': user.get('phone'),
         'shift': user.get('shift'),
         'department': user.get('department'),
@@ -165,7 +165,7 @@ async def create_staff(payload: StaffIn, request: Request):
     doc = {
         'name': payload.name,
         'email': payload.email,
-        'role': payload.role.value if payload.role else 'staff',
+        'role': payload.role.value if payload.role else 'waiter',
         'password_hash': pw_hash,
         'phone': payload.phone,
         'shift': payload.shift.value if payload.shift else 'morning',
@@ -185,7 +185,7 @@ async def create_staff(payload: StaffIn, request: Request):
         resourceId=str(res.inserted_id),
         userId=request.headers.get('x-user-id'),
         userName=request.headers.get('x-user-name'),
-        details={'email': payload.email, 'role': payload.role.value if payload.role else 'staff'},
+        details={'email': payload.email, 'role': payload.role.value if payload.role else 'waiter'},
         ip=request.client.host if request.client else None
     )
     return serialize_doc(created)

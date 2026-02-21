@@ -68,7 +68,7 @@ class LoginIn(BaseModel):
 class StaffIn(BaseModel):
     name: str
     email: EmailStr
-    role: Optional[StaffRole] = StaffRole.staff
+    role: Optional[StaffRole] = StaffRole.waiter
     password: Optional[str] = None
     phone: Optional[str] = None
     shift: Optional[ShiftType] = ShiftType.morning
