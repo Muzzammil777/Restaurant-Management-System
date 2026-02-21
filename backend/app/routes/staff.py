@@ -101,7 +101,8 @@ async def list_staff(
     coll = db.get_collection('staff')
     filt = {}
     if role:
-        filt['role'] = role
+        # Case-insensitive role filter using regex
+        filt['role'] = {'$regex': f'^{role}$', '$options': 'i'}
     if active is not None:
         filt['active'] = active
     if shift:
@@ -603,7 +604,8 @@ async def export_staff_csv(
     coll = db.get_collection('staff')
     filt = {}
     if role:
-        filt['role'] = role
+        # Case-insensitive role filter using regex
+        filt['role'] = {'$regex': f'^{role}$', '$options': 'i'}
     if active is not None:
         filt['active'] = active
     if shift:

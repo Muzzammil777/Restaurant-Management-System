@@ -3,6 +3,8 @@ export interface Order {
   orderNumber?: string;
   tableNumber?: number;
   customerName?: string;
+  waiterId?: string;
+  waiterName?: string;
   items: Array<{
     name: string;
     quantity: number;
