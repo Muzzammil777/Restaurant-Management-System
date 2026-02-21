@@ -13,7 +13,8 @@ import { cn } from '@/app/components/ui/utils';
 import { LoadingTables } from '@/app/components/ui/loading-spinner';
 import {
   Users, Clock, Utensils, Sparkles, CheckCircle, UserPlus,
-  AlertCircle, ChefHat, Timer, MapPin, Calendar, X, Coffee, DollarSign
+  AlertCircle, ChefHat, Timer, MapPin, Calendar, X, Coffee, DollarSign,
+  Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { tablesApi } from '@/utils/api';
@@ -376,6 +377,26 @@ export function TableManagementComprehensive() {
   const [walkInModalOpen, setWalkInModalOpen] = useState(false);
   const [walkInGuestCount, setWalkInGuestCount] = useState(2);
   const [activeTab, setActiveTab] = useState('floor');
+  
+  // Add Table Dialog State
+  const [addTableDialogOpen, setAddTableDialogOpen] = useState(false);
+  const [newTableName, setNewTableName] = useState('');
+  const [newTableCapacity, setNewTableCapacity] = useState(4);
+  const [newTableLocation, setNewTableLocation] = useState<Location>('Main Hall');
+  const [newTableSegment, setNewTableSegment] = useState('Front');
+  const [creatingTable, setCreatingTable] = useState(false);
+
+  // Normalize backend lowercase status to Title Case for UI
+  const normalizeStatus = (status: string): TableStatus => {
+    const map: Record<string, TableStatus> = {
+      available: 'Available',
+      occupied: 'Occupied',
+      reserved: 'Reserved',
+      cleaning: 'Cleaning',
+      eating: 'Eating',
+    };
+    return map[status?.toLowerCase()] ?? 'Available';
+  };
 
   useEffect(() => {
     fetchData();
@@ -394,20 +415,22 @@ export function TableManagementComprehensive() {
       const tablesData = Array.isArray(tablesRes) ? tablesRes : (tablesRes.data || []);
       const transformedTables = tablesData.map((t: any) => ({
         id: t._id || t.id,
-        displayNumber: t.tableNumber || t.displayNumber,
-        number: t.tableNumber || t.number,
+        displayNumber: t.displayNumber || t.name || t.tableNumber,
+        number: t.displayNumber || t.name || t.number,
         capacity: t.capacity,
         location: t.location,
-        status: t.status || 'Available',
-        guestCount: t.currentGuests || 0,
+        segment: t.segment,
+        // Normalize lowercase backend status → Title Case for UI
+        status: normalizeStatus(t.status),
+        guestCount: t.guestCount ?? t.currentGuests ?? 0,
         currentOrderId: t.currentOrderId,
-        waiterId: t.assignedWaiterId,
-        waiterName: t.assignedWaiterName,
+        waiterId: t.waiterId || t.assignedWaiterId,
+        waiterName: t.waiterName || t.assignedWaiterName,
         kitchenStatus: t.kitchenStatus,
         cleaningEndTime: t.cleaningEndTime,
-        reservationSlot: t.reservation?.timeSlot,
-        reservationStatus: t.reservation?.status,
-        reservationType: t.reservation?.type
+        reservationSlot: t.reservation?.timeSlot || t.reservationSlot,
+        reservationStatus: t.reservation?.status || t.reservationStatus,
+        reservationType: t.reservation?.type || t.reservationType,
       }));
       setTables(transformedTables);
       
@@ -429,11 +452,7 @@ export function TableManagementComprehensive() {
 
   const handleAssignWaiter = async (tableId: string, waiterId: string, waiterName: string) => {
     try {
-      await tablesApi.update(tableId, {
-        assignedWaiterId: waiterId,
-        assignedWaiterName: waiterName
-      });
-      
+      await tablesApi.assignWaiter(tableId, waiterId, waiterName);
       toast.success(`${waiterName} assigned to table`);
       fetchData();
     } catch (error) {
@@ -464,8 +483,8 @@ export function TableManagementComprehensive() {
 
   const handleSelectTableForWalkIn = async (tableId: string) => {
     try {
-      await tablesApi.updateStatus(tableId, 'Occupied', walkInGuestCount);
-
+      // Backend expects lowercase status values
+      await tablesApi.updateStatus(tableId, 'occupied', walkInGuestCount);
       toast.success('Table marked as Occupied');
       fetchData();
     } catch (error) {
@@ -475,12 +494,50 @@ export function TableManagementComprehensive() {
 
   const handleCancelReservation = async (tableId: string) => {
     try {
-      await tablesApi.updateStatus(tableId, 'Available');
-
+      // Backend expects lowercase status values
+      await tablesApi.updateStatus(tableId, 'available');
       toast.success('Reservation cancelled');
       fetchData();
     } catch (error) {
       toast.error('Failed to cancel reservation');
+    }
+  };
+
+  // Handle creating a new table
+  const handleCreateTable = async () => {
+    if (!newTableName.trim()) {
+      toast.error('Please enter a table name');
+      return;
+    }
+    
+    setCreatingTable(true);
+    try {
+      const tableData = {
+        name: newTableName,
+        displayNumber: newTableName,
+        capacity: newTableCapacity,
+        location: newTableLocation,
+        segment: newTableSegment,
+        status: 'available',
+        reservationType: 'None',
+        guestCount: 0
+      };
+      
+      await tablesApi.create(tableData);
+      
+      toast.success(`Table ${newTableName} created successfully`);
+      setAddTableDialogOpen(false);
+      // Reset form
+      setNewTableName('');
+      setNewTableCapacity(4);
+      setNewTableLocation('Main Hall');
+      setNewTableSegment('Front');
+      fetchData();
+    } catch (error) {
+      console.error('Error creating table:', error);
+      toast.error('Failed to create table');
+    } finally {
+      setCreatingTable(false);
     }
   };
 
@@ -514,6 +571,13 @@ export function TableManagementComprehensive() {
           <p className="text-gray-600 mt-1">Monitor and manage restaurant floor</p>
         </div>
         <div className="flex gap-3">
+          <Button
+            className="bg-[#8B5A2B] hover:bg-[#6B4520] text-white"
+            onClick={() => setAddTableDialogOpen(true)}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Table
+          </Button>
           <Button
             className="bg-[#8B5A2B] hover:bg-[#6B4520] text-white"
             onClick={handleWalkIn}
@@ -615,6 +679,96 @@ export function TableManagementComprehensive() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Add Table Dialog */}
+      <Dialog open={addTableDialogOpen} onOpenChange={setAddTableDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Table</DialogTitle>
+            <DialogDescription>
+              Create a new table for the restaurant floor
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Table Name */}
+            <div className="space-y-2">
+              <Label htmlFor="tableName">Table Name / Number</Label>
+              <Input
+                id="tableName"
+                placeholder="e.g., T1, A1, V1"
+                value={newTableName}
+                onChange={(e) => setNewTableName(e.target.value)}
+              />
+            </div>
+            
+            {/* Capacity */}
+            <div className="space-y-2">
+              <Label htmlFor="capacity">Capacity (seats)</Label>
+              <Input
+                id="capacity"
+                type="number"
+                min={1}
+                max={20}
+                value={newTableCapacity}
+                onChange={(e) => setNewTableCapacity(Number(e.target.value))}
+              />
+            </div>
+            
+            {/* Location */}
+            <div className="space-y-2">
+              <Label htmlFor="location">Location</Label>
+              <Select
+                value={newTableLocation}
+                onValueChange={(value) => setNewTableLocation(value as Location)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="VIP">VIP</SelectItem>
+                  <SelectItem value="Main Hall">Main Hall</SelectItem>
+                  <SelectItem value="AC Hall">AC Hall</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Segment */}
+            <div className="space-y-2">
+              <Label htmlFor="segment">Segment</Label>
+              <Select
+                value={newTableSegment}
+                onValueChange={(value) => setNewTableSegment(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Front">Front</SelectItem>
+                  <SelectItem value="Middle">Middle</SelectItem>
+                  <SelectItem value="Back">Back</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setAddTableDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateTable}
+              disabled={creatingTable || !newTableName.trim()}
+              className="bg-[#8B5A2B] hover:bg-[#6B4520] text-white"
+            >
+              {creatingTable ? 'Creating...' : 'Create Table'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Walk-In Modal */}
       <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
