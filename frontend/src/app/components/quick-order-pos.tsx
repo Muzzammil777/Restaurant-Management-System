@@ -1311,18 +1311,28 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                                             className="overflow-hidden"
                                           >
                                             <div className="border rounded p-2 space-y-1 text-xs bg-gray-50">
-                                              {(combo.items || []).map(itemId => {
-                                                const item = menuItems.find(mi => mi.id === itemId);
-                                                return item ? (
-                                                  <div key={itemId} className="flex justify-between">
-                                                    <span>• {item.name}</span>
-                                                    <span className="text-muted-foreground flex items-center">
-                                                      <IndianRupee className="h-3 w-3" />
-                                                      {item.price}
-                                                    </span>
-                                                  </div>
-                                                ) : null;
-                                              })}
+                                              {(combo.items || []).length === 0 ? (
+                                                <p className="text-muted-foreground text-center py-1">
+                                                  No items linked. Edit combo in Menu Management to add items.
+                                                </p>
+                                              ) : (
+                                                (combo.items || []).map(itemId => {
+                                                  const item = menuItems.find(mi => mi.id === itemId);
+                                                  return item ? (
+                                                    <div key={itemId} className="flex justify-between">
+                                                      <span>• {item.name}</span>
+                                                      <span className="text-muted-foreground flex items-center">
+                                                        <IndianRupee className="h-3 w-3" />
+                                                        {item.price}
+                                                      </span>
+                                                    </div>
+                                                  ) : (
+                                                    <div key={itemId} className="text-muted-foreground">
+                                                      • Item not found (ID: {itemId.slice(0, 8)}...)
+                                                    </div>
+                                                  );
+                                                })
+                                              )}
                                             </div>
                                           </motion.div>
                                         )}
