@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { tablesApi } from '@/utils/api';
 import { staffApi } from '@/utils/api';
 import { ordersApi } from '@/utils/api';
+import { useAuth } from '@/utils/auth-context';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -530,6 +531,7 @@ function WalkInModal({ open, onClose, tables, onSelectTable }: WalkInModalProps)
 // ============================================================================
 
 export function TableManagementComprehensive() {
+  const { user } = useAuth();
   const [tables, setTables] = useState<any[]>([]);
   const [waiters, setWaiters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -607,6 +609,15 @@ export function TableManagementComprehensive() {
   const handleAssignWaiter = async (tableId: string, waiterId: string, waiterName: string) => {
     try {
       await tablesApi.assignWaiter(tableId, waiterId, waiterName);
+      // Also update existing order for this table with the waiter info
+      const table = tables.find(t => t.id === tableId);
+      if (table?.currentOrderId) {
+        try {
+          await ordersApi.update(table.currentOrderId, { waiterId, waiterName });
+        } catch (e) {
+          console.warn('Could not update order with waiter info:', e);
+        }
+      }
       toast.success(`${waiterName} assigned to table`);
       fetchData();
     } catch (error) {
@@ -668,12 +679,33 @@ export function TableManagementComprehensive() {
   const handleRequestOrder = async (tableId: string) => {
     const table = tables.find(t => t.id === tableId);
     if (!table) return;
+
+    // Determine waiterId: use table's assigned waiter, or auto-assign if current user is a waiter
+    let waiterId = table.waiterId || null;
+    let waiterName = table.waiterName || null;
+
+    if (!waiterId && user?.role === 'waiter') {
+      // Auto-assign the current waiter to this table and order
+      waiterId = user.id;
+      waiterName = user.name;
+      try {
+        await tablesApi.assignWaiter(tableId, waiterId, waiterName);
+      } catch (e) {
+        console.warn('Could not auto-assign waiter to table:', e);
+      }
+    }
+
+    if (!waiterId) {
+      toast.error('Please assign a waiter to this table first');
+      return;
+    }
+
     try {
       const order = await ordersApi.create({
         tableId,
         tableNumber: table.displayNumber,
-        waiterId: table.waiterId || null,
-        waiterName: table.waiterName || null,
+        waiterId,
+        waiterName,
         type: 'dine-in',
         status: 'placed',
         items: [],
