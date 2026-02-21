@@ -1274,6 +1274,9 @@ export const analyticsApi = {
 
   // Get weekly analytics
   getWeekly: () => fetchApi<any>('/analytics/weekly'),
+
+  // Get staff performance analytics
+  getStaffPerformance: () => fetchApi<any[]>('/analytics/staff-performance'),
 };
 
 

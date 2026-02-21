@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { cn } from '@/app/components/ui/utils';
-import { 
+import {
   TrendingUp,
   TrendingDown,
   IndianRupee,
@@ -18,104 +18,111 @@ import {
   Calendar,
   Download,
   Star,
+  Loader2,
 } from 'lucide-react';
+import { analyticsApi } from '@/utils/api';
+
+const CATEGORY_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#f97316'];
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function formatHour(h: number): string {
+  if (h === 0) return '12 AM';
+  if (h < 12) return `${h} AM`;
+  if (h === 12) return '12 PM';
+  return `${h - 12} PM`;
+}
 
 export function ReportsAnalytics() {
   const [activeTab, setActiveTab] = useState('sales');
   const [timeRange, setTimeRange] = useState('week');
+  const [loading, setLoading] = useState(true);
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [weeklyData, setWeeklyData] = useState<any>(null);
+  const [dailyData, setDailyData] = useState<any>(null);
+  const [staffPerformance, setStaffPerformance] = useState<any[]>([]);
 
-  // Mock data for sales chart
-  const salesData = [
-    { name: 'Mon', sales: 12500, orders: 42 },
-    { name: 'Tue', sales: 15200, orders: 51 },
-    { name: 'Wed', sales: 18400, orders: 62 },
-    { name: 'Thu', sales: 14800, orders: 48 },
-    { name: 'Fri', sales: 22100, orders: 75 },
-    { name: 'Sat', sales: 28500, orders: 98 },
-    { name: 'Sun', sales: 26200, orders: 88 },
-  ];
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  // Mock data for popular items
-  const popularItems = [
-    { name: 'Butter Chicken', orders: 156, revenue: 49920, trend: 15 },
-    { name: 'Paneer Tikka', orders: 142, revenue: 35500, trend: 8 },
-    { name: 'Biryani', orders: 128, revenue: 38400, trend: -3 },
-    { name: 'Dal Makhani', orders: 98, revenue: 21560, trend: 12 },
-    { name: 'Naan', orders: 256, revenue: 10240, trend: 5 },
-    { name: 'Gulab Jamun', orders: 86, revenue: 6020, trend: 22 },
-    { name: 'Masala Dosa', orders: 76, revenue: 15200, trend: -5 },
-    { name: 'Samosa', orders: 145, revenue: 7250, trend: 18 },
-  ];
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [analyticsRes, weeklyRes, dailyRes, staffRes] = await Promise.allSettled([
+        analyticsApi.get(),
+        analyticsApi.getWeekly(),
+        analyticsApi.getDaily(),
+        analyticsApi.getStaffPerformance(),
+      ]);
+      if (analyticsRes.status === 'fulfilled') setAnalytics(analyticsRes.value);
+      if (weeklyRes.status === 'fulfilled') setWeeklyData(weeklyRes.value);
+      if (dailyRes.status === 'fulfilled') setDailyData(dailyRes.value);
+      if (staffRes.status === 'fulfilled') setStaffPerformance(staffRes.value ?? []);
+    } catch (err) {
+      console.error('Failed to load analytics:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Mock data for peak hours
-  const peakHoursData = [
-    { hour: '9 AM', orders: 5 },
-    { hour: '10 AM', orders: 8 },
-    { hour: '11 AM', orders: 12 },
-    { hour: '12 PM', orders: 28 },
-    { hour: '1 PM', orders: 45 },
-    { hour: '2 PM', orders: 38 },
-    { hour: '3 PM', orders: 15 },
-    { hour: '4 PM', orders: 18 },
-    { hour: '5 PM', orders: 22 },
-    { hour: '6 PM', orders: 32 },
-    { hour: '7 PM', orders: 52 },
-    { hour: '8 PM', orders: 65 },
-    { hour: '9 PM', orders: 48 },
-    { hour: '10 PM', orders: 25 },
-  ];
+  // Sales chart data from weekly daily breakdown
+  const salesData = (weeklyData?.daily ?? []).map((d: any) => {
+    const date = new Date(d.date);
+    return { name: DAY_NAMES[date.getDay()], sales: d.revenue ?? 0, orders: d.orders ?? 0 };
+  });
 
-  // Mock staff performance data
-  const staffPerformance = [
-    {
-      id: '1',
-      name: 'Rajesh Kumar',
-      role: 'Waiter',
-      orders_handled: 145,
-      avg_service_time: '8 mins',
-      rating: 4.8,
-      attendance: '98%',
-      performance_score: 95,
-    },
-    {
-      id: '2',
-      name: 'Priya Sharma',
-      role: 'Cashier',
-      orders_handled: 168,
-      avg_service_time: '5 mins',
-      rating: 4.9,
-      attendance: '100%',
-      performance_score: 98,
-    },
-    {
-      id: '3',
-      name: 'Chef Arjun',
-      role: 'Chef',
-      orders_handled: 256,
-      avg_service_time: '15 mins',
-      rating: 4.7,
-      attendance: '96%',
-      performance_score: 92,
-    },
-    {
-      id: '4',
-      name: 'Ankit Verma',
-      role: 'Waiter',
-      orders_handled: 132,
-      avg_service_time: '9 mins',
-      rating: 4.6,
-      attendance: '94%',
-      performance_score: 88,
-    },
-  ];
+  // Popular items from weekly top items (with revenue + trend from backend)
+  const popularItems = (weeklyData?.topItems ?? []).map((item: any) => ({
+    name: item.name,
+    orders: item.count ?? 0,
+    revenue: item.revenue ?? 0,
+    trend: item.trend ?? 0,
+  }));
+  const maxOrders = popularItems.reduce((m: number, i: any) => Math.max(m, i.orders), 1);
 
-  // Category distribution data
-  const categoryData = [
-    { name: 'Main Course', value: 45, color: '#3b82f6' },
-    { name: 'Appetizers', value: 25, color: '#10b981' },
-    { name: 'Desserts', value: 15, color: '#f59e0b' },
-    { name: 'Beverages', value: 15, color: '#8b5cf6' },
-  ];
+  // Peak hours from daily hourly breakdown
+  const peakHoursData = (() => {
+    if (!dailyData?.hourly?.length) return [];
+    const hourMap: Record<number, number> = {};
+    dailyData.hourly.forEach((h: any) => { hourMap[h.hour] = h.orders; });
+    return Array.from({ length: 16 }, (_, i) => {
+      const hour = i + 7;
+      return { hour: formatHour(hour), orders: hourMap[hour] ?? 0 };
+    });
+  })();
+  const peakHour = peakHoursData.reduce(
+    (best: any, cur: any) => (cur.orders > (best?.orders ?? 0) ? cur : best),
+    null
+  );
+
+  // Summary stats
+  const stats = analytics?.data ?? {};
+  const totalRevenue = stats.totalRevenue ?? 0;
+  const totalOrders = stats.totalOrders ?? 0;
+  const avgOrderValue = stats.avgOrderValue ?? 0;
+  const totalCustomers = stats.totalCustomers ?? 0;
+
+  // Category pie chart
+  const categoryData = (stats.categoryDistribution ?? [])
+    .slice(0, 6)
+    .map((c: any, i: number) => ({ ...c, color: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }));
+
+  // Order type quick status
+  const orderTypes = stats.orderTypes ?? {};
+  const dineIn = orderTypes['dine-in'] ?? orderTypes['dinein'] ?? 0;
+  const takeaway = orderTypes['takeaway'] ?? orderTypes['pickup'] ?? 0;
+  const delivery = orderTypes['delivery'] ?? 0;
+
+  if (loading) {
+    return (
+      <div className="bg-analytics-module min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-white">
+          <Loader2 className="h-10 w-10 animate-spin" />
+          <p className="text-sm">Loading analyticsâ€¦</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-analytics-module min-h-screen px-4 md:px-6 py-6 space-y-6">
@@ -156,7 +163,6 @@ export function ReportsAnalytics() {
           ].map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
-            
             return (
               <button
                 key={item.id}
@@ -170,9 +176,7 @@ export function ReportsAnalytics() {
               >
                 <Icon className={cn('h-5 w-5 mt-0.5 flex-shrink-0', isActive ? '' : 'text-muted-foreground')} />
                 <div className="flex-1 min-w-0">
-                  <p className={cn('text-sm font-medium', isActive ? '' : '')}>
-                    {item.label}
-                  </p>
+                  <p className={cn('text-sm font-medium', isActive ? '' : '')}>{item.label}</p>
                   <p className={cn('text-xs mt-0.5', isActive ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
                     {item.description}
                   </p>
@@ -184,8 +188,6 @@ export function ReportsAnalytics() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        {/* TabsList removed and replaced by horizontal nav above */}
-
         {/* Sales Reports Tab */}
         <TabsContent value="sales" className="space-y-4">
           <div className="grid md:grid-cols-4 gap-4">
@@ -194,11 +196,8 @@ export function ReportsAnalytics() {
                 <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">₹1,37,700</div>
-                <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
-                  <TrendingUp className="h-3 w-3" />
-                  <span>+12.5% from last week</span>
-                </p>
+                <div className="text-2xl font-bold">â‚¹{totalRevenue.toLocaleString('en-IN')}</div>
+                <p className="text-xs text-muted-foreground mt-1">All completed orders</p>
               </CardContent>
             </Card>
 
@@ -207,10 +206,9 @@ export function ReportsAnalytics() {
                 <CardTitle className="text-sm font-medium text-muted-foreground">Total Orders</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">464</div>
-                <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
-                  <TrendingUp className="h-3 w-3" />
-                  <span>+8.2% from last week</span>
+                <div className="text-2xl font-bold">{totalOrders.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {stats.activeOrders ?? 0} active now
                 </p>
               </CardContent>
             </Card>
@@ -220,24 +218,18 @@ export function ReportsAnalytics() {
                 <CardTitle className="text-sm font-medium text-muted-foreground">Avg. Order Value</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">₹297</div>
-                <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
-                  <TrendingUp className="h-3 w-3" />
-                  <span>+4.1% from last week</span>
-                </p>
+                <div className="text-2xl font-bold">â‚¹{Math.round(avgOrderValue).toLocaleString('en-IN')}</div>
+                <p className="text-xs text-muted-foreground mt-1">Per completed order</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Customer Count</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Customers</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">328</div>
-                <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
-                  <TrendingUp className="h-3 w-3" />
-                  <span>+6.7% from last week</span>
-                </p>
+                <div className="text-2xl font-bold">{totalCustomers.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground mt-1">Registered customers</p>
               </CardContent>
             </Card>
           </div>
@@ -245,20 +237,28 @@ export function ReportsAnalytics() {
           <Card>
             <CardHeader>
               <CardTitle>Sales Trend</CardTitle>
-              <CardDescription>Daily sales and order count for the week</CardDescription>
+              <CardDescription>
+                Daily sales and order count â€” {weeklyData?.startDate ?? ''} to {weeklyData?.endDate ?? ''}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={salesData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip />
-                  <Line yAxisId="left" type="monotone" dataKey="sales" stroke="#3b82f6" strokeWidth={2} name="Sales (₹)" />
-                  <Line yAxisId="right" type="monotone" dataKey="orders" stroke="#10b981" strokeWidth={2} name="Orders" />
-                </LineChart>
-              </ResponsiveContainer>
+              {salesData.length === 0 ? (
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
+                  No sales data for this period
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={salesData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis yAxisId="left" />
+                    <YAxis yAxisId="right" orientation="right" />
+                    <Tooltip formatter={(val: any, name: string) => name === 'Sales (â‚¹)' ? `â‚¹${val.toLocaleString('en-IN')}` : val} />
+                    <Line yAxisId="left" type="monotone" dataKey="sales" stroke="#3b82f6" strokeWidth={2} name="Sales (â‚¹)" />
+                    <Line yAxisId="right" type="monotone" dataKey="orders" stroke="#10b981" strokeWidth={2} name="Orders" />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
 
@@ -266,35 +266,40 @@ export function ReportsAnalytics() {
             <Card>
               <CardHeader>
                 <CardTitle>Sales by Category</CardTitle>
-                <CardDescription>Revenue distribution across categories</CardDescription>
+                <CardDescription>Order distribution across menu categories</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <PieChart>
-                    <Pie
-                      data={categoryData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={(entry) => `${entry.name} (${entry.value}%)`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {categoryData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                {categoryData.length === 0 ? (
+                  <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">
+                    No category data available
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie
+                        data={categoryData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={(entry) => `${entry.name} (${entry.value})`}
+                        outerRadius={80}
+                        dataKey="value"
+                      >
+                        {categoryData.map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Quick Status</CardTitle>
-                <CardDescription>Key performance indicators</CardDescription>
+                <CardTitle>Order Type Breakdown</CardTitle>
+                <CardDescription>Distribution by order type</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between p-3 border rounded-lg">
@@ -302,23 +307,34 @@ export function ReportsAnalytics() {
                     <ShoppingBag className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm">Dine-in Orders</span>
                   </div>
-                  <span className="font-semibold">285 (61%)</span>
+                  <span className="font-semibold">
+                    {dineIn > 0 ? `${dineIn} (${totalOrders > 0 ? Math.round((dineIn / totalOrders) * 100) : 0}%)` : 'â€”'}
+                  </span>
                 </div>
-
                 <div className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm">Takeaway Orders</span>
                   </div>
-                  <span className="font-semibold">123 (27%)</span>
+                  <span className="font-semibold">
+                    {takeaway > 0 ? `${takeaway} (${totalOrders > 0 ? Math.round((takeaway / totalOrders) * 100) : 0}%)` : 'â€”'}
+                  </span>
                 </div>
-
                 <div className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">Avg. Prep Time</span>
+                    <span className="text-sm">Delivery Orders</span>
                   </div>
-                  <span className="font-semibold">18 mins</span>
+                  <span className="font-semibold">
+                    {delivery > 0 ? `${delivery} (${totalOrders > 0 ? Math.round((delivery / totalOrders) * 100) : 0}%)` : 'â€”'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">Table Occupancy</span>
+                  </div>
+                  <span className="font-semibold">{stats.tableOccupancy ?? 0}%</span>
                 </div>
               </CardContent>
             </Card>
@@ -330,83 +346,93 @@ export function ReportsAnalytics() {
           <Card>
             <CardHeader>
               <CardTitle>Top Selling Items</CardTitle>
-              <CardDescription>Most popular dishes ordered this week</CardDescription>
+              <CardDescription>Most popular dishes â€” {weeklyData?.startDate ?? ''} to {weeklyData?.endDate ?? ''}</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">#</TableHead>
-                    <TableHead>Item Name</TableHead>
-                    <TableHead>Orders</TableHead>
-                    <TableHead>Revenue</TableHead>
-                    <TableHead>Trend</TableHead>
-                    <TableHead className="text-right">Performance</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {popularItems.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        {index < 3 ? (
-                          <Trophy className={`h-5 w-5 ${index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : 'text-amber-700'}`} />
-                        ) : (
-                          <span className="text-muted-foreground">{index + 1}</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell>{item.orders}</TableCell>
-                      <TableCell>₹{item.revenue.toLocaleString()}</TableCell>
-                      <TableCell>
-                        {item.trend > 0 ? (
-                          <Badge className="bg-green-500">
-                            <TrendingUp className="h-3 w-3 mr-1" />
-                            {item.trend}%
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-red-500">
-                            <TrendingDown className="h-3 w-3 mr-1" />
-                            {Math.abs(item.trend)}%
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-primary" 
-                              style={{ width: `${(item.orders / 256) * 100}%` }}
-                            />
-                          </div>
-                          <span className="text-xs text-muted-foreground w-10 text-right">
-                            {Math.round((item.orders / 256) * 100)}%
-                          </span>
-                        </div>
-                      </TableCell>
+              {popularItems.length === 0 ? (
+                <div className="py-12 text-center text-muted-foreground text-sm">No item data available for this period</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">#</TableHead>
+                      <TableHead>Item Name</TableHead>
+                      <TableHead>Orders</TableHead>
+                      <TableHead>Revenue</TableHead>
+                      <TableHead>Trend</TableHead>
+                      <TableHead className="text-right">Performance</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {popularItems.map((item: any, index: number) => (
+                      <TableRow key={index}>
+                        <TableCell>
+                          {index < 3 ? (
+                            <Trophy className={`h-5 w-5 ${index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : 'text-amber-700'}`} />
+                          ) : (
+                            <span className="text-muted-foreground">{index + 1}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell>{item.orders}</TableCell>
+                        <TableCell>{item.revenue > 0 ? `â‚¹${item.revenue.toLocaleString('en-IN')}` : 'â€”'}</TableCell>
+                        <TableCell>
+                          {item.trend !== 0 ? (
+                            item.trend > 0 ? (
+                              <Badge className="bg-green-500">
+                                <TrendingUp className="h-3 w-3 mr-1" />
+                                {item.trend}%
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-red-500">
+                                <TrendingDown className="h-3 w-3 mr-1" />
+                                {Math.abs(item.trend)}%
+                              </Badge>
+                            )
+                          ) : (
+                            <span className="text-xs text-muted-foreground">â€”</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-primary"
+                                style={{ width: `${(item.orders / maxOrders) * 100}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-muted-foreground w-10 text-right">
+                              {Math.round((item.orders / maxOrders) * 100)}%
+                            </span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Top Items Chart</CardTitle>
-              <CardDescription>Visual comparison of order volumes</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={popularItems}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="orders" fill="#3b82f6" name="Orders" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          {popularItems.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Top Items Chart</CardTitle>
+                <CardDescription>Visual comparison of order volumes</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={popularItems}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="orders" fill="#3b82f6" name="Orders" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Peak Hours Tab */}
@@ -414,49 +440,67 @@ export function ReportsAnalytics() {
           <Card>
             <CardHeader>
               <CardTitle>Peak Hours Analysis</CardTitle>
-              <CardDescription>Order distribution throughout the day</CardDescription>
+              <CardDescription>Order distribution throughout today</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={peakHoursData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="hour" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="orders" fill="#8b5cf6" name="Orders" />
-                </BarChart>
-              </ResponsiveContainer>
+              {peakHoursData.length === 0 ? (
+                <div className="h-[350px] flex items-center justify-center text-muted-foreground text-sm">
+                  No hourly data available for today
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={peakHoursData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="hour" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="orders" fill="#8b5cf6" name="Orders" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
 
           <div className="grid md:grid-cols-3 gap-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Peak Time</CardTitle>
+                <CardTitle className="text-base">Peak Hour</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-purple-600">8 PM</div>
-                <p className="text-sm text-muted-foreground mt-1">65 orders during this hour</p>
+                <div className="text-3xl font-bold text-purple-600">
+                  {peakHour ? peakHour.hour : 'â€”'}
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {peakHour ? `${peakHour.orders} orders during this hour` : 'No data yet'}
+                </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Rush Hours</CardTitle>
+                <CardTitle className="text-base">Total Today</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-purple-600">12-2 PM</div>
-                <p className="text-sm text-muted-foreground mt-1">Lunch rush period</p>
+                <div className="text-3xl font-bold text-purple-600">
+                  {dailyData?.orders ?? 0}
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  â‚¹{(dailyData?.revenue ?? 0).toLocaleString('en-IN')} revenue
+                </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Dinner Peak</CardTitle>
+                <CardTitle className="text-base">Completed Today</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-purple-600">7-9 PM</div>
-                <p className="text-sm text-muted-foreground mt-1">Evening rush period</p>
+                <div className="text-3xl font-bold text-purple-600">
+                  {dailyData?.completed ?? 0}
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  of {dailyData?.orders ?? 0} total orders
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -470,61 +514,79 @@ export function ReportsAnalytics() {
               <CardDescription>Employee performance metrics and ratings</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Rank</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Orders Handled</TableHead>
-                    <TableHead>Avg. Service Time</TableHead>
-                    <TableHead>Rating</TableHead>
-                    <TableHead>Attendance</TableHead>
-                    <TableHead className="text-right">Score</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {staffPerformance.map((staff, index) => (
-                    <TableRow key={staff.id}>
-                      <TableCell>
-                        {index < 3 ? (
-                          <Trophy className={`h-5 w-5 ${index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : 'text-amber-700'}`} />
-                        ) : (
-                          <span className="text-muted-foreground">{index + 1}</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-medium">{staff.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{staff.role}</Badge>
-                      </TableCell>
-                      <TableCell>{staff.orders_handled}</TableCell>
-                      <TableCell>{staff.avg_service_time}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                          <span>{staff.rating}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={staff.attendance === '100%' ? 'bg-green-500' : 'bg-blue-500'}>
-                          {staff.attendance}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-green-500" 
-                              style={{ width: `${staff.performance_score}%` }}
-                            />
-                          </div>
-                          <span className="font-semibold w-8 text-right">{staff.performance_score}</span>
-                        </div>
-                      </TableCell>
+              {staffPerformance.length === 0 ? (
+                <div className="py-12 text-center text-muted-foreground text-sm">
+                  No performance data recorded yet. Log staff performance from the Staff module.
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Rank</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Orders Handled</TableHead>
+                      <TableHead>Avg. Service Time</TableHead>
+                      <TableHead>Rating</TableHead>
+                      <TableHead>Attendance</TableHead>
+                      <TableHead className="text-right">Score</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {staffPerformance.map((staff: any, index: number) => (
+                      <TableRow key={staff.id}>
+                        <TableCell>
+                          {index < 3 ? (
+                            <Trophy className={`h-5 w-5 ${index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : 'text-amber-700'}`} />
+                          ) : (
+                            <span className="text-muted-foreground">{index + 1}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium">{staff.name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{staff.role}</Badge>
+                        </TableCell>
+                        <TableCell>{staff.orders_handled ?? 0}</TableCell>
+                        <TableCell>{staff.avg_service_time ?? 'â€”'}</TableCell>
+                        <TableCell>
+                          {staff.rating ? (
+                            <div className="flex items-center gap-1">
+                              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                              <span>{staff.rating}</span>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">â€”</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {staff.attendance && staff.attendance !== 'â€”' ? (
+                            <Badge className={staff.attendance === '100%' ? 'bg-green-500' : 'bg-blue-500'}>
+                              {staff.attendance}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">â€”</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {staff.performance_score != null ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-green-500"
+                                  style={{ width: `${staff.performance_score}%` }}
+                                />
+                              </div>
+                              <span className="font-semibold w-8 text-right">{staff.performance_score}</span>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">â€”</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
