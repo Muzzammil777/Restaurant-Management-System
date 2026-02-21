@@ -33,6 +33,8 @@ interface Order {
   tags?: string[];
   statusUpdatedAt?: string;
   notes?: string;
+  waiterId?: string;
+  waiterName?: string;
 }
 
 interface MenuItem {

@@ -8,12 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
+import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { cn } from '@/app/components/ui/utils';
 import { LoadingTables } from '@/app/components/ui/loading-spinner';
 import {
   Users, Clock, Utensils, Sparkles, CheckCircle, UserPlus,
   AlertCircle, ChefHat, Timer, MapPin, Calendar, X, Coffee, DollarSign,
-  Plus, ChevronsRight, Minus
+  Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { tablesApi } from '@/utils/api';
@@ -21,72 +22,11 @@ import { staffApi } from '@/utils/api';
 import { ordersApi } from '@/utils/api';
 
 // ============================================================================
-// CONSTANTS
-// ============================================================================
-
-const TIME_SLOTS = [
-  '7:30 AM - 8:50 AM',
-  '9:10 AM - 10:30 AM',
-  '12:00 PM - 1:20 PM',
-  '1:40 PM - 3:00 PM',
-  '6:40 PM - 8:00 PM',
-  '8:20 PM - 9:40 PM'
-];
-
-// ============================================================================
 // TYPE DEFINITIONS
 // ============================================================================
 
 type TableStatus = 'Available' | 'Reserved' | 'Occupied' | 'Eating' | 'Cleaning';
 type Location = 'VIP' | 'Main Hall' | 'AC Hall';
-type Segment = 'Front' | 'Middle' | 'Back';
-
-// ============================================================================
-// TABLE ILLUSTRATION COMPONENT
-// ============================================================================
-
-function TableIllustration({ capacity }: { capacity: number }) {
-  const cap = capacity >= 6 ? 6 : capacity >= 4 ? 4 : 2;
-  if (cap === 2) {
-    return (
-      <div className="flex items-center justify-center gap-1">
-        <div className="w-3 h-4 bg-gray-400 rounded-sm" />
-        <div className="w-8 h-6 bg-gray-600 rounded" />
-        <div className="w-3 h-4 bg-gray-400 rounded-sm" />
-      </div>
-    );
-  }
-  if (cap === 4) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-0.5">
-        <div className="w-3 h-3 bg-gray-400 rounded-sm" />
-        <div className="flex items-center gap-0.5">
-          <div className="w-3 h-3 bg-gray-400 rounded-sm" />
-          <div className="w-10 h-8 bg-gray-600 rounded" />
-          <div className="w-3 h-3 bg-gray-400 rounded-sm" />
-        </div>
-        <div className="w-3 h-3 bg-gray-400 rounded-sm" />
-      </div>
-    );
-  }
-  return (
-    <div className="flex flex-col items-center justify-center gap-0.5">
-      <div className="flex gap-2">
-        <div className="w-3 h-3 bg-gray-400 rounded-sm" />
-        <div className="w-3 h-3 bg-gray-400 rounded-sm" />
-      </div>
-      <div className="flex items-center gap-0.5">
-        <div className="w-3 h-4 bg-gray-400 rounded-sm" />
-        <div className="w-12 h-10 bg-gray-600 rounded" />
-        <div className="w-3 h-4 bg-gray-400 rounded-sm" />
-      </div>
-      <div className="flex gap-2">
-        <div className="w-3 h-3 bg-gray-400 rounded-sm" />
-        <div className="w-3 h-3 bg-gray-400 rounded-sm" />
-      </div>
-    </div>
-  );
-}
 
 // ============================================================================
 // TABLE CARD COMPONENT
@@ -98,14 +38,11 @@ interface TableCardProps {
   waiters: any[];
   onAssignWaiter: (tableId: string, waiterId: string, waiterName: string) => void;
   onCheckout: (tableId: string) => void;
-  onRequestOrder: (tableId: string) => void;
-  onSeatGuests: (tableId: string, guestCount: number) => void;
 }
 
-function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout, onRequestOrder, onSeatGuests }: TableCardProps) {
+function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout }: TableCardProps) {
   const [cleaningTimeLeft, setCleaningTimeLeft] = useState<number>(0);
   const [isPulsing, setIsPulsing] = useState(false);
-  const [seatCount, setSeatCount] = useState(2);
 
   // Cleaning timer countdown
   useEffect(() => {
@@ -166,8 +103,10 @@ function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout, onRequ
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // All active waiters fetched from DB are available for assignment
-  const availableWaiters = waiters;
+  // Get available waiters (not assigned or assigned to this table)
+  const availableWaiters = waiters.filter(w => 
+    !w.assignedTableId || w.assignedTableId === table.id
+  );
 
   return (
     <motion.div
@@ -270,52 +209,8 @@ function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout, onRequ
             </div>
           )}
 
-          {/* Seat Guests (Available tables) */}
-          {table.status === 'Available' && (
-            <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  min={1}
-                  max={table.capacity}
-                  value={seatCount}
-                  onChange={(e) => setSeatCount(Number(e.target.value))}
-                  className="h-8 text-sm w-20"
-                  placeholder="Guests"
-                />
-                <span className="text-xs text-gray-400">/ {table.capacity}</span>
-              </div>
-              <Button
-                size="sm"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSeatGuests(table.id, seatCount);
-                }}
-              >
-                <ChevronsRight className="w-4 h-4 mr-1" />
-                Seat Guests
-              </Button>
-            </div>
-          )}
-
-          {/* Request Order Button */}
-          {(table.status === 'Occupied' || table.status === 'Eating') && !table.currentOrderId && (
-            <Button
-              size="sm"
-              className="w-full bg-stone-800 hover:bg-stone-900 text-white"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRequestOrder(table.id);
-              }}
-            >
-              <Utensils className="w-4 h-4 mr-1" />
-              Request Order
-            </Button>
-          )}
-
           {/* Checkout Button */}
-          {table.status === 'Eating' && table.currentOrderId && (
+          {table.status === 'Eating' && (
             <Button
               size="sm"
               className="w-full bg-[#8B5A2B] hover:bg-[#6B4520] text-white"
@@ -410,132 +305,61 @@ interface WalkInModalProps {
   open: boolean;
   onClose: () => void;
   tables: any[];
-  onSelectTable: (tableId: string, guestCount: number) => void;
+  onSelectTable: (tableId: string) => void;
+  guestCount: number;
 }
 
-function WalkInModal({ open, onClose, tables, onSelectTable }: WalkInModalProps) {
-  const [guestCount, setGuestCount] = useState(2);
-  const [location, setLocation] = useState<Location | 'All'>('All');
-  const [segment, setSegment] = useState<Segment | 'All'>('All');
-  const [timeSlot, setTimeSlot] = useState(TIME_SLOTS[0]);
-
-  const eligibleTables = tables.filter(t => {
-    if (t.status !== 'Available') return false;
-    if (t.capacity < guestCount) return false;
-    if (location !== 'All' && t.location !== location) return false;
-    if (segment !== 'All' && t.segment !== segment) return false;
-    return true;
-  });
+function WalkInModal({ open, onClose, tables, onSelectTable, guestCount }: WalkInModalProps) {
+  // Filter tables by capacity
+  const eligibleTables = tables.filter(
+    t => t.status === 'Available' && t.capacity >= guestCount
+  );
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-[#8B5A2B]" />
-            New Walk-In Guest
-          </DialogTitle>
+          <DialogTitle>Select Table for Walk-In</DialogTitle>
           <DialogDescription>
-            Select guest count and preferences to find available tables
+            {guestCount} guests • Showing tables with capacity ≥ {guestCount}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Guest Count */}
-          <div className="space-y-2">
-            <Label>Guest Count</Label>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => setGuestCount(Math.max(1, guestCount - 1))}
-              >
-                <Minus className="w-4 h-4" />
-              </Button>
-              <div className="flex-1 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                <span className="text-4xl font-bold text-gray-900">{guestCount}</span>
-              </div>
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => setGuestCount(guestCount + 1)}
-              >
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Location Filter */}
-          <div className="space-y-2">
-            <Label>Location Preference (Optional)</Label>
-            <Select value={location} onValueChange={(v) => setLocation(v as Location | 'All')}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All Locations</SelectItem>
-                <SelectItem value="VIP">VIP</SelectItem>
-                <SelectItem value="Main Hall">Main Hall</SelectItem>
-                <SelectItem value="AC Hall">AC Hall</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Segment Filter */}
-          <div className="space-y-2">
-            <Label>Segment Preference (Optional)</Label>
-            <Select value={segment} onValueChange={(v) => setSegment(v as Segment | 'All')}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All Segments</SelectItem>
-                <SelectItem value="Front">Front</SelectItem>
-                <SelectItem value="Middle">Middle</SelectItem>
-                <SelectItem value="Back">Back</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Time Slot */}
-          <div className="space-y-2">
-            <Label>Time Slot (Optional)</Label>
-            <Select value={timeSlot} onValueChange={setTimeSlot}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {TIME_SLOTS.map(slot => (
-                  <SelectItem key={slot} value={slot}>{slot}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Available Tables */}
-          <div className="space-y-2">
-            <Label>Available Tables (Capacity ≥ {guestCount})</Label>
+        <ScrollArea className="h-96">
+          <div className="grid grid-cols-3 gap-3 p-2">
             {eligibleTables.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>No tables available matching your criteria</p>
+              <div className="col-span-3 text-center py-8 text-gray-500">
+                <AlertCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>No available tables for {guestCount} guests</p>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-3 max-h-[300px] overflow-y-auto p-2">
-                {eligibleTables.map(table => (
-                  <Button
-                    key={table.id}
-                    variant="outline"
-                    className="h-auto py-4 flex flex-col items-center gap-2 hover:bg-emerald-50 hover:border-emerald-500"
-                    onClick={() => {
-                      onSelectTable(table.id, guestCount);
-                      onClose();
-                    }}
-                  >
-                    <TableIllustration capacity={table.capacity} />
-                    <div className="font-bold">{table.displayNumber}</div>
-                    <div className="text-xs text-gray-600">{table.location} — {table.segment}</div>
-                    <Badge variant="secondary" className="text-xs">Seats {table.capacity}</Badge>
-                  </Button>
-                ))}
-              </div>
+              eligibleTables.map((table) => (
+                <Card
+                  key={table.id}
+                  className="cursor-pointer hover:border-[#8B5A2B] hover:shadow-lg transition-all"
+                  onClick={() => {
+                    onSelectTable(table.id);
+                    onClose();
+                  }}
+                >
+                  <CardContent className="p-4 text-center">
+                    <h3 className="font-bold text-xl mb-1">{table.displayNumber}</h3>
+                    <div className="flex items-center justify-center gap-1 text-sm text-gray-600">
+                      <Users className="w-3 h-3" />
+                      <span>{table.capacity} seats</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">{table.location}</p>
+                    <p className="text-xs text-gray-400">{table.segment}</p>
+                  </CardContent>
+                </Card>
+              ))
             )}
           </div>
-        </div>
+        </ScrollArea>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -551,6 +375,7 @@ export function TableManagementComprehensive() {
   const [loading, setLoading] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState<Location | 'All'>('All');
   const [walkInModalOpen, setWalkInModalOpen] = useState(false);
+  const [walkInGuestCount, setWalkInGuestCount] = useState(2);
   const [activeTab, setActiveTab] = useState('floor');
   
   // Add Table Dialog State
@@ -560,20 +385,6 @@ export function TableManagementComprehensive() {
   const [newTableLocation, setNewTableLocation] = useState<Location>('Main Hall');
   const [newTableSegment, setNewTableSegment] = useState('Front');
   const [creatingTable, setCreatingTable] = useState(false);
-
-  // Walk-In state is now managed inside WalkInModal
-
-  // Normalize backend lowercase status to Title Case for UI
-  const normalizeStatus = (status: string): TableStatus => {
-    const map: Record<string, TableStatus> = {
-      available: 'Available',
-      occupied: 'Occupied',
-      reserved: 'Reserved',
-      cleaning: 'Cleaning',
-      eating: 'Eating',
-    };
-    return map[status?.toLowerCase()] ?? 'Available';
-  };
 
   useEffect(() => {
     fetchData();
@@ -592,22 +403,20 @@ export function TableManagementComprehensive() {
       const tablesData = Array.isArray(tablesRes) ? tablesRes : (tablesRes.data || []);
       const transformedTables = tablesData.map((t: any) => ({
         id: t._id || t.id,
-        displayNumber: t.displayNumber || t.name || t.tableNumber,
-        number: t.displayNumber || t.name || t.number,
+        displayNumber: t.tableNumber || t.displayNumber,
+        number: t.tableNumber || t.number,
         capacity: t.capacity,
         location: t.location,
-        segment: t.segment,
-        // Normalize lowercase backend status → Title Case for UI
-        status: normalizeStatus(t.status),
-        guestCount: t.guestCount ?? t.currentGuests ?? 0,
+        status: t.status || 'Available',
+        guestCount: t.currentGuests || 0,
         currentOrderId: t.currentOrderId,
-        waiterId: t.waiterId || t.assignedWaiterId,
-        waiterName: t.waiterName || t.assignedWaiterName,
+        waiterId: t.assignedWaiterId,
+        waiterName: t.assignedWaiterName,
         kitchenStatus: t.kitchenStatus,
         cleaningEndTime: t.cleaningEndTime,
-        reservationSlot: t.reservation?.timeSlot || t.reservationSlot,
-        reservationStatus: t.reservation?.status || t.reservationStatus,
-        reservationType: t.reservation?.type || t.reservationType,
+        reservationSlot: t.reservation?.timeSlot,
+        reservationStatus: t.reservation?.status,
+        reservationType: t.reservation?.type
       }));
       setTables(transformedTables);
       
@@ -629,7 +438,11 @@ export function TableManagementComprehensive() {
 
   const handleAssignWaiter = async (tableId: string, waiterId: string, waiterName: string) => {
     try {
-      await tablesApi.assignWaiter(tableId, waiterId, waiterName);
+      await tablesApi.update(tableId, {
+        assignedWaiterId: waiterId,
+        assignedWaiterName: waiterName
+      });
+      
       toast.success(`${waiterName} assigned to table`);
       fetchData();
     } catch (error) {
@@ -658,9 +471,10 @@ export function TableManagementComprehensive() {
     setWalkInModalOpen(true);
   };
 
-  const handleSelectTableForWalkIn = async (tableId: string, guestCount: number) => {
+  const handleSelectTableForWalkIn = async (tableId: string) => {
     try {
-      await tablesApi.updateStatus(tableId, 'occupied', guestCount);
+      await tablesApi.updateStatus(tableId, 'Occupied', walkInGuestCount);
+
       toast.success('Table marked as Occupied');
       fetchData();
     } catch (error) {
@@ -670,46 +484,12 @@ export function TableManagementComprehensive() {
 
   const handleCancelReservation = async (tableId: string) => {
     try {
-      await tablesApi.updateStatus(tableId, 'available');
+      await tablesApi.updateStatus(tableId, 'Available');
+
       toast.success('Reservation cancelled');
       fetchData();
     } catch (error) {
       toast.error('Failed to cancel reservation');
-    }
-  };
-
-  const handleSeatGuests = async (tableId: string, guestCount: number) => {
-    try {
-      await tablesApi.updateStatus(tableId, 'occupied', guestCount);
-      toast.success(`Table seated with ${guestCount} guest${guestCount !== 1 ? 's' : ''}`);
-      fetchData();
-    } catch (error) {
-      toast.error('Failed to seat guests');
-    }
-  };
-
-  const handleRequestOrder = async (tableId: string) => {
-    const table = tables.find(t => t.id === tableId);
-    if (!table) return;
-    try {
-      const order = await ordersApi.create({
-        tableId,
-        tableNumber: table.displayNumber,
-        waiterId: table.waiterId || null,
-        waiterName: table.waiterName || null,
-        type: 'dine-in',
-        status: 'placed',
-        items: [],
-        total: 0,
-        notes: '',
-      });
-      // Link order to table
-      await tablesApi.update(tableId, { currentOrderId: order._id || order.id, status: 'occupied' });
-      toast.success(`Order created for table ${table.displayNumber} — it will appear in the Orders page`);
-      fetchData();
-    } catch (error) {
-      console.error('Error requesting order:', error);
-      toast.error('Failed to create order request');
     }
   };
 
@@ -780,7 +560,7 @@ export function TableManagementComprehensive() {
           <h1 className="text-3xl font-bold text-gray-900">Table Management</h1>
           <p className="text-gray-600 mt-1">Monitor and manage restaurant floor</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex gap-3">
           <Button
             className="bg-[#8B5A2B] hover:bg-[#6B4520] text-white"
             onClick={() => setAddTableDialogOpen(true)}
@@ -796,24 +576,6 @@ export function TableManagementComprehensive() {
             Walk-In Entry
           </Button>
         </div>
-      </div>
-
-      {/* Stats Bar */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { label: 'Available', count: tables.filter(t => t.status === 'Available').length, color: 'bg-green-500', text: 'text-green-700', bg: 'bg-green-50 border-green-200' },
-          { label: 'Occupied', count: tables.filter(t => t.status === 'Occupied' || t.status === 'Eating').length, color: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
-          { label: 'Reserved', count: tables.filter(t => t.status === 'Reserved').length, color: 'bg-amber-500', text: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' },
-          { label: 'Cleaning', count: tables.filter(t => t.status === 'Cleaning').length, color: 'bg-gray-400', text: 'text-gray-700', bg: 'bg-gray-50 border-gray-200' },
-        ].map(({ label, count, color, text, bg }) => (
-          <div key={label} className={`flex items-center gap-3 rounded-lg border p-3 ${bg}`}>
-            <div className={`w-3 h-3 rounded-full ${color}`} />
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{count}</p>
-              <p className={`text-xs font-medium ${text}`}>{label}</p>
-            </div>
-          </div>
-        ))}
       </div>
 
       {/* Tabs */}
@@ -848,55 +610,28 @@ export function TableManagementComprehensive() {
           </div>
 
           {/* Tables Grid */}
-          {Object.keys(groupedTables).length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed border-stone-300 rounded-xl bg-white">
-              <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center mb-4">
-                <Utensils className="w-10 h-10 text-stone-400" />
+          {Object.entries(groupedTables).map(([location, locationTables]) => (
+            <div key={location} className="space-y-3">
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-[#8B5A2B]" />
+                {location}
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <AnimatePresence>
+                  {locationTables.map((table) => (
+                    <TableCard
+                      key={table.id}
+                      table={table}
+                      onClick={() => {}}
+                      waiters={waiters}
+                      onAssignWaiter={handleAssignWaiter}
+                      onCheckout={handleCheckout}
+                    />
+                  ))}
+                </AnimatePresence>
               </div>
-              <h3 className="text-xl font-semibold text-stone-700 mb-1">
-                {tables.length === 0 ? 'No tables yet' : 'No tables match this filter'}
-              </h3>
-              <p className="text-stone-400 text-sm mb-6">
-                {tables.length === 0
-                  ? 'Get started by adding your first table to the floor plan.'
-                  : 'Try selecting a different location filter.'}
-              </p>
-              {tables.length === 0 && (
-                <Button
-                  className="bg-[#8B5A2B] hover:bg-[#6B4520] text-white"
-                  onClick={() => setAddTableDialogOpen(true)}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Your First Table
-                </Button>
-              )}
             </div>
-          ) : (
-            Object.entries(groupedTables).map(([location, locationTables]) => (
-              <div key={location} className="space-y-3">
-                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-[#8B5A2B]" />
-                  {location}
-                </h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                  <AnimatePresence>
-                    {locationTables.map((table) => (
-                      <TableCard
-                        key={table.id}
-                        table={table}
-                        onClick={() => {}}
-                        waiters={waiters}
-                        onAssignWaiter={handleAssignWaiter}
-                        onCheckout={handleCheckout}
-                        onRequestOrder={handleRequestOrder}
-                        onSeatGuests={handleSeatGuests}
-                      />
-                    ))}
-                  </AnimatePresence>
-                </div>
-              </div>
-            ))
-          )}
+          ))}
         </TabsContent>
 
         {/* Reservations Tab */}
@@ -1025,11 +760,27 @@ export function TableManagementComprehensive() {
         </DialogContent>
       </Dialog>
 
+      {/* Walk-In Modal */}
+      <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+        <div className="flex items-center gap-3">
+          <Label className="text-sm font-medium">Guest Count:</Label>
+          <Input
+            type="number"
+            min={1}
+            max={10}
+            value={walkInGuestCount}
+            onChange={(e) => setWalkInGuestCount(Number(e.target.value))}
+            className="w-24"
+          />
+        </div>
+      </div>
+
       <WalkInModal
         open={walkInModalOpen}
         onClose={() => setWalkInModalOpen(false)}
         tables={tables}
         onSelectTable={handleSelectTableForWalkIn}
+        guestCount={walkInGuestCount}
       />
     </div>
   );
