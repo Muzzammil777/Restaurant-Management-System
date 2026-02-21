@@ -701,7 +701,7 @@ export function TableManagementComprehensive() {
     }
 
     try {
-      const order = await ordersApi.create({
+      const orderData = {
         tableId,
         tableNumber: table.displayNumber,
         waiterId,
@@ -711,12 +711,24 @@ export function TableManagementComprehensive() {
         items: [],
         total: 0,
         notes: '',
-      });
-      await tablesApi.update(tableId, { currentOrderId: order._id || order.id, status: 'occupied' });
+      };
+      
+      const orderResponse = await ordersApi.create(orderData);
+      
+      // Ensure response has proper ID
+      const orderId = orderResponse?._id || orderResponse?.id;
+      if (!orderId) {
+        console.error('Order created but no ID returned:', orderResponse);
+        throw new Error('Order creation failed: No ID returned from server');
+      }
+      
+      await tablesApi.update(tableId, { currentOrderId: orderId, status: 'occupied' });
       toast.success(`Order created for table ${table.displayNumber}`);
       fetchData();
     } catch (error) {
-      toast.error('Failed to create order request');
+      console.error('Failed to create order request:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to create order: ${errorMsg}`);
     }
   };
 

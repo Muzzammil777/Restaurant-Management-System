@@ -137,6 +137,13 @@ function TakeOrderSheet({
       toast.error('Please add at least one item');
       return;
     }
+    
+    if (!order.id) {
+      console.error('Order ID is missing:', order);
+      toast.error('Order ID is missing. Please refresh and try again.');
+      return;
+    }
+    
     setSubmitting(true);
     try {
       await ordersApi.update(order.id, {
@@ -155,7 +162,8 @@ function TakeOrderSheet({
       onOpenChange(false);
     } catch (error) {
       console.error('Error updating order:', error);
-      toast.error('Failed to update order');
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to update order: ${errorMsg}`);
     } finally {
       setSubmitting(false);
     }
@@ -399,9 +407,14 @@ export function OrderManagement() {
     const calculatedTotal = normalizedItems.reduce((sum: number, item: { name: string; quantity: number; price: number }) => sum + (item.price * item.quantity), 0);
     const finalTotal = rawTotal > 0 ? rawTotal : calculatedTotal;
     
+    const orderId = rawOrder?._id || rawOrder?.id;
+    if (!orderId) {
+      console.warn('Order without ID detected:', rawOrder);
+    }
+    
     return {
       ...rawOrder,
-      id: rawOrder?._id || rawOrder?.id || '',
+      id: orderId || '',
       orderNumber: rawOrder?.orderNumber || rawOrder?.order_number,
       items: normalizedItems,
       total: finalTotal,
