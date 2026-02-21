@@ -1129,7 +1129,7 @@ async def create_user(user: UserAccountIn, request: Request):
             raise HTTPException(status_code=400, detail='An admin account already exists. Only one admin is allowed.')
 
     # Validate role
-    allowed_roles = {'admin', 'manager', 'waiter', 'cashier'}
+    allowed_roles = {'admin', 'manager', 'chef', 'waiter', 'cashier'}
     if user.role and user.role.lower() not in allowed_roles:
         raise HTTPException(status_code=400, detail=f'Invalid role. Allowed roles: {", ".join(sorted(allowed_roles))}')
     

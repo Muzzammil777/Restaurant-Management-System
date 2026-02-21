@@ -74,6 +74,7 @@ export function StaffManagement() {
               <SelectItem value="all">All Roles</SelectItem>
               <SelectItem value="admin">Admin</SelectItem>
               <SelectItem value="manager">Manager</SelectItem>
+              <SelectItem value="chef">Chef</SelectItem>
               <SelectItem value="waiter">Waiter</SelectItem>
               <SelectItem value="cashier">Cashier</SelectItem>
             </SelectContent>

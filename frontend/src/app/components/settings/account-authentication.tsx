@@ -308,6 +308,7 @@ export function AccountAuthentication() {
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <option value="manager">Manager</option>
+                      <option value="chef">Chef</option>
                       <option value="waiter">Waiter</option>
                       <option value="cashier">Cashier</option>
                     </select>

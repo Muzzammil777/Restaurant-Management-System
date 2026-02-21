@@ -8,6 +8,7 @@ from enum import Enum
 class StaffRole(str, Enum):
     admin = "admin"
     manager = "manager"
+    chef = "chef"
     waiter = "waiter"
     cashier = "cashier"
 

@@ -382,6 +382,7 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="chef">Chef</SelectItem>
                         <SelectItem value="waiter">Waiter</SelectItem>
                         <SelectItem value="cashier">Cashier</SelectItem>
                       </SelectContent>
@@ -478,6 +479,7 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
                     <SelectItem value="all">All</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="chef">Chef</SelectItem>
                     <SelectItem value="waiter">Waiter</SelectItem>
                     <SelectItem value="cashier">Cashier</SelectItem>
                   </SelectContent>
@@ -655,6 +657,7 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
                   </SelectTrigger>
                   <SelectContent>
                         <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="chef">Chef</SelectItem>
                         <SelectItem value="waiter">Waiter</SelectItem>
                         <SelectItem value="cashier">Cashier</SelectItem>
                       </SelectContent>
