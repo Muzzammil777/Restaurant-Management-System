@@ -17,9 +17,7 @@ import {
   Clock,
   Calendar,
   Download,
-  FileText,
   Star,
-  Activity,
 } from 'lucide-react';
 
 export function ReportsAnalytics() {
@@ -295,7 +293,7 @@ export function ReportsAnalytics() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Quick Stats</CardTitle>
+                <CardTitle>Quick Status</CardTitle>
                 <CardDescription>Key performance indicators</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -313,14 +311,6 @@ export function ReportsAnalytics() {
                     <span className="text-sm">Takeaway Orders</span>
                   </div>
                   <span className="font-semibold">123 (27%)</span>
-                </div>
-
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Activity className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">Delivery Orders</span>
-                  </div>
-                  <span className="font-semibold">56 (12%)</span>
                 </div>
 
                 <div className="flex items-center justify-between p-3 border rounded-lg">
