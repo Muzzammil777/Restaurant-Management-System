@@ -328,8 +328,8 @@ class MenuItemOut(BaseModel):
     createdAt: Optional[datetime] = None
     updatedAt: Optional[datetime] = None
 
-<<<<<<< HEAD
-    # ==============================
+
+# ==============================
 # NOTIFICATIONS
 # ==============================
 
@@ -363,7 +363,7 @@ class NotificationIn(BaseModel):
     channel: NotificationChannel
     status: Optional[NotificationStatus] = NotificationStatus.pending
     senderRole: Optional[str] = None
-=======
+
 
 # ============ TAX & SERVICE CONFIGURATION ============
 class TaxConfigIn(BaseModel):
@@ -443,4 +443,3 @@ class UserAccountOut(BaseModel):
     status: str = "active"
     lastLogin: Optional[str] = None
     createdAt: Optional[datetime] = None
->>>>>>> d3e0b6370a1e1a0ae381e316c1750084767230a1
