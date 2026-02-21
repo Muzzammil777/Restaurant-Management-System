@@ -200,7 +200,7 @@
    STAFF MANAGEMENT - Team/People Theme
    ============================================ */
 .bg-staff-module {
-  background: linear-gradient(135deg, #E6F5FF 0%, #D4E8FF 50%, #C2DBFF 100%);
+  background: linear-gradient(135deg, #F5E6D3 0%, #EDD5C4 50%, #E8C4B3 100%);
   position: relative;
   overflow: hidden;
 }
@@ -210,9 +210,9 @@
   position: absolute;
   width: 100%;
   height: 100%;
-  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><defs><pattern id="staff" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse"><g opacity="0.13"><circle cx="25" cy="20" r="5.5" fill="%231E40AF"/><rect x="20" y="28" width="10" height="14" fill="%231E40AF"/><path d="M 20 43 L 30 43 L 28 54 Q 25 55 22 54 Z" fill="%231E40AF" opacity="0.85"/><circle cx="65" cy="22" r="6" fill="%231E40AF"/><rect x="58" y="31" width="14" height="15" fill="%231E40AF" opacity="0.9"/><path d="M 58 48 L 72 48 L 70 61 Q 65 62 60 61 Z" fill="%231E40AF" opacity="0.8"/><line x1="30" y1="35" x2="45" y2="30" stroke="%231E40AF" stroke-width="0.8" opacity="0.08"/><circle cx="50" cy="65" r="2.5" fill="%231E40AF" opacity="0.15"/></g></pattern></defs><rect width="200" height="200" fill="url(%23staff)"/></svg>') repeat;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><defs><pattern id="staff" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse"><g opacity="0.14"><circle cx="20" cy="18" r="5" fill="%238B5A2B"/><path d="M 12 26 L 28 26 L 26 35 Q 20 37 14 35 Z" fill="%238B5A2B" opacity="0.9"/><circle cx="20" cy="48" r="2.5" fill="%238B5A2B" opacity="0.15"/><path d="M 20 40 L 15 43 M 20 40 L 25 43 M 20 40 L 20 45" stroke="%238B5A2B" stroke-width="0.8" opacity="0.1"/><circle cx="65" cy="22" r="5.5" fill="%238B5A2B"/><path d="M 56 30 L 74 30 L 72 40 Q 65 42 58 40 Z" fill="%238B5A2B" opacity="0.85"/><circle cx="65" cy="52" r="2.5" fill="%238B5A2B" opacity="0.15"/><path d="M 65 44 L 60 47 M 65 44 L 70 47 M 65 44 L 65 49" stroke="%238B5A2B" stroke-width="0.8" opacity="0.08"/><line x1="30" y1="28" x2="55" y2="32" stroke="%238B5A2B" stroke-width="0.6" opacity="0.08"/><circle cx="45" cy="65" r="3" fill="%238B5A2B" opacity="0.1"/></g></pattern></defs><rect width="200" height="200" fill="url(%23staff)"/></svg>') repeat;
   pointer-events: none;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 /* ============================================
