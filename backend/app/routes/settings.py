@@ -1121,6 +1121,17 @@ async def create_user(user: UserAccountIn, request: Request):
     existing = await coll.find_one({'email': user.email})
     if existing:
         raise HTTPException(status_code=409, detail='Email already exists')
+
+    # Enforce only one admin account
+    if user.role and user.role.lower() == 'admin':
+        admin_exists = await coll.find_one({'role': 'admin'})
+        if admin_exists:
+            raise HTTPException(status_code=400, detail='An admin account already exists. Only one admin is allowed.')
+
+    # Validate role
+    allowed_roles = {'admin', 'manager', 'waiter', 'cashier'}
+    if user.role and user.role.lower() not in allowed_roles:
+        raise HTTPException(status_code=400, detail=f'Invalid role. Allowed roles: {", ".join(sorted(allowed_roles))}')
     
     doc = {
         'name': user.name,

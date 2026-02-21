@@ -65,6 +65,7 @@ interface NewStaffForm {
   shift: string;
   department: string;
   salary: string;
+  password: string;
 }
 
 interface StaffListProps {
@@ -94,7 +95,8 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
     role: 'waiter',
     shift: 'morning',
     department: 'service',
-    salary: ''
+    salary: '',
+    password: ''
   });
   const [editStaff, setEditStaff] = useState<NewStaffForm>({
     name: '',
@@ -103,7 +105,8 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
     role: 'waiter',
     shift: 'morning',
     department: 'service',
-    salary: ''
+    salary: '',
+    password: ''
   });
 
   useEffect(() => {
@@ -134,12 +137,17 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
       toast.error('Name and email are required');
       return;
     }
+    if (!newStaff.password || newStaff.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
 
     try {
       setSaving(true);
       await staffApi.create({
         name: newStaff.name,
         email: newStaff.email,
+        password: newStaff.password,
         phone: newStaff.phone || undefined,
         role: newStaff.role,
         shift: newStaff.shift,
@@ -157,7 +165,8 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
         role: 'waiter',
         shift: 'morning',
         department: 'service',
-        salary: ''
+        salary: '',
+        password: ''
       });
       fetchStaff();
     } catch (err) {
@@ -197,6 +206,7 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
         shift: editStaff.shift,
         department: editStaff.department,
         salary: editStaff.salary ? parseFloat(editStaff.salary) : undefined,
+        ...(editStaff.password ? { password: editStaff.password } : {}),
       });
       
       toast.success('Staff member updated successfully!');
@@ -349,6 +359,16 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
                     onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })}
                   />
                 </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="password">Password *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Set login password (min 6 chars)"
+                    value={newStaff.password}
+                    onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })}
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="role">Role</Label>
@@ -360,14 +380,9 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
                         <SelectValue placeholder="Select role" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="chef">Chef</SelectItem>
+                        <SelectItem value="manager">Manager</SelectItem>
                         <SelectItem value="waiter">Waiter</SelectItem>
                         <SelectItem value="cashier">Cashier</SelectItem>
-                        <SelectItem value="manager">Manager</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="delivery">Delivery</SelectItem>
-                        <SelectItem value="bartender">Bartender</SelectItem>
-                        <SelectItem value="cleaner">Cleaner</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -460,12 +475,10 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="chef">Chef</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
                     <SelectItem value="waiter">Waiter</SelectItem>
                     <SelectItem value="cashier">Cashier</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="delivery">Delivery</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -640,18 +653,14 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="chef">Chef</SelectItem>
-                    <SelectItem value="waiter">Waiter</SelectItem>
-                    <SelectItem value="cashier">Cashier</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="delivery">Delivery</SelectItem>
-                    <SelectItem value="bartender">Bartender</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-shift">Shift</Label>
+                        <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="waiter">Waiter</SelectItem>
+                        <SelectItem value="cashier">Cashier</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-shift">Shift</Label>
                 <Select value={editStaff.shift} onValueChange={(value) => setEditStaff({ ...editStaff, shift: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select shift" />
@@ -686,6 +695,16 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
                   onChange={(e) => setEditStaff({ ...editStaff, salary: e.target.value })}
                 />
               </div>
+            </div>
+            <div className="grid gap-2 col-span-2">
+              <Label htmlFor="edit-password">New Password <span className="text-gray-400 font-normal">(leave blank to keep unchanged)</span></Label>
+              <Input
+                id="edit-password"
+                type="password"
+                placeholder="Set new login password"
+                value={editStaff.password}
+                onChange={(e) => setEditStaff({ ...editStaff, password: e.target.value })}
+              />
             </div>
           </div>
           <div className="flex justify-end gap-3">

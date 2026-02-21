@@ -12,6 +12,7 @@ import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { Clock, Package, CheckCircle, XCircle, Plus, CreditCard, Eye, IndianRupee, UtensilsCrossed, Zap, Minus, Search, Repeat, Flame, AlertCircle, TrendingUp, Activity, ChefHat, Coffee, Timer, Undo2, Gauge, MoveRight, MoveLeft, Ban, Sparkles, Pizza, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
 import { ordersApi, menuApi, staffApi } from '@/utils/api';
+import { useAuth } from '@/utils/auth-context';
 import { PaymentDialog } from '@/app/components/payment-dialog';
 import { QuickOrderPOS } from '@/app/components/quick-order-pos';
 
@@ -60,6 +61,10 @@ const SMART_NOTE_KEYWORDS = {
 };
 
 export function OrderManagement() {
+  const { user } = useAuth();
+  const isWaiter = user?.role === 'waiter';
+  const isAdminOrManager = user?.role === 'admin' || user?.role === 'manager';
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,7 +127,8 @@ export function OrderManagement() {
     fetchWaiters();
     const interval = setInterval(fetchOrders, 10000); // Refresh every 10 seconds
     return () => clearInterval(interval);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isWaiter]);
 
   const fetchWaiters = async () => {
     try {
@@ -153,7 +159,8 @@ export function OrderManagement() {
 
   const fetchOrders = async () => {
     try {
-      const result = await ordersApi.list();
+      const params = isWaiter && user?.id ? { waiterId: user.id } : undefined;
+      const result = await ordersApi.list(params);
       const rawOrders = (result as any)?.data || result || [];
       setOrders(Array.isArray(rawOrders) ? rawOrders.map(normalizeOrder) : []);
     } catch (error) {
@@ -318,10 +325,12 @@ export function OrderManagement() {
 
   // Filter and search orders
   const filteredOrders = orders.filter(order => {
+    // Waiters only see their own orders (strictly — even unassigned orders are hidden)
+    if (isWaiter && order.waiterId !== user?.id) return false;
     if (filterStatus !== 'all' && order.status !== filterStatus) return false;
     if (filterType !== 'all' && order.type !== filterType) return false;
     if (filterTable !== 'all' && order.tableNumber?.toString() !== filterTable) return false;
-    if (filterWaiter !== 'all' && order.waiterId !== filterWaiter) return false;
+    if (!isWaiter && filterWaiter !== 'all' && order.waiterId !== filterWaiter) return false;
     if (searchQuery && !generateOrderDisplayId(order.id, order.orderNumber).toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
@@ -388,8 +397,14 @@ export function OrderManagement() {
       {/* Header Section */}
       <div className="module-container flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-white drop-shadow-lg">Orders</h1>
-          <p className="text-gray-200">View, manage, and track all customer orders</p>
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">
+            {isWaiter ? `Your Orders` : 'Orders'}
+          </h1>
+          <p className="text-gray-200">
+            {isWaiter
+              ? `Showing orders assigned to you, ${user?.name || ''}`
+              : 'View, manage, and track all customer orders'}
+          </p>
         </div>
         
         {/* Quick Order Button */}
@@ -518,19 +533,22 @@ export function OrderManagement() {
               </SelectContent>
             </Select>
 
-            <Select value={filterWaiter} onValueChange={setFilterWaiter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Waiter" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Waiters</SelectItem>
-                {waiters.map(w => (
-                  <SelectItem key={w.id} value={w.id}>
-                    {w.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Only admins/managers can filter by waiter */}
+            {!isWaiter && (
+              <Select value={filterWaiter} onValueChange={setFilterWaiter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Waiter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Waiters</SelectItem>
+                  {waiters.map(w => (
+                    <SelectItem key={w.id} value={w.id}>
+                      {w.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             <Button 
               variant="outline" 

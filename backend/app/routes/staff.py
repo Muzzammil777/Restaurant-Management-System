@@ -154,7 +154,13 @@ async def create_staff(payload: StaffIn, request: Request):
     existing = await coll.find_one({'email': payload.email})
     if existing:
         raise HTTPException(status_code=409, detail='Email already exists')
-    
+
+    # Enforce only one admin account
+    if payload.role and payload.role.value == 'admin':
+        admin_exists = await coll.find_one({'role': 'admin'})
+        if admin_exists:
+            raise HTTPException(status_code=400, detail='An admin account already exists. Only one admin is allowed.')
+
     pw_hash = hash_password(payload.password) if payload.password else None
     doc = {
         'name': payload.name,
