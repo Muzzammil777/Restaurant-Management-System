@@ -672,11 +672,12 @@ listCombos: () => fetchApi<any[]>('/menu/combos'),
 // ============ ORDERS API ============
 export const ordersApi = {
   // List orders
-  list: (params?: { status?: string; type?: string; tableId?: string; date_from?: string; date_to?: string }) => {
+  list: (params?: { status?: string; type?: string; tableId?: string; waiterId?: string; date_from?: string; date_to?: string }) => {
     const query = new URLSearchParams();
     if (params?.status) query.append('status', params.status);
     if (params?.type) query.append('type', params.type);
     if (params?.tableId) query.append('tableId', params.tableId);
+    if (params?.waiterId) query.append('waiter_id', params.waiterId);
     if (params?.date_from) query.append('date_from', params.date_from);
     if (params?.date_to) query.append('date_to', params.date_to);
     return fetchApi<{ data: any[]; total: number }>(`/orders?${query.toString()}`);

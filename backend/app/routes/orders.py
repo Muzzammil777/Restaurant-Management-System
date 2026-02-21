@@ -42,6 +42,7 @@ async def list_orders(
     status: Optional[str] = None,
     type: Optional[str] = None,
     table: Optional[int] = None,
+    waiter_id: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     limit: int = Query(100, le=500),
@@ -57,6 +58,8 @@ async def list_orders(
         query["type"] = type
     if table:
         query["tableNumber"] = table
+    if waiter_id and waiter_id != "all":
+        query["waiterId"] = waiter_id
     if date_from:
         query["createdAt"] = {"$gte": datetime.fromisoformat(date_from)}
     if date_to:

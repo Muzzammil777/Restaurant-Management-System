@@ -11,7 +11,7 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { Clock, Package, CheckCircle, XCircle, Plus, CreditCard, Eye, IndianRupee, UtensilsCrossed, Zap, Minus, Search, Repeat, Flame, AlertCircle, TrendingUp, Activity, ChefHat, Coffee, Timer, Undo2, Gauge, MoveRight, MoveLeft, Ban, Sparkles, Pizza, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
-import { ordersApi, menuApi } from '@/utils/api';
+import { ordersApi, menuApi, staffApi } from '@/utils/api';
 import { PaymentDialog } from '@/app/components/payment-dialog';
 import { QuickOrderPOS } from '@/app/components/quick-order-pos';
 
@@ -64,6 +64,8 @@ export function OrderManagement() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterTable, setFilterTable] = useState<string>('all');
+  const [filterWaiter, setFilterWaiter] = useState<string>('all');
+  const [waiters, setWaiters] = useState<{ id: string; name: string }[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -115,9 +117,20 @@ export function OrderManagement() {
   useEffect(() => {
     fetchOrders();
     fetchMenuItems();
+    fetchWaiters();
     const interval = setInterval(fetchOrders, 10000); // Refresh every 10 seconds
     return () => clearInterval(interval);
   }, []);
+
+  const fetchWaiters = async () => {
+    try {
+      const res = await staffApi.list({ role: 'Waiter' });
+      const data = Array.isArray(res) ? res : (res as any).data || [];
+      setWaiters(data.map((s: any) => ({ id: s._id || s.id, name: s.name })));
+    } catch (e) {
+      console.error('Failed to fetch waiters', e);
+    }
+  };
 
   // Innovation #9: Undo countdown effect
   useEffect(() => {
@@ -306,6 +319,7 @@ export function OrderManagement() {
     if (filterStatus !== 'all' && order.status !== filterStatus) return false;
     if (filterType !== 'all' && order.type !== filterType) return false;
     if (filterTable !== 'all' && order.tableNumber?.toString() !== filterTable) return false;
+    if (filterWaiter !== 'all' && order.waiterId !== filterWaiter) return false;
     if (searchQuery && !generateOrderDisplayId(order.id, order.orderNumber).toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
@@ -451,7 +465,7 @@ export function OrderManagement() {
       {/* Smart Filters & Search */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid gap-4 md:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-6">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
@@ -502,12 +516,27 @@ export function OrderManagement() {
               </SelectContent>
             </Select>
 
+            <Select value={filterWaiter} onValueChange={setFilterWaiter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Waiter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Waiters</SelectItem>
+                {waiters.map(w => (
+                  <SelectItem key={w.id} value={w.id}>
+                    {w.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <Button 
               variant="outline" 
               onClick={() => {
                 setFilterStatus('all');
                 setFilterType('all');
                 setFilterTable('all');
+                setFilterWaiter('all');
                 setSearchQuery('');
               }}
             >
@@ -680,8 +709,12 @@ export function OrderManagement() {
                         <UtensilsCrossed className="h-3.5 w-3.5" />
                         <span>Table {order.tableNumber}</span>
                       </div>
-                    )}
-                    {order.customerName && (
+                    )}                    {order.waiterName && (
+                      <div className="flex items-center gap-1">
+                        <ChefHat className="h-3.5 w-3.5" />
+                        <span>Waiter: {order.waiterName}</span>
+                      </div>
+                    )}                    {order.customerName && (
                       <div className="font-medium text-foreground">
                         {order.customerName}
                       </div>

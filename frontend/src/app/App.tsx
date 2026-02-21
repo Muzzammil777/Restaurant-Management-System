@@ -3,7 +3,7 @@ import { AdminDashboard } from '@/app/components/admin-dashboard';
 import { MenuManagement } from '@/app/components/menu-management';
 import { OrderManagement } from '@/app/components/order-management';
 import { MochaKDS } from '@/app/components/mocha-kds';
-import { TableManagement } from '@/app/components/table-management';
+import { TableManagementComprehensive } from '@/app/components/table-management-comprehensive';
 import { InventoryManagement } from '@/app/components/inventory-management';
 import { StaffManagement } from '@/app/components/staff-management';
 import { BillingPayment } from '@/app/components/billing-payment';
@@ -413,7 +413,7 @@ function AppContent() {
         </TabsContent>
 
         <TabsContent value="tables" className="mt-0">
-          <TableManagement />
+          <TableManagementComprehensive />
         </TabsContent>
 
         <TabsContent value="inventory" className="mt-0">
