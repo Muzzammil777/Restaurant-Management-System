@@ -62,7 +62,7 @@ async def list_menu_items(
             {"description": {"$regex": search, "$options": "i"}},
         ]
 
-    items = await db.menu_items.find(query).sort("name", 1).to_list(1000)
+    items = await db.menu.find(query).sort("name", 1).to_list(1000)
     return [serialize_doc(item) for item in items]
 
 
@@ -71,28 +71,28 @@ async def get_menu_stats():
     """Get menu statistics"""
     db = get_db()
     
-    total = await db.menu_items.count_documents({})
-    available = await db.menu_items.count_documents({"available": True})
-    unavailable = await db.menu_items.count_documents({"available": False})
+    total = await db.menu.count_documents({})
+    available = await db.menu.count_documents({"available": True})
+    unavailable = await db.menu.count_documents({"available": False})
     
     # Count by category
     category_pipeline = [
         {"$group": {"_id": "$category", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}}
     ]
-    by_category = await db.menu_items.aggregate(category_pipeline).to_list(50)
+    by_category = await db.menu.aggregate(category_pipeline).to_list(50)
     
     # Count by diet type
     diet_pipeline = [
         {"$group": {"_id": "$dietType", "count": {"$sum": 1}}}
     ]
-    by_diet = await db.menu_items.aggregate(diet_pipeline).to_list(10)
+    by_diet = await db.menu.aggregate(diet_pipeline).to_list(10)
     
     # Average price
     price_pipeline = [
         {"$group": {"_id": None, "avgPrice": {"$avg": "$price"}}}
     ]
-    avg_price_result = await db.menu_items.aggregate(price_pipeline).to_list(1)
+    avg_price_result = await db.menu.aggregate(price_pipeline).to_list(1)
     avg_price = avg_price_result[0]["avgPrice"] if avg_price_result else 0
     
     # Combos count
@@ -113,7 +113,7 @@ async def get_menu_stats():
 async def get_menu_categories():
     """Get all unique menu categories"""
     db = get_db()
-    categories = await db.menu_items.distinct("category")
+    categories = await db.menu.distinct("category")
     return categories
 
 
@@ -200,7 +200,7 @@ async def get_menu_item(item_id: str):
     db = get_db()
     obj_id = validate_object_id(item_id)
 
-    item = await db.menu_items.find_one({"_id": obj_id})
+    item = await db.menu.find_one({"_id": obj_id})
     if not item:
         raise HTTPException(status_code=404, detail="Menu item not found")
 
@@ -216,8 +216,8 @@ async def create_menu_item(data: MenuItemIn):
     menu_data["createdAt"] = now
     menu_data["updatedAt"] = now
 
-    result = await db.menu_items.insert_one(menu_data)
-    created = await db.menu_items.find_one({"_id": result.inserted_id})
+    result = await db.menu.insert_one(menu_data)
+    created = await db.menu.find_one({"_id": result.inserted_id})
 
     await log_audit("create", "menu", str(result.inserted_id), {
         "name": menu_data.get("name")
@@ -234,7 +234,7 @@ async def update_menu_item(item_id: str, data: MenuItemUpdate):
     update_data = data.dict(exclude_unset=True)
     update_data["updatedAt"] = datetime.utcnow()
 
-    result = await db.menu_items.update_one(
+    result = await db.menu.update_one(
         {"_id": obj_id},
         {"$set": update_data}
     )
@@ -242,7 +242,7 @@ async def update_menu_item(item_id: str, data: MenuItemUpdate):
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Menu item not found")
 
-    updated = await db.menu_items.find_one({"_id": obj_id})
+    updated = await db.menu.find_one({"_id": obj_id})
 
     await log_audit("update", "menu", item_id, {
         "name": update_data.get("name")
@@ -256,11 +256,11 @@ async def delete_menu_item(item_id: str):
     db = get_db()
     obj_id = validate_object_id(item_id)
 
-    item = await db.menu_items.find_one({"_id": obj_id})
+    item = await db.menu.find_one({"_id": obj_id})
     if not item:
         raise HTTPException(status_code=404, detail="Menu item not found")
 
-    await db.menu_items.delete_one({"_id": obj_id})
+    await db.menu.delete_one({"_id": obj_id})
 
     await log_audit("delete", "menu", item_id, {
         "name": item.get("name")
@@ -276,12 +276,12 @@ async def toggle_availability(item_id: str, available: Optional[bool] = None):
 
     # If available is not provided, toggle the current state
     if available is None:
-        item = await db.menu_items.find_one({"_id": obj_id})
+        item = await db.menu.find_one({"_id": obj_id})
         if not item:
             raise HTTPException(status_code=404, detail="Menu item not found")
         available = not item.get("available", True)
 
-    result = await db.menu_items.update_one(
+    result = await db.menu.update_one(
         {"_id": obj_id},
         {"$set": {
             "available": available,
