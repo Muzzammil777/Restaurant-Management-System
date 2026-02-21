@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTableStore, WAITER_ROSTER, TableStatus, TableEntity } from '@/app/contexts/table-store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
@@ -943,12 +943,12 @@ export function TableManagementEnhanced() {
   };
 
   return (
-    <div className="p-8 space-y-8 bg-[#FDFCFB]">
+    <div className="bg-table-management-module p-8 space-y-8 min-h-screen">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="module-container flex justify-between items-start">
         <div>
-          <h1 className="text-5xl font-black tracking-tighter">Table Management</h1>
-          <p className="text-gray-500 font-medium text-xl mt-2 italic">
+          <h1 className="text-5xl font-black tracking-tighter text-white drop-shadow-lg">Table Management</h1>
+          <p className="text-gray-200 font-medium text-xl mt-2 italic">
             Floor Command Center with Walk-In Booking
           </p>
         </div>

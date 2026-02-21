@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
@@ -13,8 +13,30 @@ import {
   AlertTriangle, Coffee, Zap, Users, LogOut, Crown
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { mockApi, type MockOrder } from '@/app/services/mock-api';
+import { ordersApi, tablesApi } from '@/utils/api';
 import { KDSTerminalLogin, type KitchenTerminalStation, TERMINAL_STATIONS } from '@/app/components/kds-terminal-login';
+
+// Kitchen Order type matching backend data
+interface KitchenOrder {
+  id: string;
+  _id?: string;
+  displayId?: string;
+  orderNumber?: string;
+  tableNumber?: number | string;
+  tableId?: string;
+  customerName?: string;
+  customerNotes?: string;
+  items: Array<{
+    id?: string;
+    name: string;
+    quantity: number;
+    completed?: boolean;
+    specialInstructions?: string;
+  }>;
+  status: string;
+  createdAt: string;
+  type?: string;
+}
 
 // ============================================================================
 // STATION ASSIGNMENT LOGIC
@@ -80,7 +102,7 @@ function getStationColor(station: Station): string {
 // ============================================================================
 
 interface ProductionTicketProps {
-  order: MockOrder;
+  order: KitchenOrder;
   activeTerminal: KitchenTerminalStation;
   onItemToggle: (orderId: string, itemId: string, completed: boolean) => void;
   onMarkReady: (orderId: string) => void;
@@ -169,7 +191,7 @@ function ProductionTicket({ order, activeTerminal, onItemToggle, onMarkReady }: 
                   <Checkbox
                     checked={item.completed}
                     onCheckedChange={(checked) => 
-                      onItemToggle(order.id, item.id, checked as boolean)
+                      onItemToggle(order.id, item.id || '', checked as boolean)
                     }
                     className="border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                   />
@@ -232,12 +254,12 @@ interface BatchItem {
   station: Station;
 }
 
-function BatchView({ orders, activeTerminal }: { orders: MockOrder[]; activeTerminal: KitchenTerminalStation }) {
+function BatchView({ orders, activeTerminal }: { orders: KitchenOrder[]; activeTerminal: KitchenTerminalStation }) {
   // Aggregate all items across all orders
   const batchItems: Record<string, BatchItem> = {};
 
   orders.forEach(order => {
-    order.items.forEach(item => {
+    (order.items || []).forEach(item => {
       if (!batchItems[item.name]) {
         batchItems[item.name] = {
           name: item.name,
@@ -322,7 +344,7 @@ function BatchView({ orders, activeTerminal }: { orders: MockOrder[]; activeTerm
 // ============================================================================
 
 export function KitchenDisplayComprehensive() {
-  const [orders, setOrders] = useState<MockOrder[]>([]);
+  const [orders, setOrders] = useState<KitchenOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'tickets' | 'batch'>('tickets');
   const [activeTerminal, setActiveTerminal] = useState<KitchenTerminalStation | null>(null);
@@ -335,10 +357,24 @@ export function KitchenDisplayComprehensive() {
 
   const fetchOrders = async () => {
     try {
-      const result = await mockApi.getOrders();
-      if (result.success) {
-        setOrders(result.data);
-      }
+      const result = await ordersApi.list();
+      const data = result.data || [];
+      // Map backend data to kitchen format
+      const mappedOrders: KitchenOrder[] = data
+        .filter((o: any) => ['placed', 'preparing'].includes(o.status))
+        .map((order: any) => ({
+          ...order,
+          id: order._id || order.id,
+          displayId: order.orderNumber || `#${(order._id || order.id)?.slice(-6).toUpperCase()}`,
+          items: (order.items || []).map((item: any, idx: number) => ({
+            ...item,
+            id: item.id || `item-${idx}`,
+            name: item.name || item.dishName || 'Unknown Item',
+            quantity: item.quantity || 1,
+            completed: item.completed || false,
+          })),
+        }));
+      setOrders(mappedOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
     } finally {
@@ -354,24 +390,37 @@ export function KitchenDisplayComprehensive() {
       item.id === itemId ? { ...item, completed } : item
     );
 
+    // Update local state immediately for responsiveness
+    setOrders(prev => prev.map(o => 
+      o.id === orderId ? { ...o, items: updatedItems } : o
+    ));
+
     try {
-      await mockApi.updateOrder(orderId, { items: updatedItems });
-      fetchOrders();
+      // Update on server
+      const cleanId = orderId.replace('order:', '').replace(/^.*:/, '');
+      await ordersApi.update(cleanId, { items: updatedItems });
     } catch (error) {
       toast.error('Failed to update item');
+      fetchOrders(); // Revert on error
     }
   };
 
   const handleMarkReady = async (orderId: string) => {
     try {
-      await mockApi.updateOrderStatus(orderId, 'ready');
+      const cleanId = orderId.replace('order:', '').replace(/^.*:/, '');
+      await ordersApi.updateStatus(cleanId, 'ready');
       
-      // Also update table's kitchen status to 'Ready'
+      // Also update table's kitchen status to 'Ready' if applicable
       const order = orders.find(o => o.id === orderId);
       if (order?.tableId) {
-        await mockApi.updateTable(order.tableId, {
-          kitchenStatus: 'Ready'
-        });
+        try {
+          await tablesApi.update(order.tableId, {
+            kitchenStatus: 'Ready'
+          });
+        } catch (e) {
+          // Table update is not critical
+          console.warn('Could not update table status:', e);
+        }
       }
 
       toast.success('Order marked as ready!', {
@@ -384,16 +433,16 @@ export function KitchenDisplayComprehensive() {
     }
   };
 
-  // Filter only preparing orders for kitchen
+  // Filter only placed/preparing orders for kitchen
   const preparingOrders = orders.filter(o => 
-    ['accepted', 'preparing'].includes(o.status)
+    ['placed', 'preparing'].includes(o.status)
   );
 
   const visibleOrders = activeTerminal === null
     ? []
     : preparingOrders.filter((order) => {
         if (activeTerminal === 'HEAD_CHEF') return true;
-        return order.items.some((item) => getStationForItem(item.name) === activeTerminal);
+        return (order.items || []).some((item) => getStationForItem(item.name) === activeTerminal);
       });
 
   if (loading) {
@@ -407,16 +456,16 @@ export function KitchenDisplayComprehensive() {
   const activeTerminalMeta = TERMINAL_STATIONS.find((s) => s.id === activeTerminal);
 
   return (
-    <div className="min-h-screen p-6 space-y-6" style={{ background: 'linear-gradient(135deg, #FDFCFB 0%, #F7F3EE 100%)' }}>
+    <div className="bg-kitchen-display-module min-h-screen p-6 space-y-6">
       {/* Header */}
-      <div className="bg-white border border-gray-200 p-6 rounded-xl shadow-sm sticky top-0 z-10">
+      <div className="module-container bg-black/40 backdrop-blur-sm border border-gray-600 p-6 rounded-xl shadow-sm sticky top-0 z-10">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-[#000000] flex items-center gap-3">
-              <ChefHat className="w-10 h-10 text-[#8B5A2B]" />
+            <h1 className="text-4xl font-bold text-white drop-shadow-lg flex items-center gap-3">
+              <ChefHat className="w-10 h-10 text-white" />
               Kitchen Display System
             </h1>
-            <p className="text-muted-foreground mt-2">
+            <p className="text-gray-200 mt-2">
               {activeTerminalMeta?.name} • Production tracking and order management
             </p>
           </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { offersApi } from "@/utils/api";
 import {
   Card,
   CardContent,
@@ -172,104 +173,13 @@ export function OffersLoyalty() {
     prioritySupport: false,
   });
 
-  const [coupons, setCoupons] = useState<Coupon[]>([
-    {
-      id: "1",
-      code: "SAVE20",
-      type: "percentage",
-      value: 20,
-      min_order: 500,
-      valid_from: "2026-01-01",
-      valid_to: "2026-03-31",
-      usage_count: 45,
-      usage_limit: 100,
-      status: "active",
-    },
-    {
-      id: "2",
-      code: "FLAT100",
-      type: "flat",
-      value: 100,
-      min_order: 1000,
-      valid_from: "2026-01-15",
-      valid_to: "2026-02-28",
-      usage_count: 23,
-      usage_limit: 50,
-      status: "active",
-    },
-    {
-      id: "3",
-      code: "WELCOME50",
-      type: "flat",
-      value: 50,
-      min_order: 300,
-      valid_from: "2025-12-01",
-      valid_to: "2025-12-31",
-      usage_count: 89,
-      usage_limit: 100,
-      status: "expired",
-    },
-  ]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Membership Plans State
   const [membershipPlans, setMembershipPlans] = useState<
     MembershipPlan[]
-  >([
-    {
-      id: "1",
-      name: "Silver Plan",
-      tier: "silver",
-      icon: <Star className="h-6 w-6" />,
-      color: "text-gray-600",
-      bgColor: "bg-gray-50",
-      borderColor: "border-gray-300",
-      monthlyPrice: 199,
-      billingCycle: "/monthly",
-      status: "active",
-      benefits: {
-        loyaltyBonus: 10,
-        exclusiveCoupons: false,
-        freeDelivery: false,
-        prioritySupport: false,
-      },
-    },
-    {
-      id: "2",
-      name: "Gold Plan",
-      tier: "gold",
-      icon: <Crown className="h-6 w-6" />,
-      color: "text-yellow-600",
-      bgColor: "bg-yellow-50",
-      borderColor: "border-yellow-300",
-      monthlyPrice: 499,
-      billingCycle: "/monthly",
-      status: "active",
-      benefits: {
-        loyaltyBonus: 25,
-        exclusiveCoupons: true,
-        freeDelivery: false,
-        prioritySupport: false,
-      },
-    },
-    {
-      id: "3",
-      name: "Platinum Plan",
-      tier: "platinum",
-      icon: <Trophy className="h-6 w-6" />,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
-      borderColor: "border-purple-300",
-      monthlyPrice: 999,
-      billingCycle: "/monthly",
-      status: "active",
-      benefits: {
-        loyaltyBonus: 50,
-        exclusiveCoupons: true,
-        freeDelivery: true,
-        prioritySupport: true,
-      },
-    },
-  ]);
+  >([]);
 
   // Loyalty Configuration State
   const [loyaltyConfig, setLoyaltyConfig] =
@@ -284,41 +194,7 @@ export function OffersLoyalty() {
     });
 
   // Feedback State
-  const [feedbacks, setFeedbacks] = useState<Feedback[]>([
-    {
-      id: "1",
-      customerName: "Rajesh Kumar",
-      customerId: "CUST-001",
-      orderId: "ORD-2026-1234",
-      rating: 5,
-      comment:
-        "Excellent food quality and fast delivery! The biryani was amazing.",
-      pointsAwarded: 0,
-      submittedAt: "2026-02-08T14:30:00",
-    },
-    {
-      id: "2",
-      customerName: "Priya Singh",
-      customerId: "CUST-002",
-      orderId: "ORD-2026-1235",
-      rating: 4,
-      comment:
-        "Good taste but delivery was a bit late. Overall satisfied with the meal.",
-      pointsAwarded: 0,
-      submittedAt: "2026-02-07T19:15:00",
-    },
-    {
-      id: "3",
-      customerName: "Amit Patel",
-      customerId: "CUST-003",
-      orderId: "ORD-2026-1236",
-      rating: 5,
-      comment:
-        "Amazing pizza! Hot and fresh delivery. Will order again.",
-      pointsAwarded: 0,
-      submittedAt: "2026-02-06T20:45:00",
-    },
-  ]);
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
 
   // Feedback Form State
   const [feedbackFormData, setFeedbackFormData] = useState({
@@ -332,6 +208,127 @@ export function OffersLoyalty() {
   // Check if coupon is expired based on date
   const isCouponExpired = (validTo: string): boolean => {
     return new Date(validTo) < new Date();
+  };
+
+  // Fetch data from API
+  const fetchCoupons = async () => {
+    try {
+      const data = await offersApi.listCoupons();
+      const mapped = data.map((c: any) => ({
+        id: c._id || c.id,
+        code: c.code,
+        type: c.type,
+        value: c.value,
+        min_order: c.min_order,
+        max_discount: c.max_discount,
+        valid_from: c.valid_from,
+        valid_to: c.valid_to,
+        usage_count: c.usage_count || 0,
+        usage_limit: c.usage_limit || 999,
+        status: c.status || "active",
+      }));
+      setCoupons(mapped);
+    } catch (err) {
+      console.error("Failed to fetch coupons:", err);
+    }
+  };
+
+  const fetchMemberships = async () => {
+    try {
+      const data = await offersApi.listMemberships();
+      const mapped = data.map((m: any) => ({
+        id: m._id || m.id,
+        name: m.name,
+        tier: m.tier,
+        icon: m.tier === "platinum" ? <Trophy className="h-6 w-6" /> : m.tier === "gold" ? <Crown className="h-6 w-6" /> : <Star className="h-6 w-6" />,
+        color: m.tier === "platinum" ? "text-purple-600" : m.tier === "gold" ? "text-yellow-600" : "text-gray-600",
+        bgColor: m.tier === "platinum" ? "bg-purple-50" : m.tier === "gold" ? "bg-yellow-50" : "bg-gray-50",
+        borderColor: m.tier === "platinum" ? "border-purple-300" : m.tier === "gold" ? "border-yellow-300" : "border-gray-300",
+        monthlyPrice: m.monthlyPrice,
+        billingCycle: "/monthly",
+        status: m.status || "active",
+        benefits: m.benefits || { loyaltyBonus: 0, exclusiveCoupons: false, freeDelivery: false, prioritySupport: false },
+      }));
+      setMembershipPlans(mapped);
+    } catch (err) {
+      console.error("Failed to fetch memberships:", err);
+    }
+  };
+
+  const fetchLoyaltyConfig = async () => {
+    try {
+      const data = await offersApi.getLoyaltyConfig();
+      if (data) {
+        setLoyaltyConfig({
+          pointsPerHundred: data.pointsPerHundred || 10,
+          maxPointsPerOrder: data.maxPointsPerOrder || 500,
+          loyaltyEnabled: data.loyaltyEnabled ?? true,
+          pointsPerRupee: data.pointsPerRupee || 10,
+          minRedeemablePoints: data.minRedeemablePoints || 100,
+          expiryMonths: data.expiryMonths || 12,
+          autoExpiryEnabled: data.autoExpiryEnabled ?? true,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch loyalty config:", err);
+    }
+  };
+
+  const fetchFeedback = async () => {
+    try {
+      const data = await offersApi.listFeedback();
+      const getNumericRating = (feedback: any): number => {
+        const directRating = Number(feedback?.rating);
+        if (Number.isFinite(directRating) && directRating > 0) {
+          return Math.min(5, Math.max(1, Math.round(directRating)));
+        }
+
+        const foodRatings = feedback?.foodRatings;
+        if (foodRatings && typeof foodRatings === "object") {
+          const values = Object.values(foodRatings)
+            .map((value) => Number(value))
+            .filter((value) => Number.isFinite(value) && value > 0);
+
+          if (values.length > 0) {
+            const avg =
+              values.reduce((sum, value) => sum + value, 0) /
+              values.length;
+            return Math.min(5, Math.max(1, Math.round(avg)));
+          }
+        }
+
+        return 0;
+      };
+
+      const mapped = data.map((f: any) => ({
+        id: f._id || f.id,
+        customerName:
+          f.customerName ||
+          f.customer_name ||
+          f.userName ||
+          (typeof f.userId === "string"
+            ? f.userId.split("@")[0]
+            : "Guest"),
+        customerId:
+          f.customerId ||
+          f.customer_id ||
+          f.userId ||
+          f.user_id ||
+          "N/A",
+        orderId: f.orderId || f.order_id || "-",
+        rating: getNumericRating(f),
+        comment: f.comment || f.review || "-",
+        pointsAwarded: f.pointsAwarded || 0,
+        submittedAt:
+          f.submittedAt ||
+          f.createdAt ||
+          f.created_at ||
+          "",
+      }));
+      setFeedbacks(mapped);
+    } catch (err) {
+      console.error("Failed to fetch feedback:", err);
+    }
   };
 
   // Auto-update expired coupons
@@ -349,12 +346,22 @@ export function OffersLoyalty() {
     );
   };
 
-  // Run on mount and periodically
+  // Load data on mount
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([fetchCoupons(), fetchMemberships(), fetchLoyaltyConfig(), fetchFeedback()]);
+      setLoading(false);
+    };
+    loadData();
+  }, []);
+
+  // Periodically update expired coupons
   useEffect(() => {
     updateExpiredStatus();
     const interval = setInterval(updateExpiredStatus, 60000); // Check every minute
     return () => clearInterval(interval);
-  }, []);
+  }, [coupons.length]);
 
   const resetForm = () => {
     setFormData({
@@ -383,7 +390,7 @@ export function OffersLoyalty() {
     setEditingPlan(null);
   };
 
-  const handleCreateCoupon = () => {
+  const handleCreateCoupon = async () => {
     if (
       !formData.code ||
       !formData.value ||
@@ -395,30 +402,25 @@ export function OffersLoyalty() {
       return;
     }
 
-    const newCoupon: Coupon = {
-      id: Date.now().toString(),
-      code: formData.code.toUpperCase(),
-      type: formData.type,
-      value: Number(formData.value),
-      min_order: Number(formData.min_order),
-      max_discount: formData.max_discount
-        ? Number(formData.max_discount)
-        : undefined,
-      valid_from: formData.valid_from,
-      valid_to: formData.valid_to,
-      usage_count: 0,
-      usage_limit: Number(formData.usage_limit) || 999,
-      status: isCouponExpired(formData.valid_to)
-        ? "expired"
-        : "active",
-    };
-
-    setCoupons([...coupons, newCoupon]);
-    toast.success(
-      `Coupon ${newCoupon.code} created successfully!`,
-    );
-    setCreateDialogOpen(false);
-    resetForm();
+    try {
+      const payload = {
+        code: formData.code.toUpperCase(),
+        type: formData.type,
+        value: Number(formData.value),
+        min_order: Number(formData.min_order),
+        max_discount: formData.max_discount ? Number(formData.max_discount) : undefined,
+        valid_from: formData.valid_from,
+        valid_to: formData.valid_to,
+        usage_limit: Number(formData.usage_limit) || 999,
+      };
+      await offersApi.createCoupon(payload);
+      toast.success(`Coupon ${payload.code} created successfully!`);
+      setCreateDialogOpen(false);
+      resetForm();
+      await fetchCoupons();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create coupon");
+    }
   };
 
   const handleEditCoupon = (coupon: Coupon) => {
@@ -436,65 +438,53 @@ export function OffersLoyalty() {
     setCreateDialogOpen(true);
   };
 
-  const handleUpdateCoupon = () => {
+  const handleUpdateCoupon = async () => {
     if (!editingCoupon) return;
 
-    setCoupons(
-      coupons.map((coupon) => {
-        if (coupon.id === editingCoupon.id) {
-          return {
-            ...coupon,
-            code: formData.code.toUpperCase(),
-            type: formData.type,
-            value: Number(formData.value),
-            min_order: Number(formData.min_order),
-            max_discount: formData.max_discount
-              ? Number(formData.max_discount)
-              : undefined,
-            valid_from: formData.valid_from,
-            valid_to: formData.valid_to,
-            usage_limit: Number(formData.usage_limit),
-            status: isCouponExpired(formData.valid_to)
-              ? "expired"
-              : coupon.status,
-          };
-        }
-        return coupon;
-      }),
-    );
-
-    toast.success(
-      `Coupon ${formData.code} updated successfully!`,
-    );
-    setCreateDialogOpen(false);
-    resetForm();
+    try {
+      const payload = {
+        code: formData.code.toUpperCase(),
+        type: formData.type,
+        value: Number(formData.value),
+        min_order: Number(formData.min_order),
+        max_discount: formData.max_discount ? Number(formData.max_discount) : undefined,
+        valid_from: formData.valid_from,
+        valid_to: formData.valid_to,
+        usage_limit: Number(formData.usage_limit),
+      };
+      await offersApi.updateCoupon(editingCoupon.id, payload);
+      toast.success(`Coupon ${formData.code} updated successfully!`);
+      setCreateDialogOpen(false);
+      resetForm();
+      await fetchCoupons();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update coupon");
+    }
   };
 
-  const toggleCouponStatus = (couponId: string) => {
-    setCoupons(
-      coupons.map((coupon) => {
-        if (coupon.id === couponId) {
-          if (
-            coupon.status === "expired" ||
-            coupon.status === "disabled"
-          ) {
-            return { ...coupon, status: "active" };
-          } else {
-            return { ...coupon, status: "disabled" };
-          }
-        }
-        return coupon;
-      }),
-    );
-    toast.success("Coupon status updated");
+  const toggleCouponStatus = async (couponId: string) => {
+    const coupon = coupons.find(c => c.id === couponId);
+    if (!coupon) return;
+
+    const newStatus = (coupon.status === "expired" || coupon.status === "disabled") ? "active" : "disabled";
+    try {
+      await offersApi.updateCoupon(couponId, { status: newStatus });
+      toast.success("Coupon status updated");
+      await fetchCoupons();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update status");
+    }
   };
 
-  const handleDeleteCoupon = (couponId: string) => {
+  const handleDeleteCoupon = async (couponId: string) => {
     const coupon = coupons.find((c) => c.id === couponId);
-    setCoupons(coupons.filter((c) => c.id !== couponId));
-    toast.success(
-      `Coupon ${coupon?.code} deleted successfully!`,
-    );
+    try {
+      await offersApi.deleteCoupon(couponId);
+      toast.success(`Coupon ${coupon?.code} deleted successfully!`);
+      await fetchCoupons();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete coupon");
+    }
   };
 
   const copyCouponCode = (code: string) => {
@@ -517,54 +507,81 @@ export function OffersLoyalty() {
     setPlanDialogOpen(true);
   };
 
-  const handleUpdatePlan = () => {
+  const handleUpdatePlan = async () => {
     if (!editingPlan) return;
 
-    setMembershipPlans(
-      membershipPlans.map((plan) => {
-        if (plan.id === editingPlan.id) {
-          return {
-            ...plan,
-            name: planFormData.name,
-            monthlyPrice: Number(planFormData.monthlyPrice),
-            benefits: {
-              loyaltyBonus: Number(planFormData.loyaltyBonus),
-              exclusiveCoupons: planFormData.exclusiveCoupons,
-              freeDelivery: planFormData.freeDelivery,
-              prioritySupport: planFormData.prioritySupport,
-            },
-          };
-        }
-        return plan;
-      }),
-    );
-
-    toast.success(`${planFormData.name} updated successfully!`);
-    setPlanDialogOpen(false);
-    resetPlanForm();
+    try {
+      const payload = {
+        name: planFormData.name,
+        tier: planFormData.tier,
+        monthlyPrice: Number(planFormData.monthlyPrice),
+        benefits: {
+          loyaltyBonus: Number(planFormData.loyaltyBonus),
+          exclusiveCoupons: planFormData.exclusiveCoupons,
+          freeDelivery: planFormData.freeDelivery,
+          prioritySupport: planFormData.prioritySupport,
+        },
+      };
+      await offersApi.updateMembership(editingPlan.id, payload);
+      toast.success(`${planFormData.name} updated successfully!`);
+      setPlanDialogOpen(false);
+      resetPlanForm();
+      await fetchMemberships();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update plan");
+    }
   };
 
-  const togglePlanStatus = (planId: string) => {
-    setMembershipPlans(
-      membershipPlans.map((plan) => {
-        if (plan.id === planId) {
-          return {
-            ...plan,
-            status:
-              plan.status === "active" ? "inactive" : "active",
-          };
-        }
-        return plan;
-      }),
-    );
-    toast.success("Plan status updated");
+  const handleAddPlan = async () => {
+    if (!planFormData.name || !planFormData.monthlyPrice) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+
+    try {
+      const payload = {
+        name: planFormData.name,
+        tier: planFormData.tier,
+        monthlyPrice: Number(planFormData.monthlyPrice),
+        benefits: {
+          loyaltyBonus: Number(planFormData.loyaltyBonus) || 0,
+          exclusiveCoupons: planFormData.exclusiveCoupons,
+          freeDelivery: planFormData.freeDelivery,
+          prioritySupport: planFormData.prioritySupport,
+        },
+      };
+      await offersApi.createMembership(payload);
+      toast.success(`${planFormData.name} created successfully!`);
+      setPlanDialogOpen(false);
+      resetPlanForm();
+      await fetchMemberships();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create plan");
+    }
+  };
+
+  const togglePlanStatus = async (planId: string) => {
+    const plan = membershipPlans.find(p => p.id === planId);
+    if (!plan) return;
+
+    const newStatus = plan.status === "active" ? "inactive" : "active";
+    try {
+      await offersApi.updateMembership(planId, { status: newStatus });
+      toast.success("Plan status updated");
+      await fetchMemberships();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update plan status");
+    }
   };
 
   // Loyalty Configuration Functions
-  const handleSaveLoyaltyConfig = () => {
-    toast.success(
-      "Loyalty points configuration saved successfully!",
-    );
+  const handleSaveLoyaltyConfig = async () => {
+    try {
+      await offersApi.updateLoyaltyConfig(loyaltyConfig);
+      toast.success("Loyalty points configuration saved successfully!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save loyalty config");
+    }
   };
 
   // Feedback Functions
@@ -578,7 +595,7 @@ export function OffersLoyalty() {
     });
   };
 
-  const handleCreateFeedback = () => {
+  const handleCreateFeedback = async () => {
     if (
       !feedbackFormData.customerName ||
       !feedbackFormData.customerId ||
@@ -589,32 +606,32 @@ export function OffersLoyalty() {
       return;
     }
 
-    const newFeedback: Feedback = {
-      id: Date.now().toString(),
-      customerName: feedbackFormData.customerName,
-      customerId: feedbackFormData.customerId,
-      orderId: feedbackFormData.orderId,
-      rating: feedbackFormData.rating,
-      comment: feedbackFormData.comment,
-      pointsAwarded: 0,
-      submittedAt: new Date().toISOString(),
-    };
-
-    setFeedbacks([newFeedback, ...feedbacks]);
-    toast.success(
-      `Feedback submitted successfully! Thank you ${feedbackFormData.customerName}!`,
-    );
-    resetFeedbackForm();
+    try {
+      const result = await offersApi.createFeedback({
+        customerName: feedbackFormData.customerName,
+        customerId: feedbackFormData.customerId,
+        orderId: feedbackFormData.orderId,
+        rating: feedbackFormData.rating,
+        comment: feedbackFormData.comment,
+      });
+      toast.success(result.message || `Feedback submitted! You earned ${result.pointsAwarded} loyalty points!`);
+      resetFeedbackForm();
+      await fetchFeedback();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit feedback");
+    }
   };
 
   // Calculate feedback statistics
   const feedbackStats = {
     totalFeedback: feedbacks.length,
     averageRating:
-      feedbacks.length > 0
+      feedbacks.filter((f) => f.rating > 0).length > 0
         ? (
-            feedbacks.reduce((sum, f) => sum + f.rating, 0) /
-            feedbacks.length
+            feedbacks
+              .filter((f) => f.rating > 0)
+              .reduce((sum, f) => sum + f.rating, 0) /
+            feedbacks.filter((f) => f.rating > 0).length
           ).toFixed(1)
         : "0.0",
   };
@@ -629,15 +646,19 @@ export function OffersLoyalty() {
     );
   });
 
+  const activeMembershipPlans = membershipPlans.filter(
+    (plan) => plan.status === "active",
+  ).length;
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="bg-offers-module min-h-screen p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="module-container flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">
             Offers & Loyalty
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-gray-200 mt-1">
             Manage coupons, memberships, and loyalty programs
           </p>
         </div>
@@ -728,12 +749,12 @@ export function OffersLoyalty() {
           {/* Search & Create Button */}
           <div className="flex items-center justify-between gap-4">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
               <Input
                 placeholder="Search coupons by code / type / status..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-9 bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
               />
             </div>
 
@@ -775,7 +796,7 @@ export function OffersLoyalty() {
                           code: e.target.value.toUpperCase(),
                         })
                       }
-                      className="uppercase font-mono"
+                      className="uppercase font-mono bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                     />
                   </div>
 
@@ -793,7 +814,7 @@ export function OffersLoyalty() {
                           })
                         }
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="bg-input-background text-foreground border-input dark:bg-input-background">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -823,6 +844,7 @@ export function OffersLoyalty() {
                             value: e.target.value,
                           })
                         }
+                        className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                       />
                     </div>
                   </div>
@@ -840,6 +862,7 @@ export function OffersLoyalty() {
                             min_order: e.target.value,
                           })
                         }
+                        className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                       />
                     </div>
 
@@ -855,6 +878,7 @@ export function OffersLoyalty() {
                             max_discount: e.target.value,
                           })
                         }
+                        className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                       />
                     </div>
                   </div>
@@ -871,6 +895,7 @@ export function OffersLoyalty() {
                             valid_from: e.target.value,
                           })
                         }
+                        className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                       />
                     </div>
 
@@ -885,6 +910,7 @@ export function OffersLoyalty() {
                             valid_to: e.target.value,
                           })
                         }
+                        className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                       />
                     </div>
                   </div>
@@ -901,6 +927,7 @@ export function OffersLoyalty() {
                           usage_limit: e.target.value,
                         })
                       }
+                      className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                     />
                   </div>
                 </div>
@@ -1170,13 +1197,20 @@ export function OffersLoyalty() {
         <TabsContent value="membership" className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold">
+              <h2 className="text-2xl font-bold text-white drop-shadow-lg">
                 Membership Plans
               </h2>
-              <p className="text-muted-foreground mt-1">
+              <p className="text-gray-200 mt-1">
                 Manage subscription plans for customers
               </p>
             </div>
+            <Button onClick={() => {
+              resetPlanForm();
+              setPlanDialogOpen(true);
+            }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Membership Plan
+            </Button>
           </div>
 
           {/* Plan Cards */}
@@ -1184,7 +1218,7 @@ export function OffersLoyalty() {
             {membershipPlans.map((plan) => (
               <Card
                 key={plan.id}
-                className={`border-2 ${plan.borderColor} ${plan.bgColor}`}
+                className="border-2 border-border bg-card"
               >
                 <CardHeader>
                   <div className="flex items-center justify-between">
@@ -1332,7 +1366,42 @@ export function OffersLoyalty() {
             ))}
           </div>
 
-          {/* Edit Plan Dialog */}
+          {/* Membership Statistics */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Plans
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {membershipPlans.length}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  All membership plans
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Active Plans
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {activeMembershipPlans}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Currently active
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Edit/Add Plan Dialog */}
           <Dialog
             open={planDialogOpen}
             onOpenChange={(open) => {
@@ -1342,24 +1411,65 @@ export function OffersLoyalty() {
           >
             <DialogContent className="sm:max-w-[600px]">
               <DialogHeader>
-                <DialogTitle>Edit Membership Plan</DialogTitle>
+                <DialogTitle>{editingPlan ? 'Edit Membership Plan' : 'Add Membership Plan'}</DialogTitle>
                 <DialogDescription>
-                  Update plan details and benefits
+                  {editingPlan ? 'Update plan details and benefits' : 'Create a new membership plan for customers'}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Plan Name *</Label>
-                  <Input
-                    placeholder="e.g., Gold Plan"
-                    value={planFormData.name}
-                    onChange={(e) =>
-                      setPlanFormData({
-                        ...planFormData,
-                        name: e.target.value,
-                      })
-                    }
-                  />
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Plan Name *</Label>
+                    <Input
+                      placeholder="e.g., Gold Plan"
+                      value={planFormData.name}
+                      onChange={(e) =>
+                        setPlanFormData({
+                          ...planFormData,
+                          name: e.target.value,
+                        })
+                      }
+                      className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Plan Tier *</Label>
+                    <Select
+                      value={planFormData.tier}
+                      onValueChange={(value: "silver" | "gold" | "platinum") =>
+                        setPlanFormData({
+                          ...planFormData,
+                          tier: value,
+                        })
+                      }
+                      disabled={!!editingPlan}
+                    >
+                      <SelectTrigger className="bg-input-background text-foreground border-input dark:bg-input-background">
+                        <SelectValue placeholder="Select tier" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="silver">
+                          <div className="flex items-center gap-2">
+                            <Star className="h-4 w-4 text-gray-600" />
+                            Silver
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="gold">
+                          <div className="flex items-center gap-2">
+                            <Crown className="h-4 w-4 text-yellow-600" />
+                            Gold
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="platinum">
+                          <div className="flex items-center gap-2">
+                            <Trophy className="h-4 w-4 text-purple-600" />
+                            Platinum
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
@@ -1375,6 +1485,7 @@ export function OffersLoyalty() {
                           monthlyPrice: e.target.value,
                         })
                       }
+                      className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                     />
                   </div>
 
@@ -1390,6 +1501,7 @@ export function OffersLoyalty() {
                           loyaltyBonus: e.target.value,
                         })
                       }
+                      className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                     />
                   </div>
                 </div>
@@ -1464,9 +1576,9 @@ export function OffersLoyalty() {
                 >
                   Cancel
                 </Button>
-                <Button onClick={handleUpdatePlan}>
+                <Button onClick={editingPlan ? handleUpdatePlan : handleAddPlan}>
                   <Save className="h-4 w-4 mr-2" />
-                  Save Changes
+                  {editingPlan ? 'Save Changes' : 'Create Plan'}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -1476,10 +1588,10 @@ export function OffersLoyalty() {
         {/* ==================== TAB 3: LOYALTY POINTS CONFIGURATION ==================== */}
         <TabsContent value="loyalty" className="space-y-4">
           <div>
-            <h2 className="text-2xl font-bold">
+            <h2 className="text-2xl font-bold text-white drop-shadow-lg">
               Loyalty Points Configuration
             </h2>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-gray-200 mt-1">
               Reward customers for repeat orders
             </p>
           </div>
@@ -1510,6 +1622,7 @@ export function OffersLoyalty() {
                         ),
                       })
                     }
+                    className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                   />
                   <p className="text-xs text-muted-foreground">
                     Customers earn{" "}
@@ -1531,6 +1644,7 @@ export function OffersLoyalty() {
                         ),
                       })
                     }
+                    className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                   />
                   <p className="text-xs text-muted-foreground">
                     Cap points earned at{" "}
@@ -1589,6 +1703,7 @@ export function OffersLoyalty() {
                         pointsPerRupee: Number(e.target.value),
                       })
                     }
+                    className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                   />
                   <p className="text-xs text-muted-foreground">
                     {loyaltyConfig.pointsPerRupee} points = ₹1
@@ -1609,6 +1724,7 @@ export function OffersLoyalty() {
                         ),
                       })
                     }
+                    className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                   />
                   <p className="text-xs text-muted-foreground">
                     Customers must have at least{" "}
@@ -1643,6 +1759,7 @@ export function OffersLoyalty() {
                       expiryMonths: Number(e.target.value),
                     })
                   }
+                  className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                 />
                 <p className="text-xs text-muted-foreground">
                   Points will expire after{" "}
@@ -1738,10 +1855,10 @@ export function OffersLoyalty() {
         <TabsContent value="feedback" className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold">
+              <h2 className="text-2xl font-bold text-white drop-shadow-lg">
                 Customer Feedback
               </h2>
-              <p className="text-muted-foreground mt-1">
+              <p className="text-gray-200 mt-1">
                 Collect and manage customer reviews
               </p>
             </div>
@@ -1800,60 +1917,6 @@ export function OffersLoyalty() {
               </CardContent>
             </Card>
           </div>
-
-          {/* Information Panel */}
-          <Card className="border-2 border-blue-200 bg-blue-50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Info className="h-5 w-5 text-blue-600" />
-                About Customer Feedback
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3 text-sm">
-                <div className="flex items-start gap-3">
-                  <MessageSquare className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold">
-                      Instant Rewards
-                    </p>
-                    <p className="text-muted-foreground">
-                      Customers automatically receive 10 loyalty
-                      points when feedback is submitted
-                    </p>
-                  </div>
-                </div>
-                <Separator />
-                <div className="flex items-start gap-3">
-                  <Star className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold">
-                      Encourage Participation
-                    </p>
-                    <p className="text-muted-foreground">
-                      No approval delays - points are awarded
-                      immediately to motivate more customer
-                      feedback
-                    </p>
-                  </div>
-                </div>
-                <Separator />
-                <div className="flex items-start gap-3">
-                  <TrendingUp className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold">
-                      Track Satisfaction
-                    </p>
-                    <p className="text-muted-foreground">
-                      Monitor customer ratings and reviews to
-                      identify areas of improvement and
-                      celebrate successes
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Feedback Table */}
           <Card>
@@ -1927,8 +1990,8 @@ export function OffersLoyalty() {
                                 key={star}
                                 className={`h-4 w-4 ${
                                   star <= feedback.rating
-                                    ? "fill-yellow-400 text-yellow-400"
-                                    : "text-gray-300"
+                                    ? "fill-current text-yellow-500"
+                                    : "text-muted-foreground/40"
                                 }`}
                               />
                             ))}
@@ -1943,19 +2006,78 @@ export function OffersLoyalty() {
                           </p>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {new Date(
-                            feedback.submittedAt,
-                          ).toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          })}
+                          {feedback.submittedAt &&
+                          !Number.isNaN(
+                            new Date(feedback.submittedAt).getTime(),
+                          )
+                            ? new Date(
+                                feedback.submittedAt,
+                              ).toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })
+                            : "-"}
                         </TableCell>
                       </TableRow>
                     ))
                   )}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+
+          {/* Information Panel */}
+          <Card className="border-2 border-blue-200 bg-blue-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Info className="h-5 w-5 text-blue-600" />
+                About Customer Feedback
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 text-sm">
+                <div className="flex items-start gap-3">
+                  <MessageSquare className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">
+                      Instant Rewards
+                    </p>
+                    <p className="text-muted-foreground">
+                      Customers automatically receive 10 loyalty
+                      points when feedback is submitted
+                    </p>
+                  </div>
+                </div>
+                <Separator />
+                <div className="flex items-start gap-3">
+                  <Star className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">
+                      Encourage Participation
+                    </p>
+                    <p className="text-muted-foreground">
+                      No approval delays - points are awarded
+                      immediately to motivate more customer
+                      feedback
+                    </p>
+                  </div>
+                </div>
+                <Separator />
+                <div className="flex items-start gap-3">
+                  <TrendingUp className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">
+                      Track Satisfaction
+                    </p>
+                    <p className="text-muted-foreground">
+                      Monitor customer ratings and reviews to
+                      identify areas of improvement and
+                      celebrate successes
+                    </p>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

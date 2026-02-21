@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/app/components/ui/separator';
 import { Badge } from '@/app/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/app/components/ui/dialog';
-import { DollarSign, Save, Plus, Edit, Trash2, Percent, Tag } from 'lucide-react';
+import { DollarSign, Save, Plus, Edit, Trash2, Percent, Tag, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { taxConfigApi, discountRulesApi } from '@/utils/api';
 
 interface TaxConfig {
   gstEnabled: boolean;
@@ -23,7 +24,7 @@ interface TaxConfig {
 }
 
 interface DiscountRule {
-  id: string;
+  _id: string;
   name: string;
   type: 'percentage' | 'fixed';
   value: number;
@@ -31,9 +32,6 @@ interface DiscountRule {
   maxDiscount: number;
   enabled: boolean;
 }
-
-const STORAGE_KEY_TAX = 'rms_tax_config';
-const STORAGE_KEY_DISCOUNTS = 'rms_discount_rules';
 
 export function TaxServiceSettings() {
   const [taxConfig, setTaxConfig] = useState<TaxConfig>({
@@ -49,6 +47,8 @@ export function TaxServiceSettings() {
 
   const [discountRules, setDiscountRules] = useState<DiscountRule[]>([]);
   const [isAddDiscountOpen, setIsAddDiscountOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [newDiscount, setNewDiscount] = useState({
     name: '',
     type: 'percentage' as 'percentage' | 'fixed',
@@ -57,118 +57,129 @@ export function TaxServiceSettings() {
     maxDiscount: 0,
   });
 
-  // Load tax configuration from localStorage
+  // Load tax configuration and discounts from backend API
   useEffect(() => {
-    const storedTax = localStorage.getItem(STORAGE_KEY_TAX);
-    if (storedTax) {
-      setTaxConfig(JSON.parse(storedTax));
-    }
-
-    const storedDiscounts = localStorage.getItem(STORAGE_KEY_DISCOUNTS);
-    if (storedDiscounts) {
-      setDiscountRules(JSON.parse(storedDiscounts));
-    } else {
-      // Initialize with default discount rules
-      const defaultDiscounts: DiscountRule[] = [
-        {
-          id: '1',
-          name: 'New Customer Discount',
-          type: 'percentage',
-          value: 10,
-          minOrderAmount: 500,
-          maxDiscount: 100,
-          enabled: true,
-        },
-        {
-          id: '2',
-          name: 'Flat ₹50 Off',
-          type: 'fixed',
-          value: 50,
-          minOrderAmount: 300,
-          maxDiscount: 50,
-          enabled: true,
-        },
-        {
-          id: '3',
-          name: 'Large Order Discount',
-          type: 'percentage',
-          value: 15,
-          minOrderAmount: 2000,
-          maxDiscount: 500,
-          enabled: true,
-        },
-      ];
-      setDiscountRules(defaultDiscounts);
-      localStorage.setItem(STORAGE_KEY_DISCOUNTS, JSON.stringify(defaultDiscounts));
-    }
+    const fetchData = async () => {
+      try {
+        const [taxData, discountsData] = await Promise.all([
+          taxConfigApi.get().catch(() => null),
+          discountRulesApi.list().catch(() => []),
+        ]);
+        
+        if (taxData) {
+          setTaxConfig({
+            gstEnabled: taxData.gstEnabled ?? true,
+            gstRate: taxData.gstRate ?? 5,
+            cgstRate: taxData.cgstRate ?? 2.5,
+            sgstRate: taxData.sgstRate ?? 2.5,
+            serviceChargeEnabled: taxData.serviceChargeEnabled ?? true,
+            serviceChargeRate: taxData.serviceChargeRate ?? 10,
+            packagingChargeEnabled: taxData.packagingChargeEnabled ?? true,
+            packagingChargeRate: taxData.packagingChargeRate ?? 20,
+          });
+        }
+        
+        setDiscountRules(discountsData || []);
+      } catch (error) {
+        console.error('Failed to load tax & discount data:', error);
+        toast.error('Failed to load settings');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
-  // Save configurations
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_TAX, JSON.stringify(taxConfig));
-  }, [taxConfig]);
-
-  useEffect(() => {
-    if (discountRules.length > 0) {
-      localStorage.setItem(STORAGE_KEY_DISCOUNTS, JSON.stringify(discountRules));
+  const handleSaveTaxConfig = async () => {
+    setSaving(true);
+    try {
+      await taxConfigApi.update(taxConfig);
+      toast.success('Tax & service charge settings saved successfully!');
+    } catch (error) {
+      console.error('Failed to save tax config:', error);
+      toast.error('Failed to save tax settings');
+    } finally {
+      setSaving(false);
     }
-  }, [discountRules]);
-
-  const handleSaveTaxConfig = () => {
-    localStorage.setItem(STORAGE_KEY_TAX, JSON.stringify(taxConfig));
-    toast.success('Tax & service charge settings saved successfully!');
   };
 
-  const handleAddDiscount = () => {
+  const handleAddDiscount = async () => {
     if (!newDiscount.name || newDiscount.value <= 0) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    const discount: DiscountRule = {
-      id: Date.now().toString(),
-      ...newDiscount,
-      enabled: true,
-    };
-
-    setDiscountRules(prev => [...prev, discount]);
-    toast.success(`Discount rule "${newDiscount.name}" added successfully!`);
-    setNewDiscount({
-      name: '',
-      type: 'percentage',
-      value: 0,
-      minOrderAmount: 0,
-      maxDiscount: 0,
-    });
-    setIsAddDiscountOpen(false);
+    setSaving(true);
+    try {
+      const created = await discountRulesApi.create({
+        name: newDiscount.name,
+        type: newDiscount.type,
+        value: newDiscount.value,
+        minOrderAmount: newDiscount.minOrderAmount,
+        maxDiscount: newDiscount.maxDiscount,
+        enabled: true,
+      });
+      
+      setDiscountRules(prev => [...prev, created]);
+      toast.success(`Discount rule "${newDiscount.name}" added successfully!`);
+      setNewDiscount({
+        name: '',
+        type: 'percentage',
+        value: 0,
+        minOrderAmount: 0,
+        maxDiscount: 0,
+      });
+      setIsAddDiscountOpen(false);
+    } catch (error) {
+      console.error('Failed to create discount rule:', error);
+      toast.error('Failed to create discount rule');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const toggleDiscountRule = (id: string) => {
-    setDiscountRules(prev => prev.map(rule => {
-      if (rule.id === id) {
-        const newEnabled = !rule.enabled;
-        toast.success(`Discount rule ${newEnabled ? 'enabled' : 'disabled'}`);
-        return { ...rule, enabled: newEnabled };
-      }
-      return rule;
-    }));
+  const toggleDiscountRule = async (id: string) => {
+    try {
+      const updated = await discountRulesApi.toggle(id);
+      setDiscountRules(prev => prev.map(rule => 
+        rule._id === id ? updated : rule
+      ));
+      toast.success(`Discount rule ${updated.enabled ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      console.error('Failed to toggle discount rule:', error);
+      toast.error('Failed to update discount rule');
+    }
   };
 
-  const deleteDiscountRule = (id: string) => {
-    setDiscountRules(prev => prev.filter(rule => rule.id !== id));
-    toast.success('Discount rule deleted successfully');
+  const deleteDiscountRule = async (id: string) => {
+    try {
+      await discountRulesApi.delete(id);
+      setDiscountRules(prev => prev.filter(rule => rule._id !== id));
+      toast.success('Discount rule deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete discount rule:', error);
+      toast.error('Failed to delete discount rule');
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="bg-settings-module min-h-screen space-y-6 p-6">
       {/* GST Configuration */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
             <Percent className="h-5 w-5 text-primary" />
             <div>
-              <CardTitle>GST / VAT Configuration</CardTitle>
-              <CardDescription>Configure tax rates for billing</CardDescription>
+              <CardTitle className="text-black">GST / VAT Configuration</CardTitle>
+              <CardDescription className="text-black">Configure tax rates for billing</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -235,8 +246,8 @@ export function TaxServiceSettings() {
           <div className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-primary" />
             <div>
-              <CardTitle>Service & Additional Charges</CardTitle>
-              <CardDescription>Configure service and packaging charges</CardDescription>
+              <CardTitle className="text-black">Service & Additional Charges</CardTitle>
+              <CardDescription className="text-black">Configure service and packaging charges</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -295,8 +306,8 @@ export function TaxServiceSettings() {
           )}
 
           <div className="flex justify-end pt-4">
-            <Button onClick={handleSaveTaxConfig}>
-              <Save className="h-4 w-4 mr-2" />
+            <Button onClick={handleSaveTaxConfig} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
               Save Tax Settings
             </Button>
           </div>
@@ -310,8 +321,8 @@ export function TaxServiceSettings() {
             <div className="flex items-center gap-2">
               <Tag className="h-5 w-5 text-primary" />
               <div>
-                <CardTitle>Default Discount Rules</CardTitle>
-                <CardDescription>Manage automatic discount policies</CardDescription>
+                <CardTitle className="text-black">Default Discount Rules</CardTitle>
+                <CardDescription className="text-black">Manage automatic discount policies</CardDescription>
               </div>
             </div>
             <Dialog open={isAddDiscountOpen} onOpenChange={setIsAddDiscountOpen}>
@@ -385,7 +396,10 @@ export function TaxServiceSettings() {
                   <Button variant="outline" onClick={() => setIsAddDiscountOpen(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={handleAddDiscount}>Add Discount</Button>
+                  <Button onClick={handleAddDiscount} disabled={saving}>
+                    {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Add Discount
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -394,7 +408,7 @@ export function TaxServiceSettings() {
         <CardContent>
           <div className="space-y-3">
             {discountRules.map(rule => (
-              <div key={rule.id} className="flex items-center justify-between p-4 border rounded-lg">
+              <div key={rule._id} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <h4 className="font-medium">{rule.name}</h4>
@@ -415,12 +429,12 @@ export function TaxServiceSettings() {
                 <div className="flex gap-2">
                   <Switch
                     checked={rule.enabled}
-                    onCheckedChange={() => toggleDiscountRule(rule.id)}
+                    onCheckedChange={() => toggleDiscountRule(rule._id)}
                   />
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => deleteDiscountRule(rule.id)}
+                    onClick={() => deleteDiscountRule(rule._id)}
                     className="text-red-600 hover:text-red-700"
                   >
                     <Trash2 className="h-4 w-4" />

@@ -2,7 +2,9 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from ..db import init_db, get_db
 from ..schemas import (
     SettingIn, SystemConfigIn, BackupCreate, BackupConfig, 
-    RoleIn, RoleUpdate, PasswordChange, PasswordReset
+    RoleIn, RoleUpdate, PasswordChange, PasswordReset,
+    TaxConfigIn, DiscountRuleIn, DiscountRuleUpdate,
+    UserAccountIn, UserAccountUpdate
 )
 from ..utils import hash_password, verify_password
 from ..audit import log_audit
@@ -253,6 +255,17 @@ async def list_roles():
                     'delivery': False, 'offers': True, 'reports': True, 'notifications': True, 'settings': False
                 },
                 'createdAt': datetime.utcnow().isoformat()
+            },
+            {
+                '_id': 'delivery',
+                'name': 'Delivery',
+                'description': 'Delivery and order management',
+                'permissions': {
+                    'dashboard': True, 'menu': True, 'orders': True, 'kitchen': False,
+                    'tables': False, 'inventory': False, 'staff': False, 'billing': False,
+                    'delivery': True, 'offers': False, 'reports': False, 'notifications': True, 'settings': False
+                },
+                'createdAt': datetime.utcnow().isoformat()
             }
         ]
         await coll.insert_many(default_roles)
@@ -345,7 +358,7 @@ async def update_role(role_id: str, role: RoleUpdate, request: Request):
 @router.delete('/roles/{role_id}', tags=['roles'])
 async def delete_role(role_id: str, request: Request):
     """Delete a role (except built-in roles)"""
-    protected_roles = ['admin', 'manager', 'chef', 'waiter', 'cashier']
+    protected_roles = ['admin', 'manager', 'chef', 'waiter', 'cashier', 'delivery']
     if role_id in protected_roles:
         raise HTTPException(status_code=400, detail='Cannot delete built-in roles')
     
@@ -454,10 +467,11 @@ async def reset_password_request(payload: PasswordReset, request: Request):
 # ============ BACKUP & RECOVERY ============
 @router.get('/backups', tags=['backup'])
 async def list_backups():
-    """List all backups"""
+    """List all backups (excludes large backupData field for performance)"""
     db = get_db()
     coll = db.get_collection('backups')
-    docs = await coll.find().sort('createdAt', -1).to_list(100)
+    # Exclude the large backupData field when listing
+    docs = await coll.find({}, {'backupData': 0}).sort('createdAt', -1).to_list(100)
     return serialize_doc(docs)
 
 
@@ -472,6 +486,7 @@ async def get_backup_config():
             '_id': 'backup_settings',
             'autoBackupEnabled': True,
             'frequency': 'daily',
+            'backupTime': '02:00',
             'retentionDays': 30,
             'backupLocation': 'local',
             'googleDriveEnabled': False,
@@ -504,13 +519,20 @@ async def update_backup_config(config: BackupConfig, request: Request):
         ip=request.client.host if request.client else None
     )
     
+    # Update the scheduler with new configuration
+    try:
+        from ..scheduler import update_backup_schedule
+        await update_backup_schedule()
+    except Exception as e:
+        print(f"[Settings] Warning: Could not update scheduler: {e}")
+    
     return serialize_doc(await coll.find_one({'_id': 'backup_settings'}))
 
 
 
 @router.post('/backups', tags=['backup'])
 async def create_backup(payload: BackupCreate, request: Request):
-    """Create a new backup and optionally upload to Google Drive"""
+    """Create a new backup - stores actual data for later restore"""
     db = get_db()
     coll = db.get_collection('backups')
     config_coll = db.get_collection('backup_config')
@@ -520,48 +542,56 @@ async def create_backup(payload: BackupCreate, request: Request):
     google_drive_enabled = backup_config.get('googleDriveEnabled', False) if backup_config else False
     google_drive_folder_id = backup_config.get('googleDriveFolderId') if backup_config else None
     
-    # Get list of collections to backup
-    collection_names = payload.collections or ['staff', 'settings', 'system_config', 'roles', 'audit_logs', 'attendance', 'shifts', 'performance_logs']
+    # Get list of collections to backup - include all important data collections
+    collection_names = payload.collections or [
+        'staff', 'settings', 'system_config', 'roles', 'audit_logs', 
+        'attendance', 'shifts', 'performance_logs', 'menu_items', 
+        'combo_meals', 'orders', 'customers', 'tables', 'ingredients',
+        'recipes', 'offers', 'notifications'
+    ]
     
     # Export actual data from each collection
-    backup_content = {
-        'collections': collection_names,
-        'data': {},
-        'metadata': {}
-    }
+    backup_data = {}
+    metadata = {}
     total_docs = 0
     
     for coll_name in collection_names:
-        collection = db.get_collection(coll_name)
-        docs = await collection.find().to_list(10000)
-        backup_content['data'][coll_name] = serialize_doc(docs)
-        backup_content['metadata'][coll_name] = len(docs)
-        total_docs += len(docs)
+        try:
+            collection = db.get_collection(coll_name)
+            docs = await collection.find().to_list(50000)
+            backup_data[coll_name] = serialize_doc(docs)
+            metadata[coll_name] = len(docs)
+            total_docs += len(docs)
+        except Exception as e:
+            print(f"[Backup] Warning: Could not backup collection {coll_name}: {e}")
+            backup_data[coll_name] = []
+            metadata[coll_name] = 0
     
     now = datetime.utcnow()
-    backup_name = payload.name or f"Backup - {now.strftime('%Y-%m-%d %H:%M')}"
-    backup_content['exportedAt'] = now.isoformat()
-    backup_content['backupName'] = backup_name
+    backup_name = payload.name or f"{payload.type.title() if payload.type else 'Manual'} Backup - {now.strftime('%Y-%m-%d')}"
     
-    # Calculate approximate size
-    backup_size_bytes = len(json.dumps(backup_content, default=str))
+    # Calculate size of actual data
+    data_json = json.dumps(backup_data, default=str)
+    backup_size_bytes = len(data_json)
     if backup_size_bytes > 1024 * 1024:
-        size_str = f"{backup_size_bytes / (1024 * 1024):.2f} MB"
+        size_str = f"{backup_size_bytes / (1024 * 1024):.0f} MB"
     else:
         size_str = f"{backup_size_bytes / 1024:.2f} KB"
     
-    # Create backup document
+    # Create backup document WITH the actual data stored
     backup_doc = {
         'name': backup_name,
         'type': payload.type or 'manual',
         'collections': collection_names,
-        'documentCounts': backup_content['metadata'],
+        'documentCounts': metadata,
         'totalDocuments': total_docs,
         'size': size_str,
         'date': now.strftime('%Y-%m-%d'),
         'time': now.strftime('%H:%M:%S'),
         'status': 'completed',
-        'createdAt': now.isoformat()
+        'createdAt': now.isoformat(),
+        # Store the actual backup data for restore
+        'backupData': backup_data
     }
     
     res = await coll.insert_one(backup_doc)
@@ -574,18 +604,20 @@ async def create_backup(payload: BackupCreate, request: Request):
         userName=request.headers.get('x-user-name'),
         details={
             'collections': collection_names, 
-            'totalDocs': total_docs
+            'totalDocs': total_docs,
+            'size': size_str
         },
         ip=request.client.host if request.client else None
     )
     
-    result = serialize_doc(await coll.find_one({'_id': res.inserted_id}))
+    # Return without the large backupData field for response
+    result = serialize_doc(await coll.find_one({'_id': res.inserted_id}, {'backupData': 0}))
     return result
 
 
 @router.post('/backups/{backup_id}/restore', tags=['backup'])
 async def restore_backup(backup_id: str, request: Request):
-    """Restore from a backup"""
+    """Restore from a backup - replaces current data with backup data"""
     db = get_db()
     coll = db.get_collection('backups')
     
@@ -593,23 +625,78 @@ async def restore_backup(backup_id: str, request: Request):
     if not backup:
         raise HTTPException(status_code=404, detail='Backup not found')
     
-    # In production, would actually restore data from backup file
+    # Support both new format (backupData) and old format (content.data)
+    backup_data = backup.get('backupData')
+    if not backup_data and backup.get('content'):
+        backup_data = backup.get('content', {}).get('data')
+    
+    if not backup_data:
+        raise HTTPException(status_code=400, detail='This backup does not contain restorable data. It may be an old backup created before the fix.')
+    
+    collections_restored = []
+    total_restored = 0
+    errors = []
+    
+    # Restore each collection from backup
+    for coll_name, docs in backup_data.items():
+        if not docs:
+            continue
+        try:
+            collection = db.get_collection(coll_name)
+            
+            # Clear existing data in the collection
+            await collection.delete_many({})
+            
+            # Convert string IDs back to ObjectIds where needed
+            restored_docs = []
+            for doc in docs:
+                if '_id' in doc:
+                    try:
+                        doc['_id'] = ObjectId(doc['_id'])
+                    except:
+                        pass  # Keep as string if not valid ObjectId
+                restored_docs.append(doc)
+            
+            # Insert backup data
+            if restored_docs:
+                await collection.insert_many(restored_docs)
+                collections_restored.append(coll_name)
+                total_restored += len(restored_docs)
+        except Exception as e:
+            errors.append(f"{coll_name}: {str(e)}")
+            print(f"[Restore] Error restoring {coll_name}: {e}")
+    
     await log_audit(
         action='restore_backup',
         resource='backup',
         resourceId=backup_id,
         userId=request.headers.get('x-user-id'),
         userName=request.headers.get('x-user-name'),
-        details={'backup_name': backup.get('name')},
+        details={
+            'backup_name': backup.get('name'),
+            'collections_restored': collections_restored,
+            'total_documents': total_restored,
+            'errors': errors
+        },
         ip=request.client.host if request.client else None
     )
     
-    return {'success': True, 'message': f"Backup '{backup.get('name')}' restored successfully"}
+    if errors:
+        return {
+            'success': True, 
+            'message': f"Backup '{backup.get('name')}' partially restored. {len(collections_restored)} collections, {total_restored} documents.",
+            'warnings': errors
+        }
+    
+    return {
+        'success': True, 
+        'message': f"Backup '{backup.get('name')}' restored successfully. {len(collections_restored)} collections, {total_restored} documents."
+    }
 
 
 @router.get('/backups/{backup_id}/download', tags=['backup'])
 async def download_backup(backup_id: str):
-    """Download backup data as JSON"""
+    """Download backup data as JSON - returns the actual stored backup data"""
     db = get_db()
     coll = db.get_collection('backups')
     
@@ -617,23 +704,28 @@ async def download_backup(backup_id: str):
     if not backup:
         raise HTTPException(status_code=404, detail='Backup not found')
     
-    # Get the collections that were backed up
-    collection_names = backup.get('collections', ['staff', 'settings', 'system_config', 'roles'])
+    # Support both new format (backupData) and old format (content.data)
+    backup_data = backup.get('backupData')
+    if not backup_data and backup.get('content'):
+        backup_data = backup.get('content', {}).get('data')
     
-    # Export data from each collection
-    backup_data = {
-        'backupInfo': serialize_doc(backup),
-        'collections': collection_names,
-        'data': {},
-        'exportedAt': datetime.utcnow().isoformat()
+    if not backup_data:
+        raise HTTPException(status_code=400, detail='This backup does not contain downloadable data. It may be an old backup.')
+    
+    # Return the stored backup data with metadata
+    return {
+        'backupInfo': {
+            'name': backup.get('name'),
+            'date': backup.get('date'),
+            'time': backup.get('time'),
+            'totalDocuments': backup.get('totalDocuments'),
+            'collections': backup.get('collections'),
+            'documentCounts': backup.get('documentCounts')
+        },
+        'collections': backup.get('collections', []),
+        'data': backup_data,
+        'exportedAt': backup.get('createdAt')
     }
-    
-    for coll_name in collection_names:
-        collection = db.get_collection(coll_name)
-        docs = await collection.find().to_list(10000)
-        backup_data['data'][coll_name] = serialize_doc(docs)
-    
-    return backup_data
 
 
 @router.post('/backups/upload', tags=['backup'])
@@ -757,4 +849,433 @@ async def get_gdrive_status():
         'backupsInDrive': backups_in_drive,
         'error': error_message,
         'packagesInstalled': packages_available,
+    }
+
+
+# ============ TAX & SERVICE CONFIGURATION ============
+@router.get('/tax-config', tags=['tax'])
+async def get_tax_config():
+    """Get tax and service charge configuration"""
+    db = get_db()
+    coll = db.get_collection('tax_config')
+    doc = await coll.find_one({'_id': 'main_tax_config'})
+    if not doc:
+        # Return default tax configuration
+        return {
+            '_id': 'main_tax_config',
+            'gstEnabled': True,
+            'gstRate': 5.0,
+            'cgstRate': 2.5,
+            'sgstRate': 2.5,
+            'serviceChargeEnabled': True,
+            'serviceChargeRate': 10.0,
+            'packagingChargeEnabled': True,
+            'packagingChargeRate': 20.0
+        }
+    return serialize_doc(doc)
+
+
+@router.post('/tax-config', tags=['tax'])
+async def update_tax_config(config: TaxConfigIn, request: Request):
+    """Update tax and service charge configuration"""
+    db = get_db()
+    coll = db.get_collection('tax_config')
+    
+    update_data = config.model_dump()
+    update_data['updatedAt'] = datetime.utcnow().isoformat()
+    update_data['updatedBy'] = request.headers.get('x-user-name')
+    
+    await coll.update_one(
+        {'_id': 'main_tax_config'},
+        {
+            '$set': update_data,
+            '$setOnInsert': {'createdAt': datetime.utcnow().isoformat()}
+        },
+        upsert=True
+    )
+    
+    await log_audit(
+        action='update_tax_config',
+        resource='tax_config',
+        resourceId='main_tax_config',
+        userId=request.headers.get('x-user-id'),
+        userName=request.headers.get('x-user-name'),
+        details={'updated_fields': list(update_data.keys())},
+        ip=request.client.host if request.client else None
+    )
+    
+    return serialize_doc(await coll.find_one({'_id': 'main_tax_config'}))
+
+
+# ============ DISCOUNT RULES ============
+@router.get('/discounts', tags=['discounts'])
+async def list_discount_rules():
+    """List all discount rules"""
+    db = get_db()
+    coll = db.get_collection('discount_rules')
+    docs = await coll.find().to_list(100)
+    
+    if not docs:
+        # Initialize with default discount rules
+        default_discounts = [
+            {
+                'name': 'New Customer Discount',
+                'type': 'percentage',
+                'value': 10,
+                'minOrderAmount': 500,
+                'maxDiscount': 100,
+                'enabled': True,
+                'createdAt': datetime.utcnow().isoformat()
+            },
+            {
+                'name': 'Flat ₹50 Off',
+                'type': 'fixed',
+                'value': 50,
+                'minOrderAmount': 300,
+                'maxDiscount': 50,
+                'enabled': True,
+                'createdAt': datetime.utcnow().isoformat()
+            },
+            {
+                'name': 'Large Order Discount',
+                'type': 'percentage',
+                'value': 15,
+                'minOrderAmount': 2000,
+                'maxDiscount': 500,
+                'enabled': True,
+                'createdAt': datetime.utcnow().isoformat()
+            }
+        ]
+        res = await coll.insert_many(default_discounts)
+        docs = await coll.find().to_list(100)
+    
+    return serialize_doc(docs)
+
+
+@router.get('/discounts/{discount_id}', tags=['discounts'])
+async def get_discount_rule(discount_id: str):
+    """Get a specific discount rule by ID"""
+    db = get_db()
+    coll = db.get_collection('discount_rules')
+    doc = await coll.find_one({'_id': to_object_id(discount_id)})
+    if not doc:
+        raise HTTPException(status_code=404, detail='Discount rule not found')
+    return serialize_doc(doc)
+
+
+@router.post('/discounts', tags=['discounts'])
+async def create_discount_rule(discount: DiscountRuleIn, request: Request):
+    """Create a new discount rule"""
+    db = get_db()
+    coll = db.get_collection('discount_rules')
+    
+    doc = {
+        'name': discount.name,
+        'type': discount.type.value,
+        'value': discount.value,
+        'minOrderAmount': discount.minOrderAmount,
+        'maxDiscount': discount.maxDiscount,
+        'enabled': discount.enabled,
+        'createdAt': datetime.utcnow().isoformat()
+    }
+    
+    res = await coll.insert_one(doc)
+    
+    await log_audit(
+        action='create_discount_rule',
+        resource='discount_rule',
+        resourceId=str(res.inserted_id),
+        userId=request.headers.get('x-user-id'),
+        userName=request.headers.get('x-user-name'),
+        details={'name': discount.name, 'type': discount.type.value, 'value': discount.value},
+        ip=request.client.host if request.client else None
+    )
+    
+    return serialize_doc(await coll.find_one({'_id': res.inserted_id}))
+
+
+@router.put('/discounts/{discount_id}', tags=['discounts'])
+async def update_discount_rule(discount_id: str, discount: DiscountRuleUpdate, request: Request):
+    """Update a discount rule"""
+    db = get_db()
+    coll = db.get_collection('discount_rules')
+    
+    existing = await coll.find_one({'_id': to_object_id(discount_id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail='Discount rule not found')
+    
+    update_data = {}
+    if discount.name is not None:
+        update_data['name'] = discount.name
+    if discount.type is not None:
+        update_data['type'] = discount.type.value
+    if discount.value is not None:
+        update_data['value'] = discount.value
+    if discount.minOrderAmount is not None:
+        update_data['minOrderAmount'] = discount.minOrderAmount
+    if discount.maxDiscount is not None:
+        update_data['maxDiscount'] = discount.maxDiscount
+    if discount.enabled is not None:
+        update_data['enabled'] = discount.enabled
+    
+    update_data['updatedAt'] = datetime.utcnow().isoformat()
+    
+    await coll.update_one({'_id': to_object_id(discount_id)}, {'$set': update_data})
+    
+    await log_audit(
+        action='update_discount_rule',
+        resource='discount_rule',
+        resourceId=discount_id,
+        userId=request.headers.get('x-user-id'),
+        userName=request.headers.get('x-user-name'),
+        details={'updated_fields': list(update_data.keys())},
+        ip=request.client.host if request.client else None
+    )
+    
+    return serialize_doc(await coll.find_one({'_id': to_object_id(discount_id)}))
+
+
+@router.delete('/discounts/{discount_id}', tags=['discounts'])
+async def delete_discount_rule(discount_id: str, request: Request):
+    """Delete a discount rule"""
+    db = get_db()
+    coll = db.get_collection('discount_rules')
+    
+    res = await coll.delete_one({'_id': to_object_id(discount_id)})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail='Discount rule not found')
+    
+    await log_audit(
+        action='delete_discount_rule',
+        resource='discount_rule',
+        resourceId=discount_id,
+        userId=request.headers.get('x-user-id'),
+        userName=request.headers.get('x-user-name'),
+        ip=request.client.host if request.client else None
+    )
+    
+    return {'success': True}
+
+
+@router.post('/discounts/{discount_id}/toggle', tags=['discounts'])
+async def toggle_discount_rule(discount_id: str, request: Request):
+    """Toggle a discount rule's enabled status"""
+    db = get_db()
+    coll = db.get_collection('discount_rules')
+    
+    existing = await coll.find_one({'_id': to_object_id(discount_id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail='Discount rule not found')
+    
+    new_enabled = not existing.get('enabled', False)
+    
+    await coll.update_one(
+        {'_id': to_object_id(discount_id)},
+        {'$set': {'enabled': new_enabled, 'updatedAt': datetime.utcnow().isoformat()}}
+    )
+    
+    await log_audit(
+        action='toggle_discount_rule',
+        resource='discount_rule',
+        resourceId=discount_id,
+        userId=request.headers.get('x-user-id'),
+        userName=request.headers.get('x-user-name'),
+        details={'enabled': new_enabled},
+        ip=request.client.host if request.client else None
+    )
+    
+    return serialize_doc(await coll.find_one({'_id': to_object_id(discount_id)}))
+
+
+# ============ USER ACCOUNTS (Staff Management for Settings) ============
+@router.get('/users', tags=['users'])
+async def list_users():
+    """List all user accounts (from staff collection)"""
+    db = get_db()
+    coll = db.get_collection('staff')
+    docs = await coll.find().to_list(100)
+    
+    # Map staff to user format
+    users = []
+    for doc in docs:
+        users.append({
+            '_id': str(doc.get('_id')),
+            'name': doc.get('name'),
+            'email': doc.get('email'),
+            'role': doc.get('role', 'Staff'),
+            'status': 'active' if doc.get('active', True) else 'inactive',
+            'lastLogin': doc.get('lastLogin', 'Never'),
+            'createdAt': doc.get('createdAt')
+        })
+    
+    return users
+
+
+@router.post('/users', tags=['users'])
+async def create_user(user: UserAccountIn, request: Request):
+    """Create a new user account"""
+    db = get_db()
+    coll = db.get_collection('staff')
+    
+    # Check if email already exists
+    existing = await coll.find_one({'email': user.email})
+    if existing:
+        raise HTTPException(status_code=409, detail='Email already exists')
+
+    # Enforce only one admin account
+    if user.role and user.role.lower() == 'admin':
+        admin_exists = await coll.find_one({'role': 'admin'})
+        if admin_exists:
+            raise HTTPException(status_code=400, detail='An admin account already exists. Only one admin is allowed.')
+
+    # Validate role
+    allowed_roles = {'admin', 'manager', 'waiter', 'cashier'}
+    if user.role and user.role.lower() not in allowed_roles:
+        raise HTTPException(status_code=400, detail=f'Invalid role. Allowed roles: {", ".join(sorted(allowed_roles))}')
+    
+    doc = {
+        'name': user.name,
+        'email': user.email,
+        'role': user.role,
+        'password_hash': hash_password(user.password),
+        'active': True,
+        'lastLogin': 'Never',
+        'createdAt': datetime.utcnow().isoformat()
+    }
+    
+    res = await coll.insert_one(doc)
+    
+    await log_audit(
+        action='create_user',
+        resource='user',
+        resourceId=str(res.inserted_id),
+        userId=request.headers.get('x-user-id'),
+        userName=request.headers.get('x-user-name'),
+        details={'name': user.name, 'email': user.email, 'role': user.role},
+        ip=request.client.host if request.client else None
+    )
+    
+    created = await coll.find_one({'_id': res.inserted_id})
+    return {
+        '_id': str(created.get('_id')),
+        'name': created.get('name'),
+        'email': created.get('email'),
+        'role': created.get('role'),
+        'status': 'active',
+        'lastLogin': 'Never',
+        'createdAt': created.get('createdAt')
+    }
+
+
+@router.put('/users/{user_id}', tags=['users'])
+async def update_user(user_id: str, user: UserAccountUpdate, request: Request):
+    """Update a user account"""
+    db = get_db()
+    coll = db.get_collection('staff')
+    
+    existing = await coll.find_one({'_id': to_object_id(user_id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail='User not found')
+    
+    update_data = {}
+    if user.name is not None:
+        update_data['name'] = user.name
+    if user.email is not None:
+        update_data['email'] = user.email
+    if user.role is not None:
+        update_data['role'] = user.role
+    if user.status is not None:
+        update_data['active'] = user.status == 'active'
+    if user.password is not None:
+        update_data['password_hash'] = hash_password(user.password)
+    
+    update_data['updatedAt'] = datetime.utcnow().isoformat()
+    
+    await coll.update_one({'_id': to_object_id(user_id)}, {'$set': update_data})
+    
+    await log_audit(
+        action='update_user',
+        resource='user',
+        resourceId=user_id,
+        userId=request.headers.get('x-user-id'),
+        userName=request.headers.get('x-user-name'),
+        details={'updated_fields': list(update_data.keys())},
+        ip=request.client.host if request.client else None
+    )
+    
+    updated = await coll.find_one({'_id': to_object_id(user_id)})
+    return {
+        '_id': str(updated.get('_id')),
+        'name': updated.get('name'),
+        'email': updated.get('email'),
+        'role': updated.get('role'),
+        'status': 'active' if updated.get('active', True) else 'inactive',
+        'lastLogin': updated.get('lastLogin', 'Never'),
+        'createdAt': updated.get('createdAt')
+    }
+
+
+@router.delete('/users/{user_id}', tags=['users'])
+async def delete_user(user_id: str, request: Request):
+    """Delete a user account"""
+    db = get_db()
+    coll = db.get_collection('staff')
+    
+    # Check if trying to delete admin
+    existing = await coll.find_one({'_id': to_object_id(user_id)})
+    if existing and existing.get('role', '').lower() == 'admin':
+        raise HTTPException(status_code=400, detail='Cannot delete admin user')
+    
+    res = await coll.delete_one({'_id': to_object_id(user_id)})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail='User not found')
+    
+    await log_audit(
+        action='delete_user',
+        resource='user',
+        resourceId=user_id,
+        userId=request.headers.get('x-user-id'),
+        userName=request.headers.get('x-user-name'),
+        ip=request.client.host if request.client else None
+    )
+    
+    return {'success': True}
+
+
+@router.post('/users/{user_id}/toggle-status', tags=['users'])
+async def toggle_user_status(user_id: str, request: Request):
+    """Toggle a user's active status"""
+    db = get_db()
+    coll = db.get_collection('staff')
+    
+    existing = await coll.find_one({'_id': to_object_id(user_id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail='User not found')
+    
+    new_status = not existing.get('active', True)
+    
+    await coll.update_one(
+        {'_id': to_object_id(user_id)},
+        {'$set': {'active': new_status, 'updatedAt': datetime.utcnow().isoformat()}}
+    )
+    
+    await log_audit(
+        action='toggle_user_status',
+        resource='user',
+        resourceId=user_id,
+        userId=request.headers.get('x-user-id'),
+        userName=request.headers.get('x-user-name'),
+        details={'active': new_status},
+        ip=request.client.host if request.client else None
+    )
+    
+    updated = await coll.find_one({'_id': to_object_id(user_id)})
+    return {
+        '_id': str(updated.get('_id')),
+        'name': updated.get('name'),
+        'email': updated.get('email'),
+        'role': updated.get('role'),
+        'status': 'active' if updated.get('active', True) else 'inactive',
+        'lastLogin': updated.get('lastLogin', 'Never'),
+        'createdAt': updated.get('createdAt')
     }

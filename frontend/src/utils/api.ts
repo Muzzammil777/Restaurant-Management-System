@@ -399,6 +399,7 @@ export const backupApi = {
   updateConfig: (data: {
     autoBackupEnabled: boolean;
     frequency: string;
+    backupTime?: string;
     retentionDays: number;
     backupLocation?: string;
     googleDriveEnabled?: boolean;
@@ -426,6 +427,123 @@ export const backupApi = {
   // Delete backup
   delete: (id: string) => fetchApi<{ success: boolean }>(`/settings/backups/${id}`, {
     method: 'DELETE',
+  }),
+};
+
+
+// ============ TAX CONFIG API ============
+export const taxConfigApi = {
+  // Get tax configuration
+  get: () => fetchApi<{
+    gstEnabled: boolean;
+    gstRate: number;
+    cgstRate: number;
+    sgstRate: number;
+    serviceChargeEnabled: boolean;
+    serviceChargeRate: number;
+    packagingChargeEnabled: boolean;
+    packagingChargeRate: number;
+  }>('/settings/tax-config'),
+
+  // Update tax configuration
+  update: (data: {
+    gstEnabled?: boolean;
+    gstRate?: number;
+    cgstRate?: number;
+    sgstRate?: number;
+    serviceChargeEnabled?: boolean;
+    serviceChargeRate?: number;
+    packagingChargeEnabled?: boolean;
+    packagingChargeRate?: number;
+  }) => fetchApi<any>('/settings/tax-config', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+};
+
+
+// ============ DISCOUNT RULES API ============
+export const discountRulesApi = {
+  // List all discount rules
+  list: () => fetchApi<any[]>('/settings/discounts'),
+
+  // Get a single discount rule
+  get: (id: string) => fetchApi<any>(`/settings/discounts/${id}`),
+
+  // Create a new discount rule
+  create: (data: {
+    name: string;
+    type: 'percentage' | 'fixed';
+    value: number;
+    minOrderAmount?: number;
+    maxDiscount?: number;
+    enabled?: boolean;
+  }) => fetchApi<any>('/settings/discounts', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  // Update a discount rule
+  update: (id: string, data: {
+    name?: string;
+    type?: 'percentage' | 'fixed';
+    value?: number;
+    minOrderAmount?: number;
+    maxDiscount?: number;
+    enabled?: boolean;
+  }) => fetchApi<any>(`/settings/discounts/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+
+  // Delete a discount rule
+  delete: (id: string) => fetchApi<{ success: boolean }>(`/settings/discounts/${id}`, {
+    method: 'DELETE',
+  }),
+
+  // Toggle a discount rule enabled status
+  toggle: (id: string) => fetchApi<any>(`/settings/discounts/${id}/toggle`, {
+    method: 'POST',
+  }),
+};
+
+
+// ============ USER ACCOUNTS API ============
+export const userAccountsApi = {
+  // List all user accounts
+  list: () => fetchApi<any[]>('/settings/users'),
+
+  // Create a new user account
+  create: (data: {
+    name: string;
+    email: string;
+    role: string;
+    password: string;
+  }) => fetchApi<any>('/settings/users', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  // Update a user account
+  update: (id: string, data: {
+    name?: string;
+    email?: string;
+    role?: string;
+    status?: 'active' | 'inactive';
+    password?: string;
+  }) => fetchApi<any>(`/settings/users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+
+  // Delete a user account
+  delete: (id: string) => fetchApi<{ success: boolean }>(`/settings/users/${id}`, {
+    method: 'DELETE',
+  }),
+
+  // Toggle user active status
+  toggleStatus: (id: string) => fetchApi<any>(`/settings/users/${id}/toggle-status`, {
+    method: 'POST',
   }),
 };
 
@@ -554,11 +672,12 @@ listCombos: () => fetchApi<any[]>('/menu/combos'),
 // ============ ORDERS API ============
 export const ordersApi = {
   // List orders
-  list: (params?: { status?: string; type?: string; tableId?: string; date_from?: string; date_to?: string }) => {
+  list: (params?: { status?: string; type?: string; tableId?: string; waiterId?: string; date_from?: string; date_to?: string }) => {
     const query = new URLSearchParams();
     if (params?.status) query.append('status', params.status);
     if (params?.type) query.append('type', params.type);
     if (params?.tableId) query.append('tableId', params.tableId);
+    if (params?.waiterId) query.append('waiter_id', params.waiterId);
     if (params?.date_from) query.append('date_from', params.date_from);
     if (params?.date_to) query.append('date_to', params.date_to);
     return fetchApi<{ data: any[]; total: number }>(`/orders?${query.toString()}`);
@@ -588,12 +707,44 @@ export const ordersApi = {
   }),
 
   // Update status
-  updateStatus: (id: string, status: string) => fetchApi<any>(`/orders/${id}/status?status=${status}`, {
-    method: 'PATCH',
+  updateStatus: (id: string, status: string, deductInventory: boolean = true) => 
+    fetchApi<any>(`/orders/${id}/status?status=${status}&deduct_inventory=${deductInventory}`, {
+      method: 'PATCH',
+    }),
+
+  // Kitchen queue (legacy)
+  getKitchenQueue: () => fetchApi<any[]>('/orders/kitchen/queue'),
+
+  // ===== KITCHEN WORKFLOW ENDPOINTS =====
+  
+  // Get active orders for kitchen display
+  getKitchenActiveOrders: () => fetchApi<any[]>('/orders/kitchen/active-orders'),
+  
+  // Get kitchen statistics
+  getKitchenStats: () => fetchApi<any>('/orders/kitchen/stats'),
+  
+  // Start preparing - triggers inventory deduction
+  startPreparing: (id: string) => fetchApi<any>(`/orders/kitchen/start-preparing/${id}`, {
+    method: 'POST',
+  }),
+  
+  // Mark as ready - notifies waiters
+  markReady: (id: string) => fetchApi<any>(`/orders/kitchen/mark-ready/${id}`, {
+    method: 'POST',
+  }),
+  
+  // Complete serving
+  completeServing: (id: string) => fetchApi<any>(`/orders/kitchen/complete/${id}`, {
+    method: 'POST',
   }),
 
-  // Kitchen queue
-  getKitchenQueue: () => fetchApi<any[]>('/orders/kitchen/queue'),
+  // ===== UNIFIED WORKFLOW =====
+  
+  // Process order through workflow
+  processWorkflow: (data: { orderId: string; action: string }) => fetchApi<any>('/orders/workflow/process-order', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
 
   // Update item status
   updateItemStatus: (orderId: string, itemIndex: number, status: string) =>
@@ -665,6 +816,16 @@ export const tablesApi = {
   deleteReservation: (id: string) => fetchApi<{ success: boolean }>(`/tables/reservations/${id}`, {
     method: 'DELETE',
   }),
+  
+  // Waiter assignment
+  assignWaiter: (tableId: string, waiterId: string, waiterName: string) =>
+    fetchApi<any>(`/tables/${tableId}/waiter?waiter_id=${waiterId}&waiter_name=${encodeURIComponent(waiterName)}`, {
+      method: 'POST',
+    }),
+  removeWaiter: (tableId: string) =>
+    fetchApi<any>(`/tables/${tableId}/waiter`, {
+      method: 'DELETE',
+    }),
 };
 
 
@@ -914,6 +1075,24 @@ export const offersApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+
+  // Feedback
+  listFeedback: (params?: { customerId?: string; orderId?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.customerId) query.append('customer_id', params.customerId);
+    if (params?.orderId) query.append('order_id', params.orderId);
+    const queryStr = query.toString();
+    return fetchApi<any[]>(`/offers/feedback${queryStr ? `?${queryStr}` : ''}`);
+  },
+  getFeedbackStats: () => fetchApi<{ totalFeedback: number; totalPointsAwarded: number; averageRating: number }>('/offers/feedback/stats'),
+  createFeedback: (data: { customerName: string; customerId: string; orderId: string; rating: number; comment: string }) =>
+    fetchApi<any>('/offers/feedback', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deleteFeedback: (id: string) => fetchApi<{ success: boolean }>(`/offers/feedback/${id}`, {
+    method: 'DELETE',
+  }),
 };
 
 
@@ -1027,6 +1206,7 @@ export const billingApi = {
     });
   },
 
+<<<<<<< HEAD
   // Retry payment
   retryPayment: (paymentId: string, method?: string) => {
     const query = new URLSearchParams();
@@ -1035,6 +1215,26 @@ export const billingApi = {
       method: 'POST',
     });
   },
+=======
+  // ===== ORDER-BILLING INTEGRATION =====
+  
+  // Process payment for an order
+  processOrderPayment: (data: { orderId: string; method: string; amount: number; tips?: number }) => 
+    fetchApi<any>('/billing/process-order-payment', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  // Get payment for an order
+  getOrderPayment: (orderId: string) => fetchApi<any>(`/billing/order/${orderId}/payment`),
+  
+  // Complete checkout (payment + order completion)
+  checkout: (data: { orderId: string; method: string; amount: number; tips?: number }) =>
+    fetchApi<any>('/billing/checkout', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+>>>>>>> d3e0b6370a1e1a0ae381e316c1750084767230a1
 
   // Invoices
   listInvoices: (params?: { date_from?: string; date_to?: string }) => {

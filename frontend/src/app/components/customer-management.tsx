@@ -20,7 +20,7 @@ import {
   FileText
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -161,12 +161,12 @@ export function CustomerManagement() {
   };
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto p-6 min-h-screen bg-gray-50/50">
+    <div className="bg-customer-module space-y-6 max-w-[1600px] mx-auto p-6 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="module-container flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Customer Management</h1>
-          <p className="text-muted-foreground mt-1">CRM, insights, and loyalty tracking.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-lg">Customer Management</h1>
+          <p className="text-gray-200 mt-1">CRM, insights, and loyalty tracking.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" className="bg-white">

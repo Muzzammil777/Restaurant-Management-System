@@ -11,12 +11,14 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { Clock, Package, CheckCircle, XCircle, Plus, CreditCard, Eye, IndianRupee, UtensilsCrossed, Zap, Minus, Search, Repeat, Flame, AlertCircle, TrendingUp, Activity, ChefHat, Coffee, Timer, Undo2, Gauge, MoveRight, MoveLeft, Ban, Sparkles, Pizza, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
-import { ordersApi, menuApi } from '@/utils/api';
+import { ordersApi, menuApi, staffApi } from '@/utils/api';
+import { useAuth } from '@/utils/auth-context';
 import { PaymentDialog } from '@/app/components/payment-dialog';
 import { QuickOrderPOS } from '@/app/components/quick-order-pos';
 
 interface Order {
   id: string;
+  orderNumber?: string;
   tableNumber?: number;
   customerName?: string;
   items: Array<{
@@ -33,6 +35,8 @@ interface Order {
   tags?: string[];
   statusUpdatedAt?: string;
   notes?: string;
+  waiterId?: string;
+  waiterName?: string;
 }
 
 interface MenuItem {
@@ -58,12 +62,18 @@ const SMART_NOTE_KEYWORDS = {
 };
 
 export function OrderManagement() {
+  const { user } = useAuth();
+  const isWaiter = user?.role === 'waiter';
+  const isAdminOrManager = user?.role === 'admin' || user?.role === 'manager';
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterTable, setFilterTable] = useState<string>('all');
+  const [filterWaiter, setFilterWaiter] = useState<string>('all');
+  const [waiters, setWaiters] = useState<{ id: string; name: string }[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -83,24 +93,53 @@ export function OrderManagement() {
 
   const normalizeOrder = (rawOrder: any): Order => {
     const rawItems = Array.isArray(rawOrder?.items) ? rawOrder.items : [];
+    
+    // Safely parse numeric values, using ?? to handle 0 correctly
+    const safeNumber = (val: any, fallback: number = 0): number => {
+      const num = Number(val);
+      return isNaN(num) ? fallback : num;
+    };
+    
+    // Normalize items with proper fallbacks
+    const normalizedItems = rawItems.map((item: any) => ({
+      name: item?.name || item?.dishName || item?.itemName || item?.Name || 'Unknown Item',
+      quantity: Math.max(1, safeNumber(item?.quantity ?? item?.qty ?? item?.Qty, 1)),
+      price: safeNumber(item?.price ?? item?.unitPrice ?? item?.Price, 0),
+    }));
+    
+    // Calculate total from items if raw total is invalid
+    const rawTotal = safeNumber(rawOrder?.total ?? rawOrder?.totalAmount ?? rawOrder?.grandTotal);
+    const calculatedTotal = normalizedItems.reduce((sum: number, item: { name: string; quantity: number; price: number }) => sum + (item.price * item.quantity), 0);
+    const finalTotal = rawTotal > 0 ? rawTotal : calculatedTotal;
+    
     return {
       ...rawOrder,
-      items: rawItems.map((item: any) => ({
-        name: item?.name || 'Unknown Item',
-        quantity: Number(item?.quantity) || 0,
-        price: Number(item?.price) || 0,
-      })),
-      total: Number(rawOrder?.total) || 0,
-      createdAt: rawOrder?.createdAt || new Date().toISOString(),
+      id: rawOrder?._id || rawOrder?.id || '',
+      orderNumber: rawOrder?.orderNumber || rawOrder?.order_number,
+      items: normalizedItems,
+      total: finalTotal,
+      createdAt: rawOrder?.createdAt || rawOrder?.created_at || new Date().toISOString(),
     };
   };
 
   useEffect(() => {
     fetchOrders();
     fetchMenuItems();
+    fetchWaiters();
     const interval = setInterval(fetchOrders, 10000); // Refresh every 10 seconds
     return () => clearInterval(interval);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isWaiter]);
+
+  const fetchWaiters = async () => {
+    try {
+      const res = await staffApi.list({ role: 'Waiter' });
+      const data = Array.isArray(res) ? res : (res as any).data || [];
+      setWaiters(data.map((s: any) => ({ id: s._id || s.id, name: s.name })));
+    } catch (e) {
+      console.error('Failed to fetch waiters', e);
+    }
+  };
 
   // Innovation #9: Undo countdown effect
   useEffect(() => {
@@ -121,7 +160,8 @@ export function OrderManagement() {
 
   const fetchOrders = async () => {
     try {
-      const result = await ordersApi.list();
+      const params = isWaiter && user?.id ? { waiterId: user.id } : undefined;
+      const result = await ordersApi.list(params);
       const rawOrders = (result as any)?.data || result || [];
       setOrders(Array.isArray(rawOrders) ? rawOrders.map(normalizeOrder) : []);
     } catch (error) {
@@ -226,7 +266,9 @@ export function OrderManagement() {
     return type === 'dine-in' ? 'Dine-In' : type === 'takeaway' ? 'Takeaway' : 'Delivery';
   };
 
-  const generateOrderDisplayId = (orderId: string | undefined) => {
+  const generateOrderDisplayId = (orderId: string | undefined, orderNumber?: string) => {
+    // Prefer orderNumber from backend if available
+    if (orderNumber) return orderNumber;
     if (!orderId) return '#UNKNOWN';
     const parts = orderId.split('-');
     const hash = parts[parts.length - 1] || orderId;
@@ -284,10 +326,13 @@ export function OrderManagement() {
 
   // Filter and search orders
   const filteredOrders = orders.filter(order => {
+    // Waiters only see their own orders (strictly — even unassigned orders are hidden)
+    if (isWaiter && order.waiterId !== user?.id) return false;
     if (filterStatus !== 'all' && order.status !== filterStatus) return false;
     if (filterType !== 'all' && order.type !== filterType) return false;
     if (filterTable !== 'all' && order.tableNumber?.toString() !== filterTable) return false;
-    if (searchQuery && !generateOrderDisplayId(order.id).toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (!isWaiter && filterWaiter !== 'all' && order.waiterId !== filterWaiter) return false;
+    if (searchQuery && !generateOrderDisplayId(order.id, order.orderNumber).toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
 
@@ -310,7 +355,8 @@ export function OrderManagement() {
     if (aDelay === 'warning' && bDelay !== 'warning') return -1;
     if (bDelay === 'warning' && aDelay !== 'warning') return 1;
 
-    return bAge - aAge; // Most recent first for same priority
+    // Most recent first for same priority (higher timestamp = newer)
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
   // Calculate statistics
@@ -348,12 +394,18 @@ export function OrderManagement() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="bg-order-management-module min-h-screen p-6 space-y-6">
       {/* Header Section */}
-      <div className="flex justify-between items-start">
+      <div className="module-container flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold">Orders</h1>
-          <p className="text-muted-foreground">View, manage, and track all customer orders</p>
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">
+            {isWaiter ? `Your Orders` : 'Orders'}
+          </h1>
+          <p className="text-gray-200">
+            {isWaiter
+              ? `Showing orders assigned to you, ${user?.name || ''}`
+              : 'View, manage, and track all customer orders'}
+          </p>
         </div>
         
         {/* Quick Order Button */}
@@ -431,7 +483,7 @@ export function OrderManagement() {
       {/* Smart Filters & Search */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid gap-4 md:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-6">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
@@ -482,12 +534,30 @@ export function OrderManagement() {
               </SelectContent>
             </Select>
 
+            {/* Only admins/managers can filter by waiter */}
+            {!isWaiter && (
+              <Select value={filterWaiter} onValueChange={setFilterWaiter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Waiter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Waiters</SelectItem>
+                  {waiters.map(w => (
+                    <SelectItem key={w.id} value={w.id}>
+                      {w.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
             <Button 
               variant="outline" 
               onClick={() => {
                 setFilterStatus('all');
                 setFilterType('all');
                 setFilterTable('all');
+                setFilterWaiter('all');
                 setSearchQuery('');
               }}
             >
@@ -559,7 +629,7 @@ export function OrderManagement() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <CardTitle className="text-lg font-semibold">
-                          {generateOrderDisplayId(order.id)}
+                          {generateOrderDisplayId(order.id, order.orderNumber)}
                         </CardTitle>
                         {/* Innovation #3: Priority Badge */}
                         {!['served', 'completed', 'cancelled'].includes(order.status) && (
@@ -660,8 +730,12 @@ export function OrderManagement() {
                         <UtensilsCrossed className="h-3.5 w-3.5" />
                         <span>Table {order.tableNumber}</span>
                       </div>
-                    )}
-                    {order.customerName && (
+                    )}                    {order.waiterName && (
+                      <div className="flex items-center gap-1">
+                        <ChefHat className="h-3.5 w-3.5" />
+                        <span>Waiter: {order.waiterName}</span>
+                      </div>
+                    )}                    {order.customerName && (
                       <div className="font-medium text-foreground">
                         {order.customerName}
                       </div>
@@ -783,7 +857,7 @@ export function OrderManagement() {
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>Order Details {generateOrderDisplayId(order.id)}</DialogTitle>
+                            <DialogTitle>Order Details {generateOrderDisplayId(order.id, order.orderNumber)}</DialogTitle>
                             <DialogDescription>
                               Complete order information
                             </DialogDescription>

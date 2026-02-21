@@ -24,6 +24,7 @@ def serialize_doc(doc):
     if not doc:
         return None
     doc["_id"] = str(doc["_id"])
+    doc["id"] = doc["_id"]  # Add id field for frontend compatibility
     return doc
 
 
@@ -63,6 +64,57 @@ async def list_menu_items(
 
     items = await db.menu_items.find(query).sort("name", 1).to_list(1000)
     return [serialize_doc(item) for item in items]
+
+
+@router.get("/stats")
+async def get_menu_stats():
+    """Get menu statistics"""
+    db = get_db()
+    
+    total = await db.menu_items.count_documents({})
+    available = await db.menu_items.count_documents({"available": True})
+    unavailable = await db.menu_items.count_documents({"available": False})
+    
+    # Count by category
+    category_pipeline = [
+        {"$group": {"_id": "$category", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]
+    by_category = await db.menu_items.aggregate(category_pipeline).to_list(50)
+    
+    # Count by diet type
+    diet_pipeline = [
+        {"$group": {"_id": "$dietType", "count": {"$sum": 1}}}
+    ]
+    by_diet = await db.menu_items.aggregate(diet_pipeline).to_list(10)
+    
+    # Average price
+    price_pipeline = [
+        {"$group": {"_id": None, "avgPrice": {"$avg": "$price"}}}
+    ]
+    avg_price_result = await db.menu_items.aggregate(price_pipeline).to_list(1)
+    avg_price = avg_price_result[0]["avgPrice"] if avg_price_result else 0
+    
+    # Combos count
+    combos_count = await db.combo_meals.count_documents({})
+    
+    return {
+        "total": total,
+        "available": available,
+        "unavailable": unavailable,
+        "byCategory": {c["_id"]: c["count"] for c in by_category if c["_id"]},
+        "byDietType": {d["_id"]: d["count"] for d in by_diet if d["_id"]},
+        "avgPrice": round(avg_price, 2),
+        "combosCount": combos_count
+    }
+
+
+@router.get("/categories")
+async def get_menu_categories():
+    """Get all unique menu categories"""
+    db = get_db()
+    categories = await db.menu_items.distinct("category")
+    return categories
 
 
 @router.get("/combos")
@@ -218,9 +270,16 @@ async def delete_menu_item(item_id: str):
 
 
 @router.patch("/{item_id}/availability")
-async def toggle_availability(item_id: str, available: bool):
+async def toggle_availability(item_id: str, available: Optional[bool] = None):
     db = get_db()
     obj_id = validate_object_id(item_id)
+
+    # If available is not provided, toggle the current state
+    if available is None:
+        item = await db.menu_items.find_one({"_id": obj_id})
+        if not item:
+            raise HTTPException(status_code=404, detail="Menu item not found")
+        available = not item.get("available", True)
 
     result = await db.menu_items.update_one(
         {"_id": obj_id},

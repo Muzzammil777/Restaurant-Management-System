@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { IndianRupee, ShoppingCart, TrendingUp, Users, AlertCircle, Activity, Package, ChefHat, UserCog, Truck, Clock, Radio } from 'lucide-react';
+import { IndianRupee, ShoppingCart, TrendingUp, Users, AlertCircle, Activity, Package, ChefHat, UserCog, Clock, Radio } from 'lucide-react';
 import { API_BASE_URL } from '@/utils/supabase/info';
 import { DataSeeder } from '@/app/components/data-seeder';
 import { Alert, AlertDescription, AlertTitle } from '@/app/components/ui/alert';
@@ -26,10 +26,6 @@ interface Analytics {
   totalStaff: number;
   onDutyStaff: number;
   onLeaveStaff: number;
-  // Delivery data
-  totalDeliveryPersons: number;
-  freeDeliveryPersons: number;
-  busyDeliveryPersons: number;
 }
 
 export function AdminDashboard() {
@@ -78,9 +74,6 @@ export function AdminDashboard() {
           totalStaff: 0,
           onDutyStaff: 0,
           onLeaveStaff: 0,
-          totalDeliveryPersons: 0,
-          freeDeliveryPersons: 0,
-          busyDeliveryPersons: 0,
         });
       }
     } finally {
@@ -93,12 +86,12 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="p-6 space-y-6" style={{ backgroundColor: '#F7F3EE' }}>
+    <div className="bg-admin-module min-h-screen p-6 space-y-6">
       {/* Header with Live Indicator */}
-      <div className="flex justify-between items-start">
+      <div className="module-container flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold" style={{ color: '#000000' }}>Admin Dashboard</h1>
-          <p className="text-muted-foreground">Restaurant management overview</p>
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">Admin Dashboard</h1>
+          <p className="text-gray-200">Restaurant management overview</p>
         </div>
         <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-sm border">
           <Radio className="h-4 w-4 text-green-600 animate-pulse" />
@@ -141,7 +134,7 @@ export function AdminDashboard() {
             <IndianRupee className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" style={{ color: '#000000' }}>₹{analytics?.totalRevenue.toFixed(2) || '0.00'}</div>
+            <div className="text-2xl font-bold" style={{ color: '#000000' }}>₹{(analytics?.totalRevenue ?? 0).toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               {analytics?.completedOrders || 0} completed orders
             </p>
@@ -165,7 +158,7 @@ export function AdminDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" style={{ color: '#000000' }}>₹{analytics?.avgOrderValue.toFixed(2) || '0.00'}</div>
+            <div className="text-2xl font-bold" style={{ color: '#000000' }}>₹{(analytics?.avgOrderValue ?? 0).toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">Per completed order</p>
           </CardContent>
         </Card>
@@ -176,14 +169,14 @@ export function AdminDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" style={{ color: '#000000' }}>{analytics?.tableOccupancy.toFixed(0) || 0}%</div>
+            <div className="text-2xl font-bold" style={{ color: '#000000' }}>{(analytics?.tableOccupancy ?? 0).toFixed(0)}%</div>
             <p className="text-xs text-muted-foreground">Current capacity</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Stats Cards - Row 2: Staff & Delivery (NEW) */}
-      <div className="grid gap-4 md:grid-cols-2">
+      {/* Stats Cards - Row 2: Staff Status */}
+      <div className="grid gap-4 md:grid-cols-1">
         {/* Staff Status Card */}
         <Card style={{ backgroundColor: '#FFFFFF', borderLeftColor: '#8B5A2B' }} className="border-l-4">
           <CardHeader className="pb-3">
@@ -226,53 +219,6 @@ export function AdminDashboard() {
               </div>
               <p className="text-xs text-muted-foreground mt-1 text-center">
                 {analytics?.totalStaff ? Math.round((analytics.onDutyStaff / analytics.totalStaff) * 100) : 0}% workforce active
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Delivery Team Card */}
-        <Card style={{ backgroundColor: '#FFFFFF', borderLeftColor: '#8B5A2B' }} className="border-l-4">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold" style={{ color: '#000000' }}>Delivery Team</CardTitle>
-              <Truck className="h-5 w-5" style={{ color: '#8B5A2B' }} />
-            </div>
-            <CardDescription>Delivery fleet linked to Delivery Management</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Total Delivery Persons</span>
-              <span className="text-2xl font-bold" style={{ color: '#000000' }}>{analytics?.totalDeliveryPersons || 0}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
-                  Free for Delivery
-                </Badge>
-              </div>
-              <span className="text-xl font-bold text-blue-700">{analytics?.freeDeliveryPersons || 0}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-300">
-                  Assigned / Busy
-                </Badge>
-              </div>
-              <span className="text-xl font-bold text-purple-700">{analytics?.busyDeliveryPersons || 0}</span>
-            </div>
-            {/* Progress Bar */}
-            <div className="pt-2">
-              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-purple-600 transition-all duration-500"
-                  style={{
-                    width: `${analytics?.totalDeliveryPersons ? (analytics.busyDeliveryPersons / analytics.totalDeliveryPersons) * 100 : 0}%`,
-                  }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground mt-1 text-center">
-                {analytics?.totalDeliveryPersons ? Math.round((analytics.busyDeliveryPersons / analytics.totalDeliveryPersons) * 100) : 0}% delivery team busy
               </p>
             </div>
           </CardContent>
@@ -355,7 +301,11 @@ export function AdminDashboard() {
                             </Badge>
                           </td>
                           <td className="p-3 text-center font-semibold" style={{ color: '#8B5A2B' }}>
+<<<<<<< HEAD
                             ₹{(item.revenue || 0).toFixed(2)}
+=======
+                            ₹{(item.revenue ?? 0).toFixed(2)}
+>>>>>>> d3e0b6370a1e1a0ae381e316c1750084767230a1
                           </td>
                           <td className="p-3 text-center">
                             <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground">

@@ -427,3 +427,139 @@ async def get_daily_report(date: Optional[str] = None):
         "ordersByStatus": {o["_id"]: o["count"] for o in orders_result if o["_id"]},
         "byPaymentMethod": {m["_id"]: {"total": m["total"], "count": m["count"]} for m in method_result if m["_id"]},
     }
+
+
+# ============ ORDER-BILLING INTEGRATION ============
+
+@router.post("/process-order-payment")
+async def process_order_payment(data: dict):
+    """
+    Process payment for an order.
+    Creates payment record and updates order payment status.
+    
+    Expected data:
+    {
+        "orderId": "...",
+        "method": "cash|card|upi|wallet",
+        "amount": 500.00,
+        "tips": 50.00  // optional
+    }
+    """
+    db = get_db()
+    
+    order_id = data.get("orderId")
+    method = data.get("method", "cash")
+    amount = data.get("amount")
+    tips = data.get("tips", 0)
+    
+    if not order_id or not amount:
+        raise HTTPException(status_code=400, detail="orderId and amount are required")
+    
+    # Get order details
+    order = await db.orders.find_one({"_id": ObjectId(order_id)})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Check if already paid
+    if order.get("paymentStatus") == "paid":
+        raise HTTPException(status_code=400, detail="Order already paid")
+    
+    # Generate transaction ID
+    count = await db.payments.count_documents({})
+    transaction_id = f"TXN-{datetime.utcnow().strftime('%Y%m%d')}-{count + 1001}"
+    
+    # Create payment record
+    payment_data = {
+        "orderId": order_id,
+        "orderNumber": order.get("orderNumber"),
+        "tableNumber": order.get("tableNumber"),
+        "transactionId": transaction_id,
+        "amount": amount,
+        "tips": tips,
+        "total": amount + tips,
+        "method": method,
+        "status": "completed",
+        "createdAt": datetime.utcnow()
+    }
+    
+    result = await db.payments.insert_one(payment_data)
+    
+    # Update order payment status
+    await db.orders.update_one(
+        {"_id": ObjectId(order_id)},
+        {"$set": {
+            "paymentStatus": "paid",
+            "paymentMethod": method,
+            "paidAt": datetime.utcnow(),
+            "paymentId": str(result.inserted_id)
+        }}
+    )
+    
+    await log_audit("payment", "order", order_id, {
+        "amount": amount,
+        "method": method,
+        "transactionId": transaction_id
+    })
+    
+    return {
+        "success": True,
+        "paymentId": str(result.inserted_id),
+        "transactionId": transaction_id,
+        "amount": amount,
+        "method": method
+    }
+
+
+@router.get("/order/{order_id}/payment")
+async def get_order_payment(order_id: str):
+    """Get payment details for an order"""
+    db = get_db()
+    
+    # Find payment by orderId
+    payment = await db.payments.find_one({"orderId": order_id})
+    if not payment:
+        return {"found": False}
+    
+    return serialize_doc(payment)
+
+
+@router.post("/checkout")
+async def checkout_order(data: dict):
+    """
+    Complete checkout process for an order.
+    Processes payment and marks order as completed in one call.
+    
+    Expected data:
+    {
+        "orderId": "...",
+        "method": "cash|card|upi|wallet",
+        "amount": 500.00,
+        "tips": 50.00  // optional
+    }
+    """
+    db = get_db()
+    
+    # First process payment
+    payment_result = await process_order_payment(data)
+    
+    order_id = data.get("orderId")
+    
+    # Then mark order as completed
+    await db.orders.update_one(
+        {"_id": ObjectId(order_id)},
+        {"$set": {
+            "status": "completed",
+            "statusUpdatedAt": datetime.utcnow(),
+            "completedAt": datetime.utcnow()
+        }}
+    )
+    
+    await log_audit("checkout", "order", order_id, {
+        "payment": payment_result
+    })
+    
+    return {
+        "success": True,
+        "message": "Order completed and paid",
+        "payment": payment_result
+    }

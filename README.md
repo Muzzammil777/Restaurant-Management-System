@@ -2,6 +2,21 @@
 
 MoviCloud RMS is a comprehensive, feature-rich Restaurant Management System designed to streamline operations from order taking to backend analytics. This repository contains the **Frontend** application built with modern web technologies.
 
+## ✅ Latest Updates (Feb 4, 2026)
+
+**Backend & Database Integration Complete!** 🎉
+
+- ✅ Backend API fully connected to MongoDB
+- ✅ Delivery Module: Real-time rider & order tracking
+- ✅ Inventory Module: Live ingredient management
+- ✅ Auto-refresh every 10 seconds
+- ✅ All API endpoints working with live data
+
+**See**: [CONTRIBUTIONS.md](CONTRIBUTIONS.md) for detailed summary
+
+
+---
+
 ## 🚀 Project Overview
 
 This project is structured to be developed by a team of 14 developers (2 UI, 7 Backend, 7 Frontend), split into specific functional modules.
@@ -40,11 +55,15 @@ The application is divided into 14 core modules. Please refer to this list to kn
 
 ## 🛠️ Getting Started
 
+### 🚀 Quick Start (Recommended)
+
+See **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)** for complete setup guide with all available resources!
+
 ### Prerequisites
 
 - Node.js (v18 or higher)
 - Python (v3.10 or higher) - for Backend
-- MongoDB - for Database
+- MongoDB - for Database (✅ Already configured with MongoDB Atlas)
 
 ### Installation
 

@@ -20,6 +20,18 @@ def serialize_doc(doc):
     if doc is None:
         return None
     doc["_id"] = str(doc["_id"])
+    doc["id"] = doc["_id"]  # Add id field for frontend compatibility
+    
+    # Convert datetime fields to ISO format with timezone
+    datetime_fields = ["createdAt", "updatedAt", "statusUpdatedAt", "completedAt", "cancelledAt", "occupiedAt"]
+    for field in datetime_fields:
+        if field in doc and doc[field] is not None:
+            if isinstance(doc[field], datetime):
+                doc[field] = doc[field].isoformat() + 'Z'
+            elif isinstance(doc[field], str) and not doc[field].endswith('Z'):
+                # Already a string but missing Z, add it
+                doc[field] = doc[field] + 'Z' if 'T' in doc[field] else doc[field]
+    
     return doc
 
 
@@ -30,6 +42,7 @@ async def list_orders(
     status: Optional[str] = None,
     type: Optional[str] = None,
     table: Optional[int] = None,
+    waiter_id: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     limit: int = Query(100, le=500),
@@ -45,6 +58,8 @@ async def list_orders(
         query["type"] = type
     if table:
         query["tableNumber"] = table
+    if waiter_id and waiter_id != "all":
+        query["waiterId"] = waiter_id
     if date_from:
         query["createdAt"] = {"$gte": datetime.fromisoformat(date_from)}
     if date_to:
@@ -118,9 +133,9 @@ async def create_order(data: dict):
     # Generate order number
     count = await db.orders.count_documents({})
     data["orderNumber"] = f"#ORD-{count + 1001}"
-    data["createdAt"] = datetime.utcnow()
+    data["createdAt"] = datetime.utcnow().isoformat() + 'Z'
     data["status"] = data.get("status", "placed")
-    data["statusUpdatedAt"] = datetime.utcnow()
+    data["statusUpdatedAt"] = datetime.utcnow().isoformat() + 'Z'
     
     result = await db.orders.insert_one(data)
     created = await db.orders.find_one({"_id": result.inserted_id})
@@ -138,7 +153,7 @@ async def update_order(order_id: str, data: dict):
     """Update order"""
     db = get_db()
     
-    data["updatedAt"] = datetime.utcnow()
+    data["updatedAt"] = datetime.utcnow().isoformat() + 'Z'
     data.pop("_id", None)
     
     result = await db.orders.update_one(
@@ -155,26 +170,93 @@ async def update_order(order_id: str, data: dict):
     return serialize_doc(updated)
 
 
+# Helper function for inventory deduction (imported from recipes module)
+async def call_inventory_deduction(order_id: str, items: list):
+    """Helper to call inventory deduction from recipes module"""
+    from .recipes import deduct_inventory_for_order
+    return await deduct_inventory_for_order({"orderId": order_id, "items": items})
+
+
 @router.patch("/{order_id}/status")
-async def update_order_status(order_id: str, status: str):
-    """Update order status"""
+async def update_order_status(order_id: str, status: str, deduct_inventory: bool = True):
+    """
+    Update order status with automatic flow integration.
+    
+    Flow:
+    - placed → preparing: Triggers inventory deduction if deduct_inventory=true
+    - preparing → ready: Notifies for serving
+    - ready → served → completed: Updates billing/payment
+    
+    Query param `deduct_inventory` can be set to false to skip deduction (for re-printing etc.)
+    """
     db = get_db()
     
     valid_statuses = ["placed", "preparing", "ready", "served", "completed", "cancelled"]
     if status not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
     
+    # Get current order to check previous status
+    order = await db.orders.find_one({"_id": ObjectId(order_id)})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    previous_status = order.get("status")
+    
+    # Update status
     result = await db.orders.update_one(
         {"_id": ObjectId(order_id)},
-        {"$set": {"status": status, "statusUpdatedAt": datetime.utcnow()}}
+        {"$set": {"status": status, "statusUpdatedAt": datetime.utcnow().isoformat() + 'Z'}}
     )
     
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Order not found")
     
-    await log_audit("status_update", "order", order_id, {"newStatus": status})
+    # FLOW INTEGRATION: Trigger inventory deduction when order starts preparing
+    inventory_deducted = False
+    deduction_result = None
     
-    return {"success": True, "status": status}
+    if status == "preparing" and deduct_inventory:
+        items = order.get("items", [])
+        if items:
+            try:
+                deduction_result = await call_inventory_deduction(order_id, items)
+                inventory_deducted = True
+            except Exception as e:
+                # Log but don't fail the order update
+                print(f"Inventory deduction error: {e}")
+    
+    # FLOW INTEGRATION: Create notification for kitchen/waiter
+    if status == "ready":
+        notification = {
+            "type": "order_ready",
+            "orderId": order_id,
+            "orderNumber": order.get("orderNumber"),
+            "tableNumber": order.get("tableNumber"),
+            "message": f"Order {order.get('orderNumber')} is ready for serving",
+            "createdAt": datetime.utcnow().isoformat() + 'Z'
+        }
+        await db.notifications.insert_one(notification)
+    
+    # FLOW INTEGRATION: Update payment when completed
+    if status == "completed" and order.get("paymentStatus") != "paid":
+        await db.orders.update_one(
+            {"_id": ObjectId(order_id)},
+            {"$set": {"paymentStatus": "settled", "completedAt": datetime.utcnow().isoformat() + 'Z'}}
+        )
+    
+    await log_audit("status_update", "order", order_id, {
+        "newStatus": status,
+        "previousStatus": previous_status,
+        "inventoryDeducted": inventory_deducted
+    })
+    
+    return {
+        "success": True, 
+        "status": status,
+        "previousStatus": previous_status,
+        "inventoryDeducted": inventory_deducted,
+        "deductionResult": deduction_result
+    }
 
 
 @router.delete("/{order_id}")
@@ -189,7 +271,7 @@ async def delete_order(order_id: str):
     
     result = await db.orders.update_one(
         {"_id": ObjectId(order_id)},
-        {"$set": {"status": "cancelled", "cancelledAt": datetime.utcnow()}}
+        {"$set": {"status": "cancelled", "cancelledAt": datetime.utcnow().isoformat() + 'Z'}}
     )
     
     if result.matched_count == 0:
@@ -243,3 +325,145 @@ async def update_item_status(order_id: str, item_index: int, status: str):
         raise HTTPException(status_code=404, detail="Order not found")
     
     return {"success": True}
+
+
+# ============ KITCHEN WORKFLOW ENDPOINTS ============
+
+@router.post("/kitchen/start-preparing/{order_id}")
+async def start_preparing_order(order_id: str):
+    """
+    Start preparing an order in kitchen.
+    This triggers:
+    1. Order status changed to 'preparing'
+    2. Inventory deduction based on recipes
+    3. Kitchen timer starts
+    """
+    return await update_order_status(order_id, "preparing", deduct_inventory=True)
+
+
+@router.post("/kitchen/mark-ready/{order_id}")
+async def mark_order_ready(order_id: str):
+    """
+    Mark order as ready in kitchen.
+    This triggers:
+    1. Order status changed to 'ready'
+    2. Notification sent to waiters
+    """
+    return await update_order_status(order_id, "ready", deduct_inventory=False)
+
+
+@router.post("/kitchen/complete/{order_id}")
+async def complete_order_serving(order_id: str):
+    """
+    Complete order serving.
+    This triggers:
+    1. Order status changed to 'completed'
+    2. Payment status updated
+    3. Order completion time recorded
+    """
+    return await update_order_status(order_id, "completed", deduct_inventory=False)
+
+
+@router.get("/kitchen/active-orders")
+async def get_active_kitchen_orders():
+    """
+    Get all active orders for kitchen display.
+    Returns orders in: placed, preparing, ready states
+    """
+    db = get_db()
+    
+    orders = await db.orders.find({
+        "status": {"$in": ["placed", "preparing", "ready"]}
+    }).sort([
+        ("status", 1),  # placed first, then preparing, then ready
+        ("createdAt", 1)  # oldest first within status
+    ]).to_list(100)
+    
+    # Enhance with timing info
+    result = []
+    for order in orders:
+        doc = serialize_doc(order)
+        # Calculate time elapsed
+        created = order.get("createdAt")
+        if created:
+            elapsed = (datetime.utcnow() - created).total_seconds()
+            doc["elapsedMinutes"] = int(elapsed / 60)
+            # Add urgency flag
+            doc["isUrgent"] = elapsed > 600  # 10 minutes
+        result.append(doc)
+    
+    return result
+
+
+@router.get("/kitchen/stats")
+async def get_kitchen_stats():
+    """Get kitchen statistics"""
+    db = get_db()
+    
+    placed = await db.orders.count_documents({"status": "placed"})
+    preparing = await db.orders.count_documents({"status": "preparing"})
+    ready = await db.orders.count_documents({"status": "ready"})
+    
+    # Average prep time (for completed orders in last hour)
+    one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+    recent_completed = await db.orders.find({
+        "status": "completed",
+        "completedAt": {"$gte": one_hour_ago}
+    }).to_list(100)
+    
+    avg_time = 0
+    if recent_completed:
+        total_time = sum([
+            (o.get("completedAt") - o.get("createdAt")).total_seconds() 
+            for o in recent_completed 
+            if o.get("completedAt") and o.get("createdAt")
+        ])
+        avg_time = int(total_time / len(recent_completed) / 60) if total_time > 0 else 0
+    
+    return {
+        "pending": placed,
+        "inProgress": preparing,
+        "readyToServe": ready,
+        "avgPrepTimeMinutes": avg_time,
+        "totalActive": placed + preparing + ready
+    }
+
+
+# ============ WORKFLOW INTEGRATION ============
+
+@router.post("/workflow/process-order")
+async def process_order_workflow(data: dict):
+    """
+    Complete workflow for processing an order.
+    Coordinates between Orders, Kitchen, Inventory, and Billing.
+    
+    Expected data:
+    {
+        "orderId": "...",
+        "action": "start_preparing|mark_ready|serve|complete|cancel",
+        "items": [...] // Only needed for start_preparing
+    }
+    """
+    action = data.get("action")
+    order_id = data.get("orderId")
+    
+    if not order_id or not action:
+        raise HTTPException(status_code=400, detail="orderId and action are required")
+    
+    valid_actions = ["start_preparing", "mark_ready", "serve", "complete", "cancel"]
+    if action not in valid_actions:
+        raise HTTPException(status_code=400, detail=f"Invalid action. Must be one of: {valid_actions}")
+    
+    # Map actions to status
+    action_to_status = {
+        "start_preparing": "preparing",
+        "mark_ready": "ready",
+        "serve": "served",
+        "complete": "completed",
+        "cancel": "cancelled"
+    }
+    
+    deduct = action == "start_preparing"
+    new_status = action_to_status[action]
+    
+    return await update_order_status(order_id, new_status, deduct_inventory=deduct)

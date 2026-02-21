@@ -1,5 +1,6 @@
 export interface Order {
   id: string;
+  orderNumber?: string;
   tableNumber?: number;
   customerName?: string;
   items: Array<{

@@ -31,7 +31,7 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react';
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { attendanceApi, staffApi } from '@/utils/api';
 import { toast } from 'sonner';
 
@@ -66,7 +66,11 @@ interface AttendanceForm {
   notes: string;
 }
 
-export function StaffAttendance() {
+interface StaffAttendanceProps {
+  globalSearch?: string;
+}
+
+export function StaffAttendance({ globalSearch = '' }: StaffAttendanceProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
@@ -230,15 +234,18 @@ export function StaffAttendance() {
     }
   };
 
+  // Combine local and global search
+  const effectiveSearch = globalSearch || searchTerm;
+  
   const filteredAttendance = attendance.filter((record: AttendanceRecord) => 
-    record.staffName?.toLowerCase().includes(searchTerm.toLowerCase())
+    effectiveSearch === '' || record.staffName?.toLowerCase().includes(effectiveSearch.toLowerCase())
   );
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-semibold tracking-tight text-[#2D2D2D]">Attendance Tracking</h2>
-          <p className="text-muted-foreground">Real-time staff monitoring and shift verification.</p>
+          <h2 className="text-3xl font-semibold tracking-tight text-white">Attendance Tracking</h2>
+          <p className="text-gray-300">Real-time staff monitoring and shift verification.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button 
@@ -376,7 +383,7 @@ export function StaffAttendance() {
           <CardContent className="p-6">
             <div className="flex justify-between items-start mb-4">
               <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Active On-Site</p>
+                <p className="text-[10px] font-bold text-white-600 uppercase tracking-widest mb-1">Active On-Site</p>
                 {loading ? (
                   <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
                 ) : (
@@ -400,7 +407,7 @@ export function StaffAttendance() {
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Late Today</p>
+                <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1">Late Today</p>
                 {loading ? (
                   <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
                 ) : (
@@ -417,7 +424,7 @@ export function StaffAttendance() {
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Absences</p>
+                <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1">Absences</p>
                 {loading ? (
                   <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
                 ) : (
@@ -464,7 +471,7 @@ export function StaffAttendance() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-[#FDFCFB]">
-                <tr className="text-left text-gray-400 uppercase tracking-wider text-[11px] font-bold border-b border-gray-100">
+                <tr className="text-left text-gray-600 uppercase tracking-wider text-[11px] font-bold border-b border-gray-100">
                   <th className="px-6 py-4">Staff Member</th>
                   <th className="px-6 py-4">Shift</th>
                   <th className="px-6 py-4">Clock In</th>
@@ -512,11 +519,11 @@ export function StaffAttendance() {
                             </div>
                             <div>
                               <div className="font-bold text-gray-800">{staffInfo.name}</div>
-                              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{staffInfo.role}</div>
+                              <div className="text-[10px] font-bold text-gray-600 uppercase tracking-tighter">{staffInfo.role}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-gray-500 font-medium">{staffInfo.shift}</td>
+                        <td className="px-6 py-4 text-gray-700 font-medium">{staffInfo.shift}</td>
                         <td className="px-6 py-4">
                           <div>
                             <div className="font-bold text-gray-800">{record.checkIn || '--:--'}</div>

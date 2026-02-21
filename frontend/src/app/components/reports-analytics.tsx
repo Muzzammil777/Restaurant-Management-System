@@ -120,17 +120,17 @@ export function ReportsAnalytics() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="bg-analytics-module min-h-screen px-4 md:px-6 py-6 space-y-6">
+      <div className="module-container flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Reports & Analytics</h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h2 className="text-2xl font-semibold tracking-tight text-white drop-shadow-lg">Reports & Analytics</h2>
+          <p className="text-sm text-gray-200 mt-1">
             Comprehensive insights and performance metrics
           </p>
         </div>
         <div className="flex gap-3">
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-40 !bg-white !text-gray-700 border border-white/90 hover:!bg-white shadow-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -140,7 +140,7 @@ export function ReportsAnalytics() {
               <SelectItem value="year">This Year</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline">
+          <Button variant="outline" className="!bg-white !text-gray-700 border border-white/90 hover:!bg-white shadow-sm">
             <Download className="h-4 w-4 mr-2" />
             Export Report
           </Button>

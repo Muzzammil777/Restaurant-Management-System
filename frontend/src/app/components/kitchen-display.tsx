@@ -33,9 +33,16 @@ export function KitchenDisplay() {
     try {
       const result = await ordersApi.list();
       const data = result.data || [];
-      setOrders(data.filter((order: Order) => 
-        ['placed', 'preparing', 'ready'].includes(order.status))
-      );
+      // Map _id to id for frontend compatibility and filter for kitchen orders
+      const mappedOrders = data
+        .map((order: any) => ({
+          ...order,
+          id: order._id || order.id,
+        }))
+        .filter((order: Order) => 
+          ['placed', 'preparing', 'ready'].includes(order.status)
+        );
+      setOrders(mappedOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
       setOrders([]); // Set empty array on error
@@ -46,7 +53,8 @@ export function KitchenDisplay() {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      const cleanId = orderId.replace('order:', '');
+      // Clean the order ID - remove any prefix and get raw MongoDB ID
+      const cleanId = orderId.replace('order:', '').replace(/^.*:/, '');
       await ordersApi.updateStatus(cleanId, newStatus);
       toast.success('Order updated!');
       
@@ -111,13 +119,13 @@ export function KitchenDisplay() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="bg-kitchen-display-module min-h-screen p-6 space-y-6">
+      <div className="module-container flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <ChefHat className="h-8 w-8" />
+          <ChefHat className="h-8 w-8 text-white drop-shadow-lg" />
           <div>
-            <h1 className="text-3xl font-bold">Kitchen Display System</h1>
-            <p className="text-muted-foreground">Kitchen Order Tickets (KOT) • Active orders queue</p>
+            <h1 className="text-3xl font-bold text-white drop-shadow-lg">Kitchen Display System</h1>
+            <p className="text-gray-200">Kitchen Order Tickets (KOT) • Active orders queue</p>
           </div>
         </div>
         <Button 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useSpring, useTransform } from 'motion/react';
+import { motion, AnimatePresence, useSpring, useTransform } from 'framer-motion';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
@@ -9,7 +9,6 @@ import { Input } from '@/app/components/ui/input';
 import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { LoadingOrders } from '@/app/components/ui/loading-spinner';
 import { Clock, Package, CheckCircle, XCircle, CreditCard, Eye, IndianRupee, UtensilsCrossed, Zap, Search, Repeat, AlertCircle, TrendingUp, Activity, Timer, Undo2, Gauge, MoveRight, Ban, Sparkles, Trash2 } from 'lucide-react';
-import { API_BASE_URL } from '@/utils/supabase/info';
 import { toast } from 'sonner';
 import { PaymentDialog } from '@/app/components/billing/payment-dialog';
 import { QuickOrderPOS } from '@/app/components/quick-order-pos';
@@ -29,7 +28,7 @@ import { ordersApi, menuApi } from '@/utils/api';
 // Animated Counter Component for count-up effect
 function AnimatedCounter({ value, className = '' }: { value: number; className?: string }) {
   const spring = useSpring(0, { stiffness: 75, damping: 15 });
-  const display = useTransform(spring, (current) => Math.round(current));
+  const display = useTransform(spring, (current: number) => Math.round(current));
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -92,23 +91,47 @@ export function OrderManagement() {
   const fetchOrders = async () => {
     try {
       const result = await ordersApi.list();
-      const ordersData = (result as any)?.data || result || [];
-      if (Array.isArray(ordersData)) {
-        // Transform API data to match Order interface
-        const transformedOrders = ordersData.map((order: any) => ({
-          ...order,
-          total: order.totalAmount || order.total || 0,
-          items: (Array.isArray(order.items) ? order.items : []).map((item: any) => ({
-            ...item,
-            price: item.price || 0,
-            quantity: item.quantity || 0,
-            name: item.name || item.menuItemName || 'Unknown Item'
-          }))
+      const rawOrders = Array.isArray(result?.data)
+        ? result.data
+        : Array.isArray(result as any)
+          ? (result as any)
+          : [];
+      
+      // Safely parse numeric values, using ?? to handle 0 correctly
+      const safeNumber = (val: any, fallback: number = 0): number => {
+        const num = Number(val);
+        return isNaN(num) ? fallback : num;
+      };
+      
+      setOrders(rawOrders.map((order: any) => {
+        // Normalize items first so we can calculate total as fallback
+        const normalizedItems = (order.items || []).map((item: any) => ({
+          ...item,
+          price: safeNumber(item.price ?? item.unitPrice ?? item.Price, 0),
+          quantity: Math.max(1, safeNumber(item.quantity ?? item.qty ?? item.Qty, 1)),
+          name: item.name || item.dishName || item.itemName || item.Name || 'Unknown Item'
         }));
-        setOrders(transformedOrders as any);
-      }
+        
+        // Calculate total from items if raw total is invalid
+        const rawTotal = safeNumber(order.total ?? order.totalAmount ?? order.grandTotal);
+        const calculatedTotal = normalizedItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+        const finalTotal = rawTotal > 0 ? rawTotal : calculatedTotal;
+        
+        return {
+          ...order,
+          // Map MongoDB _id to id for frontend consistency
+          id: order._id || order.id,
+          orderNumber: order.orderNumber || order.order_number,
+          total: finalTotal,
+          status: order.status || 'placed',
+          type: order.type || 'dine-in',
+          createdAt: order.createdAt || order.created_at || new Date().toISOString(),
+          items: normalizedItems
+        };
+      }));
     } catch (error) {
       console.error('Error fetching orders:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to fetch orders. Please check your connection.');
       setOrders([]);
     } finally {
       setLoading(false);
@@ -118,10 +141,8 @@ export function OrderManagement() {
   const fetchMenuItems = async () => {
     try {
       const result = await menuApi.list();
-      const menuData = (result as any)?.data || result || [];
-      if (Array.isArray(menuData)) {
-        setMenuItems(menuData as any);
-      }
+      const items = Array.isArray(result) ? result : (result as any)?.data || [];
+      setMenuItems(items.filter((item: MenuItem) => item.available !== false));
     } catch (error) {
       console.error('Error fetching menu items:', error);
     }
@@ -142,23 +163,23 @@ export function OrderManagement() {
         setUndoCountdown(10);
       }
 
-      await ordersApi.updateStatus(orderId, newStatus);
-      if (true) {
-        const statusText = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
-        toast.success(`Order marked as ${statusText}!`);
-        
-        if (newStatus === 'served' && order.type === 'dine-in' && order.tableNumber) {
-          window.dispatchEvent(new CustomEvent('order:served', {
-            detail: {
-              orderId: orderId,
-              tableNumber: order.tableNumber,
-              orderType: order.type
-            }
-          }));
-        }
-        
-        fetchOrders();
+      // Use real API - clean the order ID to get raw MongoDB ID
+      const cleanId = orderId.replace('order:', '').replace(/^.*:/, '');
+      await ordersApi.updateStatus(cleanId, newStatus);
+      const statusText = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+      toast.success(`Order marked as ${statusText}!`);
+      
+      if (newStatus === 'served' && order.type === 'dine-in' && order.tableNumber) {
+        window.dispatchEvent(new CustomEvent('order:served', {
+          detail: {
+            orderId: orderId,
+            tableNumber: order.tableNumber,
+            orderType: order.type
+          }
+        }));
       }
+      
+      fetchOrders();
     } catch (error) {
       console.error('Error updating order:', error);
       toast.error('Failed to update order');
@@ -167,7 +188,9 @@ export function OrderManagement() {
 
   const deleteOrder = async (orderId: string) => {
     try {
-      await ordersApi.delete(orderId);
+      // Use real API
+      const cleanId = orderId.replace('order:', '');
+      await ordersApi.delete(cleanId);
       toast.success('Order deleted successfully!');
       fetchOrders();
     } catch (error) {
@@ -231,7 +254,7 @@ export function OrderManagement() {
     if (filterStatus !== 'all' && order.status !== filterStatus) return false;
     if (filterType !== 'all' && order.type !== filterType) return false;
     if (filterTable !== 'all' && order.tableNumber?.toString() !== filterTable) return false;
-    if (searchQuery && !generateOrderDisplayId(order.id).toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (searchQuery && !generateOrderDisplayId(order.id, order.orderNumber).toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
 
@@ -479,22 +502,13 @@ export function OrderManagement() {
           </h1>
           <p className="text-muted-foreground mt-1">Manage and track all orders in real-time</p>
         </div>
-        
-        <motion.div
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <Button 
-            onClick={() => setQuickOrderOpen(true)} 
-            size="lg" 
-            className="gap-2 shadow-lg btn-ripple glossy bg-gradient-to-r from-[#8B5A2B] to-[#A67C52] hover:from-[#7a4e24] hover:to-[#8B5A2B] border-0"
+
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}>
+          <Button
+            onClick={() => setQuickOrderOpen(true)}
+            className="gap-2 shadow-md btn-ripple bg-gradient-to-r from-[#8B5A2B] to-[#A67C52] hover:from-[#7a4e24] hover:to-[#8B5A2B] border-0"
           >
-            <motion.div
-              animate={{ rotate: [0, 15, -15, 0] }}
-              transition={{ duration: 0.6, repeat: Infinity, repeatDelay: 2 }}
-            >
-              <Zap className="h-5 w-5" />
-            </motion.div>
+            <Zap className="h-4 w-4" />
             Quick Order
           </Button>
         </motion.div>
@@ -757,8 +771,7 @@ export function OrderManagement() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {sortedOrders.map((order, index) => {
-            const orderItems = Array.isArray(order.items) ? order.items : [];
-            const totalItems = orderItems.reduce((sum, item) => sum + item.quantity, 0);
+            const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
             const ageInMinutes = getOrderAge(order);
             const delayLevel = getDelayLevel(ageInMinutes, order.status);
             const priority = getOrderPriority(order);
@@ -783,7 +796,7 @@ export function OrderManagement() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <CardTitle className="text-xl font-bold gradient-text">
-                            {generateOrderDisplayId(order.id)}
+                            {generateOrderDisplayId(order.id, order.orderNumber)}
                           </CardTitle>
                           {!['served', 'completed', 'cancelled'].includes(order.status) && (
                             <motion.div
@@ -979,23 +992,30 @@ export function OrderManagement() {
                         Order Items ({totalItems})
                       </p>
                       <ul className="text-sm space-y-2">
-                        {(Array.isArray(order.items) ? order.items : []).map((item, idx) => (
-                          <motion.li 
-                            key={idx} 
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: idx * 0.05 }}
-                            className="flex justify-between items-center bg-white p-2 rounded-lg shadow-sm"
-                          >
-                            <span className="font-medium text-gray-700">
-                              <span className="text-[#8B5A2B] font-bold">{item.quantity}x</span> {item.name}
-                            </span>
-                            <span className="flex items-center gap-0.5 font-bold text-[#8B5A2B]">
-                              <IndianRupee className="h-3.5 w-3.5" />
-                              {((item.price || 0) * (item.quantity || 0)).toFixed(2)}
-                            </span>
-                          </motion.li>
-                        ))}</ul>
+                        {order.items && order.items.length > 0 ? (
+                          order.items.map((item: any, idx) => {
+                            const itemName = item.name || item.dishName || item.itemName || `Item ${idx + 1}`;
+                            return (
+                            <motion.li 
+                              key={idx} 
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: idx * 0.05 }}
+                              className="flex justify-between items-center bg-white p-2 rounded-lg shadow-sm"
+                            >
+                              <span className="font-medium text-gray-700">
+                                <span className="text-[#8B5A2B] font-bold">{item.quantity || 0}x</span> {itemName}
+                              </span>
+                              <span className="flex items-center gap-0.5 font-bold text-[#8B5A2B]">
+                                <IndianRupee className="h-3.5 w-3.5" />
+                                {((item.price || 0) * (item.quantity || 0)).toFixed(2)}
+                              </span>
+                            </motion.li>
+                          );
+                          })
+                        ) : (
+                          <li className="text-gray-500">No items found</li>
+                        )}</ul>
                     </div>
 
                     {/* Total */}
@@ -1085,7 +1105,7 @@ export function OrderManagement() {
                           </DialogTrigger>
                           <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
                             <DialogHeader>
-                              <DialogTitle className="gradient-text text-xl">Order {generateOrderDisplayId(order.id)}</DialogTitle>
+                              <DialogTitle className="gradient-text text-xl">Order {generateOrderDisplayId(order.id, order.orderNumber)}</DialogTitle>
                               <DialogDescription>Complete order information</DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 mt-4">
@@ -1121,15 +1141,17 @@ export function OrderManagement() {
                               <div className="bg-[#F7F3EE] p-3 rounded-lg">
                                 <p className="text-xs font-semibold text-muted-foreground mb-2">ORDER ITEMS</p>
                                 <ul className="space-y-2">
-                                  {(Array.isArray(order.items) ? order.items : []).map((item, idx) => (
+                                  {order.items.map((item: any, idx) => {
+                                    const itemName = item.name || item.dishName || item.itemName || `Item ${idx + 1}`;
+                                    return (
                                     <li key={idx} className="flex justify-between text-sm bg-white p-2 rounded">
-                                      <span className="font-medium">{item.quantity}x {item.name}</span>
+                                      <span className="font-medium">{item.quantity || 0}x {itemName}</span>
                                       <span className="flex items-center gap-0.5 font-semibold">
                                         <IndianRupee className="h-3 w-3" />
                                         {((item.price || 0) * (item.quantity || 0)).toFixed(2)}
                                       </span>
                                     </li>
-                                  ))}
+                                  )})}
                                 </ul>
                               </div>
                               <div className="bg-[#8B5A2B] text-white p-4 rounded-lg">

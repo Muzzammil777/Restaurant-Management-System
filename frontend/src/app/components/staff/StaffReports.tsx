@@ -142,8 +142,8 @@ export function StaffReports() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-semibold tracking-tight text-[#2D2D2D]">Financial & Labor Reports</h2>
-          <p className="text-muted-foreground">Detailed analysis of labor distribution and mandatory overtime expenditures.</p>
+          <h2 className="text-3xl font-semibold tracking-tight text-white">Financial & Labor Reports</h2>
+          <p className="text-gray-300">Detailed analysis of labor distribution and mandatory overtime expenditures.</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-sm">
@@ -206,11 +206,11 @@ export function StaffReports() {
                 <div className="flex items-center gap-6 mt-6 ml-4">
                   <div className="flex items-center gap-2">
                     <div className="h-3 w-3 rounded-sm bg-[#E5DDD3]" />
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Regular Salary</span>
+                    <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Regular Salary</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="h-3 w-3 rounded-sm bg-[#8B5A2B]" />
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mandatory Overtime</span>
+                    <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Mandatory Overtime</span>
                   </div>
                 </div>
               </>
@@ -219,7 +219,7 @@ export function StaffReports() {
         </Card>
 
         <Card className="border-none shadow-sm bg-white rounded-2xl flex flex-col items-center justify-center p-6">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-8">Payroll Split</p>
+          <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-8">Payroll Split</p>
           {loading ? (
             <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
           ) : (
@@ -271,7 +271,7 @@ export function StaffReports() {
 
         <Card className="border-none shadow-sm bg-white rounded-2xl">
           <CardContent className="p-8">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Avg OT Per Employee</p>
+            <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-4">Avg OT Per Employee</p>
             {loading ? (
               <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
             ) : (
@@ -285,7 +285,7 @@ export function StaffReports() {
 
         <Card className="border-none shadow-sm bg-white rounded-2xl">
           <CardContent className="p-8">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Policy Violations</p>
+            <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-4">Policy Violations</p>
             {loading ? (
               <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
             ) : (

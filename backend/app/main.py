@@ -10,6 +10,7 @@ load_dotenv(BASE_DIR / '.env')
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .db import init_db, get_db
+from .scheduler import start_scheduler, shutdown_scheduler
 
 # Import all route modules
 from .routes import settings as settings_router
@@ -20,7 +21,6 @@ from .routes import orders as orders_router
 from .routes import tables as tables_router
 from .routes import inventory as inventory_router
 from .routes import customers as customers_router
-from .routes import delivery as delivery_router
 from .routes import offers as offers_router
 from .routes import notifications as notifications_router
 from .routes import billing as billing_router
@@ -41,7 +41,20 @@ app.add_middleware(
 
 @app.on_event('startup')
 async def startup():
-    init_db()
+    try:
+        from .db import init_db
+        init_db()
+        print("✅ MongoDB connected successfully")
+        # Start the backup scheduler
+        await start_scheduler()
+    except Exception as e:
+        print(f"⚠️  MongoDB connection warning: {e}")
+        print("📝 API will work in read-only mode or with mock data")
+
+
+@app.on_event('shutdown')
+async def shutdown():
+    shutdown_scheduler()
 
 
 # Settings & Security
@@ -56,9 +69,8 @@ app.include_router(tables_router.router, prefix='/api/tables')
 app.include_router(inventory_router.router, prefix='/api/inventory')
 app.include_router(recipes_router.router, prefix='/api/recipes')
 
-# Customer & Delivery
+# Customer Operations
 app.include_router(customers_router.router, prefix='/api/customers')
-app.include_router(delivery_router.router, prefix='/api/delivery')
 
 # Marketing & Communications
 app.include_router(offers_router.router, prefix='/api/offers')
@@ -109,7 +121,6 @@ async def seed_database(secret: str = ''):
         {"name": "Chef User", "email": "chef@restaurant.com", "phone": "+91 98765 00003", "role": "chef", "password": "chef123"},
         {"name": "Waiter User", "email": "waiter@restaurant.com", "phone": "+91 98765 00004", "role": "waiter", "password": "waiter123"},
         {"name": "Cashier User", "email": "cashier@restaurant.com", "phone": "+91 98765 00005", "role": "cashier", "password": "cashier123"},
-        {"name": "Delivery User", "email": "delivery@restaurant.com", "phone": "+91 98765 00006", "role": "delivery", "password": "delivery123"},
     ]
     
     try:

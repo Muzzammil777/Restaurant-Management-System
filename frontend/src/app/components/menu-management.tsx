@@ -100,8 +100,8 @@ const normalizeComboMeals = (items: any[]): ComboMeal[] =>
     name: combo.name ?? "Unnamed Combo",
     description: combo.description ?? "",
     cuisine: combo.cuisine ?? "North Indian",
-    originalPrice: Number(combo.originalPrice ?? combo.discountedPrice ?? 0),
-    discountedPrice: Number(combo.discountedPrice ?? combo.originalPrice ?? 0),
+    originalPrice: Number(combo.originalPrice) || Number(combo.discountedPrice) || Number(combo.price) || 0,
+    discountedPrice: Number(combo.discountedPrice) || Number(combo.price) || Number(combo.originalPrice) || 0,
     image: combo.image ?? "",
     available: combo.available ?? true,
     calories: Number(combo.calories ?? 0),
@@ -222,14 +222,23 @@ useEffect(() => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
 
+    // Parse prices with validation
+    const discountedPrice = parseFloat(fd.get("price") as string) || 0;
+    const originalPrice = parseFloat(fd.get("originalPrice") as string) || 0;
+
+    if (discountedPrice <= 0 || originalPrice <= 0) {
+      toast.error("Please enter valid prices (must be greater than 0)");
+      return;
+    }
+
     const payload = {
       name: fd.get("name") as string,
       cuisine: fd.get("cuisine") as CuisineType,
-      discountedPrice: parseFloat(fd.get("price") as string),
-      calories: parseInt(fd.get("calories") as string),
+      discountedPrice: discountedPrice,
+      calories: parseInt(fd.get("calories") as string) || 0,
       prepTime: fd.get("prepTime") as string,
       description: fd.get("desc") as string,
-      originalPrice: editingCombo?.originalPrice ?? parseFloat(fd.get("originalPrice") as string),
+      originalPrice: originalPrice,
       image: editingCombo?.image ?? "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800",
       available: editingCombo?.available ?? true,
     };
@@ -716,45 +725,48 @@ useEffect(() => {
                 </div>
 
                 {/* Dark Brown Container - Bottom Section */}
-                <div className="p-4 space-y-2" style={{ height: '248px', backgroundColor: '#2A1A05' }}>
+                <div className="p-3 flex flex-col overflow-hidden" style={{ height: '248px', backgroundColor: '#2A1A05' }}>
                   {/* Title - WHITE COLOR */}
-                  <h3 className="text-white font-bold text-base leading-tight" style={{ fontFamily: 'Poppins, sans-serif', color: '#FFFFFF' }}>
+                  <h3 className="text-white font-bold text-sm leading-tight truncate" style={{ fontFamily: 'Poppins, sans-serif', color: '#FFFFFF' }}>
                     {combo.name}
                   </h3>
                   
                   {/* Description */}
-                  <p className="text-gray-300 text-sm line-clamp-2 leading-snug" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-gray-300 text-xs line-clamp-2 leading-snug mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                     {combo.description}
                   </p>
 
                   {/* Info Row - Calories and Time */}
-                  <div className="flex items-center justify-between text-white text-xs pt-1">
+                  <div className="flex items-center justify-between text-white text-xs mt-2">
                     <div className="flex items-center gap-1">
-                      <Flame className="h-4 w-4 text-orange-400" />
+                      <Flame className="h-3 w-3 text-orange-400" />
                       <span style={{ fontFamily: 'Inter, sans-serif' }}>{combo.calories} kcal</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4 text-gray-400" />
+                      <Clock className="h-3 w-3 text-gray-400" />
                       <span style={{ fontFamily: 'Inter, sans-serif' }}>{combo.prepTime}</span>
                     </div>
                   </div>
 
                   {/* Divider */}
-                  <div className="h-px bg-white/20 my-2" />
+                  <div className="h-px bg-white/20 my-2 flex-shrink-0" />
 
                   {/* Price Section with Strikethrough */}
-                  <div className="pt-1">
+                  <div>
                     <div className="flex items-baseline gap-2 mb-1">
-                      <p className="text-gray-400 text-sm line-through" style={{ fontFamily: 'Inter, sans-serif' }}>₹{combo.originalPrice}</p>
-                      <Badge className="bg-green-600 text-white text-xs px-2 py-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-gray-400 text-xs line-through" style={{ fontFamily: 'Inter, sans-serif' }}>₹{combo.originalPrice}</p>
+                      <Badge className="bg-green-600 text-white text-[10px] px-1.5 py-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
                         Save ₹{combo.originalPrice - combo.discountedPrice}
                       </Badge>
                     </div>
-                    <p className="text-white font-bold text-xl leading-none" style={{ fontFamily: 'Poppins, sans-serif' }}>₹{combo.discountedPrice}</p>
+                    <p className="text-white font-bold text-lg leading-none" style={{ fontFamily: 'Poppins, sans-serif' }}>₹{combo.discountedPrice}</p>
                   </div>
 
+                  {/* Spacer to push admin actions to bottom */}
+                  <div className="flex-grow" />
+
                   {/* Admin Actions Row */}
-                  <div className="flex items-center justify-between pt-3 border-t border-white/10">
+                  <div className="flex items-center justify-between pt-2 border-t border-white/10 flex-shrink-0">
                     <div className="flex items-center gap-2">
                       <span className="text-white/80 text-xs" style={{ fontFamily: 'Inter, sans-serif' }}>Available</span>
                       <Switch 
@@ -974,15 +986,13 @@ useEffect(() => {
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              {!editingCombo && (
-                <div className="space-y-2">
-                  <Label htmlFor="originalPrice" style={{ fontFamily: 'Inter, sans-serif' }}>Original Price (₹)</Label>
-                  <Input id="originalPrice" name="originalPrice" type="number" required />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="originalPrice" style={{ fontFamily: 'Inter, sans-serif' }}>Original Price (₹)</Label>
+                <Input id="originalPrice" name="originalPrice" type="number" defaultValue={editingCombo?.originalPrice || ''} min="1" required />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="comboPrice" style={{ fontFamily: 'Inter, sans-serif' }}>Discounted Price (₹)</Label>
-                <Input id="comboPrice" name="price" type="number" defaultValue={editingCombo?.discountedPrice} required />
+                <Input id="comboPrice" name="price" type="number" defaultValue={editingCombo?.discountedPrice || ''} min="1" required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="comboCalories" style={{ fontFamily: 'Inter, sans-serif' }}>Calories</Label>

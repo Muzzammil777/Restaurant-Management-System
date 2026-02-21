@@ -8,11 +8,8 @@ from enum import Enum
 class StaffRole(str, Enum):
     admin = "admin"
     manager = "manager"
-    chef = "chef"
     waiter = "waiter"
     cashier = "cashier"
-    delivery = "delivery"
-    staff = "staff"
 
 
 class ShiftType(str, Enum):
@@ -71,7 +68,7 @@ class LoginIn(BaseModel):
 class StaffIn(BaseModel):
     name: str
     email: EmailStr
-    role: Optional[StaffRole] = StaffRole.staff
+    role: Optional[StaffRole] = StaffRole.waiter
     password: Optional[str] = None
     phone: Optional[str] = None
     shift: Optional[ShiftType] = ShiftType.morning
@@ -179,6 +176,7 @@ class BackupCreate(BaseModel):
 class BackupConfig(BaseModel):
     autoBackupEnabled: bool = True
     frequency: Optional[str] = "daily"  # hourly, daily, weekly, monthly
+    backupTime: Optional[str] = "02:00"  # HH:MM format for scheduled backups
     retentionDays: int = 30
     backupLocation: Optional[str] = "local"  # local, google_drive, both
     googleDriveFolderId: Optional[str] = None
@@ -221,7 +219,6 @@ class RolePermissions(BaseModel):
     inventory: bool = False
     staff: bool = False
     billing: bool = False
-    delivery: bool = False
     offers: bool = False
     reports: bool = False
     notifications: bool = False
@@ -330,6 +327,7 @@ class MenuItemOut(BaseModel):
     createdAt: Optional[datetime] = None
     updatedAt: Optional[datetime] = None
 
+<<<<<<< HEAD
     # ==============================
 # NOTIFICATIONS
 # ==============================
@@ -364,3 +362,84 @@ class NotificationIn(BaseModel):
     channel: NotificationChannel
     status: Optional[NotificationStatus] = NotificationStatus.pending
     senderRole: Optional[str] = None
+=======
+
+# ============ TAX & SERVICE CONFIGURATION ============
+class TaxConfigIn(BaseModel):
+    gstEnabled: bool = True
+    gstRate: float = 5.0
+    cgstRate: float = 2.5
+    sgstRate: float = 2.5
+    serviceChargeEnabled: bool = True
+    serviceChargeRate: float = 10.0
+    packagingChargeEnabled: bool = True
+    packagingChargeRate: float = 20.0
+
+
+class TaxConfigOut(TaxConfigIn):
+    id: Optional[str] = Field(None, alias="_id")
+    updatedBy: Optional[str] = None
+    updatedAt: Optional[datetime] = None
+
+
+# ============ DISCOUNT RULES ============
+class DiscountType(str, Enum):
+    percentage = "percentage"
+    fixed = "fixed"
+
+
+class DiscountRuleIn(BaseModel):
+    name: str
+    type: DiscountType = DiscountType.percentage
+    value: float
+    minOrderAmount: float = 0
+    maxDiscount: float = 0
+    enabled: bool = True
+
+
+class DiscountRuleUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[DiscountType] = None
+    value: Optional[float] = None
+    minOrderAmount: Optional[float] = None
+    maxDiscount: Optional[float] = None
+    enabled: Optional[bool] = None
+
+
+class DiscountRuleOut(BaseModel):
+    id: Optional[str] = Field(None, alias="_id")
+    name: str
+    type: str
+    value: float
+    minOrderAmount: float
+    maxDiscount: float
+    enabled: bool
+    createdAt: Optional[datetime] = None
+    updatedAt: Optional[datetime] = None
+
+
+# ============ USER ACCOUNTS ============
+class UserAccountIn(BaseModel):
+    name: str
+    email: EmailStr
+    role: str = "Waiter"
+    password: str
+
+
+class UserAccountUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    role: Optional[str] = None
+    status: Optional[str] = None
+    password: Optional[str] = None
+
+
+class UserAccountOut(BaseModel):
+    id: Optional[str] = Field(None, alias="_id")
+    name: str
+    email: str
+    role: str
+    status: str = "active"
+    lastLogin: Optional[str] = None
+    createdAt: Optional[datetime] = None
+>>>>>>> d3e0b6370a1e1a0ae381e316c1750084767230a1

@@ -6,11 +6,15 @@ import { Label } from '@/app/components/ui/label';
 import { Badge } from '@/app/components/ui/badge';
 import { Switch } from '@/app/components/ui/switch';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/app/components/ui/dialog';
-import { Shield, Plus, Edit, Trash2, Check, X } from 'lucide-react';
+import { Shield, Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { rolesApi } from '@/utils/api';
+
+// Local storage key for role permissions
+const ROLE_PERMISSIONS_STORAGE_KEY = 'rms_role_permissions';
 
 interface Role {
-  id: string;
+  _id: string;
   name: string;
   description: string;
   permissions: {
@@ -30,9 +34,7 @@ interface Role {
   };
 }
 
-const STORAGE_KEY = 'rms_roles';
-
-const moduleNames = {
+const moduleNames: Record<string, string> = {
   dashboard: 'Dashboard',
   menu: 'Menu Management',
   orders: 'Order Management',
@@ -48,189 +50,121 @@ const moduleNames = {
   settings: 'Settings',
 };
 
+// Save role permissions to localStorage
+const saveRolePermissionsToStorage = (roles: Role[]): void => {
+  const permissionsMap: Record<string, string[]> = {};
+  roles.forEach(role => {
+    // Convert boolean permissions to array of allowed modules
+    const allowedModules = Object.entries(role.permissions)
+      .filter(([_, value]) => value === true)
+      .map(([key]) => key);
+    permissionsMap[role.name.toLowerCase()] = allowedModules;
+  });
+  localStorage.setItem(ROLE_PERMISSIONS_STORAGE_KEY, JSON.stringify(permissionsMap));
+  
+  // Dispatch a custom event to notify other components
+  window.dispatchEvent(new Event('role-permissions-updated'));
+};
+
 export function RoleBasedAccessControl() {
   const [roles, setRoles] = useState<Role[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [isAddRoleOpen, setIsAddRoleOpen] = useState(false);
   const [isEditRoleOpen, setIsEditRoleOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [newRole, setNewRole] = useState({
     name: '',
     description: '',
+    permissions: {} as Record<string, boolean>,
   });
 
-  // Load roles from localStorage
+  // Load roles from backend API
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      setRoles(JSON.parse(stored));
-    } else {
-      // Initialize with default roles
-      const defaultRoles: Role[] = [
-        {
-          id: '1',
-          name: 'Admin',
-          description: 'Full system access with all permissions',
-          permissions: {
-            dashboard: true,
-            menu: true,
-            orders: true,
-            kitchen: true,
-            tables: true,
-            inventory: true,
-            staff: true,
-            billing: true,
-            delivery: true,
-            offers: true,
-            reports: true,
-            notifications: true,
-            settings: true,
-          },
-        },
-        {
-          id: '2',
-          name: 'Manager',
-          description: 'Restaurant operations management with limited settings access',
-          permissions: {
-            dashboard: true,
-            menu: true,
-            orders: true,
-            kitchen: true,
-            tables: true,
-            inventory: true,
-            staff: true,
-            billing: true,
-            delivery: true,
-            offers: true,
-            reports: true,
-            notifications: true,
-            settings: false,
-          },
-        },
-        {
-          id: '3',
-          name: 'Chef',
-          description: 'Kitchen operations only',
-          permissions: {
-            dashboard: false,
-            menu: true,
-            orders: false,
-            kitchen: true,
-            tables: false,
-            inventory: false,
-            staff: false,
-            billing: false,
-            delivery: false,
-            offers: false,
-            reports: false,
-            notifications: true,
-            settings: false,
-          },
-        },
-        {
-          id: '4',
-          name: 'Cashier',
-          description: 'Billing and payment operations',
-          permissions: {
-            dashboard: false,
-            menu: false,
-            orders: true,
-            kitchen: false,
-            tables: true,
-            inventory: false,
-            staff: false,
-            billing: true,
-            delivery: false,
-            offers: true,
-            reports: false,
-            notifications: true,
-            settings: false,
-          },
-        },
-        {
-          id: '5',
-          name: 'Waiter',
-          description: 'Order taking and table management',
-          permissions: {
-            dashboard: false,
-            menu: true,
-            orders: true,
-            kitchen: false,
-            tables: true,
-            inventory: false,
-            staff: false,
-            billing: false,
-            delivery: false,
-            offers: true,
-            reports: false,
-            notifications: true,
-            settings: false,
-          },
-        },
-      ];
-      setRoles(defaultRoles);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultRoles));
-    }
+    const fetchRoles = async () => {
+      try {
+        const data = await rolesApi.getAll();
+        setRoles(data || []);
+        // Save to localStorage on initial load
+        if (data && data.length > 0) {
+          saveRolePermissionsToStorage(data);
+        }
+      } catch (error) {
+        console.error('Failed to load roles:', error);
+        toast.error('Failed to load roles');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRoles();
   }, []);
 
-  // Save to localStorage whenever roles changes
-  useEffect(() => {
-    if (roles.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(roles));
+  const updatePermission = async (roleId: string, permission: keyof Role['permissions']) => {
+    const role = roles.find(r => r._id === roleId);
+    if (!role) return;
+    
+    // Prevent modifying Admin role
+    if (role.name === 'Admin') {
+      toast.error('Cannot modify Admin role permissions');
+      return;
     }
-  }, [roles]);
 
-  const updatePermission = (roleId: string, permission: keyof Role['permissions']) => {
-    setRoles(prev => prev.map(role => {
-      if (role.id === roleId) {
-        // Prevent modifying Admin role
-        if (role.name === 'Admin') {
-          toast.error('Cannot modify Admin role permissions');
-          return role;
-        }
-        return {
-          ...role,
-          permissions: {
-            ...role.permissions,
-            [permission]: !role.permissions[permission],
-          },
-        };
-      }
-      return role;
-    }));
-    toast.success('Permission updated successfully');
+    const newPermissions = {
+      ...role.permissions,
+      [permission]: !role.permissions[permission],
+    };
+
+    setSaving(true);
+    try {
+      await rolesApi.update(roleId, {
+        name: role.name,
+        description: role.description,
+        permissions: newPermissions,
+      });
+      
+      setRoles(prev => prev.map(r => 
+        r._id === roleId ? { ...r, permissions: newPermissions } : r
+      ));
+      // Save to localStorage
+      const updatedRoles = roles.map(r => 
+        r._id === roleId ? { ...r, permissions: newPermissions } : r
+      );
+      saveRolePermissionsToStorage(updatedRoles);
+      toast.success('Permission updated successfully');
+    } catch (error) {
+      console.error('Failed to update permission:', error);
+      toast.error('Failed to update permission');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleAddRole = () => {
+  const handleAddRole = async () => {
     if (!newRole.name || !newRole.description) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    const role: Role = {
-      id: Date.now().toString(),
-      name: newRole.name,
-      description: newRole.description,
-      permissions: {
-        dashboard: false,
-        menu: false,
-        orders: false,
-        kitchen: false,
-        tables: false,
-        inventory: false,
-        staff: false,
-        billing: false,
-        delivery: false,
-        offers: false,
-        reports: false,
-        notifications: false,
-        settings: false,
-      },
-    };
-
-    setRoles(prev => [...prev, role]);
-    toast.success(`Role "${newRole.name}" created successfully!`);
-    setNewRole({ name: '', description: '' });
-    setIsAddRoleOpen(false);
+    setSaving(true);
+    try {
+      const created = await rolesApi.create({
+        name: newRole.name,
+        description: newRole.description,
+        permissions: newRole.permissions,
+      });
+      
+      setRoles(prev => [...prev, created]);
+      // Save to localStorage
+      saveRolePermissionsToStorage([...roles, created]);
+      toast.success(`Role "${newRole.name}" created successfully!`);
+      setNewRole({ name: '', description: '', permissions: {} });
+      setIsAddRoleOpen(false);
+    } catch (error) {
+      console.error('Failed to create role:', error);
+      toast.error('Failed to create role');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleEditRole = (role: Role) => {
@@ -242,43 +176,82 @@ export function RoleBasedAccessControl() {
     setIsEditRoleOpen(true);
   };
 
-  const handleUpdateRole = () => {
+  const handleUpdateRole = async () => {
     if (!editingRole) return;
 
-    setRoles(prev => prev.map(role => 
-      role.id === editingRole.id ? editingRole : role
-    ));
-    toast.success('Role updated successfully');
-    setIsEditRoleOpen(false);
-    setEditingRole(null);
+    setSaving(true);
+    try {
+      await rolesApi.update(editingRole._id, {
+        name: editingRole.name,
+        description: editingRole.description,
+        permissions: editingRole.permissions,
+      });
+      
+      setRoles(prev => prev.map(r => 
+        r._id === editingRole._id ? editingRole : r
+      ));
+      // Save to localStorage
+      const updatedRoles = roles.map(r => 
+        r._id === editingRole._id ? editingRole : r
+      );
+      saveRolePermissionsToStorage(updatedRoles);
+      toast.success('Role updated successfully');
+      setIsEditRoleOpen(false);
+      setEditingRole(null);
+    } catch (error) {
+      console.error('Failed to update role:', error);
+      toast.error('Failed to update role');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const deleteRole = (roleId: string) => {
-    const role = roles.find(r => r.id === roleId);
+  const deleteRole = async (roleId: string) => {
+    const role = roles.find(r => r._id === roleId);
     if (role?.name === 'Admin') {
       toast.error('Cannot delete Admin role');
       return;
     }
     
-    setRoles(prev => prev.filter(r => r.id !== roleId));
-    toast.success('Role deleted successfully');
+    setSaving(true);
+    try {
+      await rolesApi.delete(roleId);
+      setRoles(prev => prev.filter(r => r._id !== roleId));
+      // Save to localStorage
+      const updatedRoles = roles.filter(r => r._id !== roleId);
+      saveRolePermissionsToStorage(updatedRoles);
+      toast.success('Role deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete role:', error);
+      toast.error('Failed to delete role');
+    } finally {
+      setSaving(false);
+    }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="bg-settings-module min-h-screen space-y-6 p-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-primary" />
               <div>
-                <CardTitle>Role-Based Access Control</CardTitle>
-                <CardDescription>Manage user roles and module access permissions</CardDescription>
+                <CardTitle className="text-black">Role-Based Access Control</CardTitle>
+                <CardDescription className="text-black">Manage user roles and module access permissions</CardDescription>
               </div>
             </div>
             <Dialog open={isAddRoleOpen} onOpenChange={setIsAddRoleOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button disabled={saving}>
                   <Plus className="h-4 w-4 mr-2" />
                   Create Role
                 </Button>
@@ -312,7 +285,10 @@ export function RoleBasedAccessControl() {
                   <Button variant="outline" onClick={() => setIsAddRoleOpen(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={handleAddRole}>Create Role</Button>
+                  <Button onClick={handleAddRole} disabled={saving}>
+                    {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Create Role
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -321,7 +297,7 @@ export function RoleBasedAccessControl() {
         <CardContent>
           <div className="space-y-6">
             {roles.map(role => (
-              <Card key={role.id} className="border-2">
+              <Card key={role._id} className="border-2">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
@@ -338,7 +314,7 @@ export function RoleBasedAccessControl() {
                         size="sm" 
                         variant="outline"
                         onClick={() => handleEditRole(role)}
-                        disabled={role.name === 'Admin'}
+                        disabled={role.name === 'Admin' || saving}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -346,8 +322,8 @@ export function RoleBasedAccessControl() {
                         size="sm" 
                         variant="outline" 
                         className="text-red-600 hover:text-red-700"
-                        onClick={() => deleteRole(role.id)}
-                        disabled={role.name === 'Admin'}
+                        onClick={() => deleteRole(role._id)}
+                        disabled={role.name === 'Admin' || saving}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -360,22 +336,22 @@ export function RoleBasedAccessControl() {
                       Module Access Permissions
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {Object.entries(role.permissions).map(([key, value]) => (
+                      {Object.entries(role.permissions || {}).map(([key, value]) => (
                         <div 
                           key={key} 
                           className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                         >
                           <Label 
-                            htmlFor={`${role.id}-${key}`} 
+                            htmlFor={`${role._id}-${key}`} 
                             className="cursor-pointer flex-1"
                           >
-                            {moduleNames[key as keyof typeof moduleNames]}
+                            {moduleNames[key] || key}
                           </Label>
                           <Switch
-                            id={`${role.id}-${key}`}
+                            id={`${role._id}-${key}`}
                             checked={value}
-                            onCheckedChange={() => updatePermission(role.id, key as keyof Role['permissions'])}
-                            disabled={role.name === 'Admin'}
+                            onCheckedChange={() => updatePermission(role._id, key as keyof Role['permissions'])}
+                            disabled={role.name === 'Admin' || saving}
                           />
                         </div>
                       ))}
@@ -421,7 +397,10 @@ export function RoleBasedAccessControl() {
             <Button variant="outline" onClick={() => setIsEditRoleOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdateRole}>Update Role</Button>
+            <Button onClick={handleUpdateRole} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Update Role
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

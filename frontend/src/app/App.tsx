@@ -2,13 +2,12 @@ import { useState, useEffect } from 'react';
 import { AdminDashboard } from '@/app/components/admin-dashboard';
 import { MenuManagement } from '@/app/components/menu-management';
 import { OrderManagement } from '@/app/components/order-management';
-import { KitchenDisplayComprehensive } from '@/app/components/kitchen-display-comprehensive';
-import { TableManagement } from '@/app/components/table-management';
+import { MochaKDS } from '@/app/components/mocha-kds';
+import { TableManagementComprehensive } from '@/app/components/table-management-comprehensive';
 import { InventoryManagement } from '@/app/components/inventory-management';
 import { StaffManagement } from '@/app/components/staff-management';
 import { BillingPayment } from '@/app/components/billing-payment';
 import { SecuritySettings } from '@/app/components/security-settings';
-import { DeliveryManagement } from '@/app/components/delivery-management';
 import { OffersLoyalty } from '@/app/components/offers-loyalty';
 import { ReportsAnalytics } from '@/app/components/reports-analytics';
 import { NotificationManagement } from '@/app/components/notification-management';
@@ -36,7 +35,6 @@ import {
   Wrench,
   LogOut,
   CreditCard,
-  Truck,
   Tag,
   BarChart3,
   BellRing,
@@ -240,87 +238,168 @@ function AppContent() {
 
       {/* Main Navigation Tabs */}
       <Tabs value={activeTab} onValueChange={(value) => hasPermission(value) && setActiveTab(value)} className="container mx-auto">
-        <div className="border-b bg-white sticky top-[73px] z-40">
-          <TabsList className="w-full justify-start overflow-x-auto flex-nowrap h-auto p-1 bg-transparent border-0 rounded-none">
+        <div className="sticky top-[73px] z-40">
+          {/* Stylish Nav Background */}
+          <div className="mx-4 my-3 rounded-2xl bg-gradient-to-r from-[#FDFBF9] via-white to-[#FDFBF9] shadow-lg border border-[#E8E0D8]">
+            <TabsList className="w-full justify-center gap-1 flex-nowrap h-auto p-2 bg-transparent border-0 rounded-none overflow-x-auto">
             {hasPermission('dashboard') && (
-              <TabsTrigger value="dashboard" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+              <TabsTrigger 
+                value="dashboard" 
+                className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
+                  hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
+                  data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
+                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
                 <LayoutDashboard className="h-4 w-4" />
-                Dashboard
+                <span className="hidden sm:inline">Dashboard</span>
               </TabsTrigger>
             )}
             {hasPermission('menu') && (
-              <TabsTrigger value="menu" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+              <TabsTrigger 
+                value="menu" 
+                className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
+                  hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
+                  data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
+                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
                 <UtensilsCrossed className="h-4 w-4" />
-                Menu Management
+                <span className="hidden sm:inline">Menu</span>
               </TabsTrigger>
             )}
             {hasPermission('orders') && (
-              <TabsTrigger value="orders" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+              <TabsTrigger 
+                value="orders" 
+                className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
+                  hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
+                  data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
+                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
                 <ShoppingCart className="h-4 w-4" />
-                Orders
+                <span className="hidden sm:inline">Orders</span>
               </TabsTrigger>
             )}
             {hasPermission('kitchen') && (
-              <TabsTrigger value="kitchen" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+              <TabsTrigger 
+                value="kitchen" 
+                className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
+                  hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
+                  data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
+                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
                 <ChefHat className="h-4 w-4" />
-                Kitchen
+                <span className="hidden sm:inline">Kitchen</span>
               </TabsTrigger>
             )}
             {hasPermission('tables') && (
-              <TabsTrigger value="tables" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+              <TabsTrigger 
+                value="tables" 
+                className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
+                  hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
+                  data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
+                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
                 <Users className="h-4 w-4" />
-                Tables
+                <span className="hidden sm:inline">Tables</span>
               </TabsTrigger>
             )}
             {hasPermission('inventory') && (
-              <TabsTrigger value="inventory" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+              <TabsTrigger 
+                value="inventory" 
+                className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
+                  hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
+                  data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
+                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
                 <Package className="h-4 w-4" />
-                Inventory
+                <span className="hidden sm:inline">Inventory</span>
               </TabsTrigger>
             )}
             {hasPermission('staff') && (
-              <TabsTrigger value="staff" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+              <TabsTrigger 
+                value="staff" 
+                className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
+                  hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
+                  data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
+                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
                 <UserCog className="h-4 w-4" />
-                Staff
+                <span className="hidden sm:inline">Staff</span>
               </TabsTrigger>
             )}
             {hasPermission('billing') && (
-              <TabsTrigger value="billing" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+              <TabsTrigger 
+                value="billing" 
+                className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
+                  hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
+                  data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
+                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
                 <CreditCard className="h-4 w-4" />
-                Billing
-              </TabsTrigger>
-            )}
-            {hasPermission('delivery') && (
-              <TabsTrigger value="delivery" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                <Truck className="h-4 w-4" />
-                Delivery
+                <span className="hidden sm:inline">Billing</span>
               </TabsTrigger>
             )}
             {hasPermission('offers') && (
-              <TabsTrigger value="offers" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+              <TabsTrigger 
+                value="offers" 
+                className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
+                  hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
+                  data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
+                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
                 <Tag className="h-4 w-4" />
-                Offers & Loyalty
+                <span className="hidden sm:inline">Offers</span>
               </TabsTrigger>
             )}
             {hasPermission('reports') && (
-              <TabsTrigger value="reports" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+              <TabsTrigger 
+                value="reports" 
+                className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
+                  hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
+                  data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
+                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
                 <BarChart3 className="h-4 w-4" />
-                Reports
+                <span className="hidden sm:inline">Reports</span>
               </TabsTrigger>
             )}
             {hasPermission('notifications') && (
-              <TabsTrigger value="notifications" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+              <TabsTrigger 
+                value="notifications" 
+                className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
+                  hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
+                  data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
+                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
                 <BellRing className="h-4 w-4" />
-                Notifications
+                <span className="hidden sm:inline">Alerts</span>
               </TabsTrigger>
             )}
             {hasPermission('settings') && (
-              <TabsTrigger value="settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+              <TabsTrigger 
+                value="settings" 
+                className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
+                  hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
+                  data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
+                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
                 <Settings className="h-4 w-4" />
-                Settings
+                <span className="hidden sm:inline">Settings</span>
               </TabsTrigger>
             )}
           </TabsList>
+          </div>
         </div>
 
         <div className="py-6">
@@ -340,11 +419,11 @@ function AppContent() {
         </TabsContent>
 
         <TabsContent value="kitchen" className="mt-0">
-          <KitchenDisplayComprehensive />
+          <MochaKDS />
         </TabsContent>
 
         <TabsContent value="tables" className="mt-0">
-          <TableManagement />
+          <TableManagementComprehensive />
         </TabsContent>
 
         <TabsContent value="inventory" className="mt-0">
@@ -357,10 +436,6 @@ function AppContent() {
 
         <TabsContent value="billing" className="mt-0">
           <BillingPayment />
-        </TabsContent>
-
-        <TabsContent value="delivery" className="mt-0">
-          <DeliveryManagement />
         </TabsContent>
 
         <TabsContent value="offers" className="mt-0">

@@ -1,7 +1,10 @@
 import { Order } from './types';
 import { SMART_NOTE_KEYWORDS } from './constants';
 
-export const generateOrderDisplayId = (orderId: string) => {
+export const generateOrderDisplayId = (orderId: string, orderNumber?: string) => {
+  // Prefer orderNumber from backend if available
+  if (orderNumber) return orderNumber;
+  if (!orderId) return '#UNKNOWN';
   const parts = orderId.split('-');
   const hash = parts[parts.length - 1] || orderId;
   return '#' + hash.slice(0, 6).toUpperCase();

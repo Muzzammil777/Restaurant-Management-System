@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { 
   CreditCard, 
   Wallet, 
@@ -29,7 +31,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 
 import { cn } from '@/app/components/ui/utils';
@@ -217,15 +219,123 @@ export function BillingPayment() {
     }));
   };
 
+  const downloadInvoicePdf = (invoice: Invoice) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Header
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Restaurant Management System', pageWidth / 2, 20, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Movicloud Labs', pageWidth / 2, 27, { align: 'center' });
+    
+    // Invoice details
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Invoice: ${invoice.invoiceNumber}`, pageWidth / 2, 38, { align: 'center' });
+    
+    // Separator line
+    doc.setLineWidth(0.5);
+    doc.line(14, 42, pageWidth - 14, 42);
+    
+    // Customer & Invoice info
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    const infoStartY = 50;
+    
+    doc.text(`Customer: ${invoice.customerName}`, 14, infoStartY);
+    doc.text(`Order: ${invoice.orderId}`, 14, infoStartY + 6);
+    doc.text(`Date: ${invoice.date}`, pageWidth - 14, infoStartY, { align: 'right' });
+    doc.text(`Status: ${invoice.status}`, pageWidth - 14, infoStartY + 6, { align: 'right' });
+    
+    // Items table
+    const tableData = (invoice.items || []).map(item => [
+      item.name,
+      item.quantity.toString(),
+      `Rs.${item.price.toFixed(2)}`,
+      `Rs.${(item.price * item.quantity).toFixed(2)}`
+    ]);
+    
+    autoTable(doc, {
+      startY: infoStartY + 15,
+      head: [['Item', 'Qty', 'Price', 'Total']],
+      body: tableData,
+      theme: 'striped',
+      headStyles: { fillColor: [51, 51, 51], textColor: 255 },
+      styles: { fontSize: 10, cellPadding: 3 },
+      columnStyles: {
+        0: { cellWidth: 'auto' },
+        1: { cellWidth: 25, halign: 'center' },
+        2: { cellWidth: 35, halign: 'right' },
+        3: { cellWidth: 35, halign: 'right' }
+      }
+    });
+    
+    // Get the Y position after the table
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    
+    // Totals section
+    const totalsX = pageWidth - 14;
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Subtotal:`, totalsX - 50, finalY);
+    doc.text(`Rs.${invoice.subtotal.toFixed(2)}`, totalsX, finalY, { align: 'right' });
+    
+    doc.text(`Tax:`, totalsX - 50, finalY + 6);
+    doc.text(`Rs.${invoice.taxAmount.toFixed(2)}`, totalsX, finalY + 6, { align: 'right' });
+    
+    let currentY = finalY + 12;
+    if (invoice.discountAmount > 0) {
+      doc.setTextColor(0, 128, 0);
+      doc.text(`Discount:`, totalsX - 50, currentY);
+      doc.text(`-Rs.${invoice.discountAmount.toFixed(2)}`, totalsX, currentY, { align: 'right' });
+      doc.setTextColor(0, 0, 0);
+      currentY += 6;
+    }
+    
+    // Separator line before grand total
+    doc.setLineWidth(0.3);
+    doc.line(pageWidth - 100, currentY + 2, pageWidth - 14, currentY + 2);
+    
+    // Grand total
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text(`Grand Total:`, totalsX - 50, currentY + 10);
+    doc.text(`Rs.${invoice.grandTotal.toFixed(2)}`, totalsX, currentY + 10, { align: 'right' });
+    
+    // Payment details
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    currentY += 25;
+    doc.text('Payment Details:', 14, currentY);
+    currentY += 6;
+    invoice.payments.forEach(payment => {
+      doc.text(`${payment.mode}: Rs.${payment.amount.toFixed(2)}`, 14, currentY);
+      currentY += 5;
+    });
+    
+    // Footer
+    doc.setFontSize(9);
+    doc.setTextColor(128, 128, 128);
+    doc.text('Thank you for dining with us!', pageWidth / 2, currentY + 15, { align: 'center' });
+    doc.text('This is a computer generated invoice.', pageWidth / 2, currentY + 20, { align: 'center' });
+    
+    // Save the PDF
+    doc.save(`${invoice.invoiceNumber}.pdf`);
+    toast.success(`Invoice ${invoice.invoiceNumber} downloaded as PDF`);
+  };
+
   return (
-    <div className="min-h-screen pb-20" style={{ backgroundColor: '#FDFCFB' }}>
+    <div className="bg-billing-module min-h-screen pb-20">
       <div className="max-w-[1600px] mx-auto p-6 space-y-6">
         
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="module-container flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-[#000000]">Billing & Payment</h1>
-            <p className="text-muted-foreground mt-1">Process payments and manage invoices for served orders</p>
+            <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-lg">Billing & Payment</h1>
+            <p className="text-gray-200 mt-1">Process payments and manage invoices for served orders</p>
           </div>
           
           {/* Mini Daily Summary Panel (Innovation #10) */}
@@ -482,7 +592,7 @@ function BillGenerationTab({ orders, onInvoiceGenerated }: { orders: Order[], on
                    <div className="flex justify-between items-end relative z-10">
                      <div>
                        <p className="font-semibold text-gray-900 group-hover:text-[#8B5A2B] transition-colors">{order.customerName}</p>
-                       <p className="text-xs text-muted-foreground">{order.items.length} Items</p>
+                       <p className="text-xs text-muted-foreground">{order.items?.length || 0} Items</p>
                      </div>
                      <p className="font-bold text-lg text-[#000000]">₹{order.totalAmount}</p>
                    </div>
@@ -538,7 +648,7 @@ function BillGenerationTab({ orders, onInvoiceGenerated }: { orders: Order[], on
                   </div>
                   <ScrollArea className="flex-1 p-4">
                     <div className="space-y-4">
-                      {selectedOrder.items.map((item, idx) => (
+                      {(selectedOrder.items || []).map((item, idx) => (
                         <div key={idx} className="flex justify-between items-start text-sm group">
                           <div className="flex gap-3">
                             <span className="bg-white border h-6 w-6 rounded flex items-center justify-center text-xs font-bold text-gray-600 shadow-sm">
@@ -755,6 +865,114 @@ function InvoicesTab({ invoices }: { invoices: Invoice[] }) {
 
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
 
+  const downloadInvoicePdf = (invoice: Invoice) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Header
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Restaurant Management System', pageWidth / 2, 20, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Movicloud Labs', pageWidth / 2, 27, { align: 'center' });
+    
+    // Invoice details
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Invoice: ${invoice.invoiceNumber}`, pageWidth / 2, 38, { align: 'center' });
+    
+    // Separator line
+    doc.setLineWidth(0.5);
+    doc.line(14, 42, pageWidth - 14, 42);
+    
+    // Customer & Invoice info
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    const infoStartY = 50;
+    
+    doc.text(`Customer: ${invoice.customerName}`, 14, infoStartY);
+    doc.text(`Order: ${invoice.orderId}`, 14, infoStartY + 6);
+    doc.text(`Date: ${invoice.date}`, pageWidth - 14, infoStartY, { align: 'right' });
+    doc.text(`Status: ${invoice.status}`, pageWidth - 14, infoStartY + 6, { align: 'right' });
+    
+    // Items table
+    const tableData = (invoice.items || []).map(item => [
+      item.name,
+      item.quantity.toString(),
+      `Rs.${item.price.toFixed(2)}`,
+      `Rs.${(item.price * item.quantity).toFixed(2)}`
+    ]);
+    
+    autoTable(doc, {
+      startY: infoStartY + 15,
+      head: [['Item', 'Qty', 'Price', 'Total']],
+      body: tableData,
+      theme: 'striped',
+      headStyles: { fillColor: [51, 51, 51], textColor: 255 },
+      styles: { fontSize: 10, cellPadding: 3 },
+      columnStyles: {
+        0: { cellWidth: 'auto' },
+        1: { cellWidth: 25, halign: 'center' },
+        2: { cellWidth: 35, halign: 'right' },
+        3: { cellWidth: 35, halign: 'right' }
+      }
+    });
+    
+    // Get the Y position after the table
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    
+    // Totals section
+    const totalsX = pageWidth - 14;
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Subtotal:`, totalsX - 50, finalY);
+    doc.text(`Rs.${invoice.subtotal.toFixed(2)}`, totalsX, finalY, { align: 'right' });
+    
+    doc.text(`Tax:`, totalsX - 50, finalY + 6);
+    doc.text(`Rs.${invoice.taxAmount.toFixed(2)}`, totalsX, finalY + 6, { align: 'right' });
+    
+    let currentY = finalY + 12;
+    if (invoice.discountAmount > 0) {
+      doc.setTextColor(0, 128, 0);
+      doc.text(`Discount:`, totalsX - 50, currentY);
+      doc.text(`-Rs.${invoice.discountAmount.toFixed(2)}`, totalsX, currentY, { align: 'right' });
+      doc.setTextColor(0, 0, 0);
+      currentY += 6;
+    }
+    
+    // Separator line before grand total
+    doc.setLineWidth(0.3);
+    doc.line(pageWidth - 100, currentY + 2, pageWidth - 14, currentY + 2);
+    
+    // Grand total
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text(`Grand Total:`, totalsX - 50, currentY + 10);
+    doc.text(`Rs.${invoice.grandTotal.toFixed(2)}`, totalsX, currentY + 10, { align: 'right' });
+    
+    // Payment details
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    currentY += 25;
+    doc.text('Payment Details:', 14, currentY);
+    currentY += 6;
+    (invoice.payments || []).forEach(payment => {
+      doc.text(`${payment.mode}: Rs.${payment.amount.toFixed(2)}`, 14, currentY);
+      currentY += 5;
+    });
+    
+    // Footer
+    doc.setFontSize(9);
+    doc.setTextColor(128, 128, 128);
+    doc.text('Thank you for dining with us!', pageWidth / 2, currentY + 15, { align: 'center' });
+    doc.text('This is a computer generated invoice.', pageWidth / 2, currentY + 20, { align: 'center' });
+    
+    // Save the PDF
+    doc.save(`${invoice.invoiceNumber}.pdf`);
+    toast.success(`Invoice ${invoice.invoiceNumber} downloaded as PDF`);
+  };
+
   return (
     <div className="space-y-4">
       <Card className="border-none shadow-md bg-white">
@@ -825,7 +1043,7 @@ function InvoicesTab({ invoices }: { invoices: Invoice[] }) {
                         <DropdownMenuItem onClick={() => setPreviewInvoice(invoice)}>
                           <FileText className="mr-2 h-4 w-4" /> View Invoice
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => toast.success("Downloading PDF...")}>
+                        <DropdownMenuItem onClick={() => downloadInvoicePdf(invoice)}>
                           <Download className="mr-2 h-4 w-4" /> Download PDF
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => toast.success("Sent to Printer")}>
@@ -845,7 +1063,8 @@ function InvoicesTab({ invoices }: { invoices: Invoice[] }) {
         <InvoicePreviewModal 
           open={!!previewInvoice} 
           onOpenChange={(v) => !v && setPreviewInvoice(null)} 
-          invoice={previewInvoice} 
+          invoice={previewInvoice}
+          onDownload={downloadInvoicePdf}
         />
       )}
     </div>
@@ -1053,7 +1272,7 @@ function RefundsTab({ invoices, refunds, onRefundProcessed }: { invoices: Invoic
 
 // --- Invoice Preview Modal ---
 
-function InvoicePreviewModal({ open, onOpenChange, invoice }: { open: boolean, onOpenChange: (v: boolean) => void, invoice: Invoice }) {
+function InvoicePreviewModal({ open, onOpenChange, invoice, onDownload }: { open: boolean, onOpenChange: (v: boolean) => void, invoice: Invoice, onDownload?: (invoice: Invoice) => void }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-0 overflow-hidden bg-white border-none shadow-2xl">
@@ -1087,7 +1306,7 @@ function InvoicePreviewModal({ open, onOpenChange, invoice }: { open: boolean, o
           </div>
 
           <div className="space-y-3 mb-6">
-             {invoice.items.map((item, i) => (
+             {(invoice.items || []).map((item, i) => (
                <div key={i} className="flex justify-between text-sm">
                  <div className="flex gap-2">
                    <span className="text-gray-500 font-medium">{item.quantity} x</span>
@@ -1137,6 +1356,11 @@ function InvoicePreviewModal({ open, onOpenChange, invoice }: { open: boolean, o
           </div>
         </div>
         <div className="bg-gray-50 p-4 flex gap-3 border-t">
+          {onDownload && (
+            <Button className="flex-1 bg-white border-gray-200 text-gray-900 hover:bg-gray-100" variant="outline" onClick={() => onDownload(invoice)}>
+              <Download className="h-4 w-4 mr-2" /> Download PDF
+            </Button>
+          )}
           <Button className="flex-1 bg-white border-gray-200 text-gray-900 hover:bg-gray-100" variant="outline" onClick={() => toast.info("Printing Invoice...")}>
             <Printer className="h-4 w-4 mr-2" /> Print
           </Button>

@@ -43,7 +43,9 @@ async def list_tables(
         query["capacity"] = {"$gte": capacity}
     
     tables = await db.tables.find(query).sort("name", 1).to_list(100)
-    return [serialize_doc(table) for table in tables]
+    total = await db.tables.count_documents(query if query else {})
+    
+    return {"data": [serialize_doc(table) for table in tables], "total": total}
 
 
 @router.get("/stats")
@@ -139,7 +141,7 @@ async def update_table_status(table_id: str, status: str, data: Optional[dict] =
     """Update table status"""
     db = get_db()
     
-    valid_statuses = ["available", "occupied", "reserved", "cleaning"]
+    valid_statuses = ["available", "occupied", "reserved", "cleaning", "eating"]
     if status not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
     
@@ -200,6 +202,55 @@ async def delete_table(table_id: str):
     return {"success": True}
 
 
+@router.post("/{table_id}/waiter")
+async def assign_waiter(table_id: str, waiter_id: str, waiter_name: str):
+    """Assign waiter to table"""
+    db = get_db()
+    
+    table = await db.tables.find_one({"_id": ObjectId(table_id)})
+    if not table:
+        raise HTTPException(status_code=404, detail="Table not found")
+    
+    if table.get("status") not in ["occupied", "eating"]:
+        raise HTTPException(status_code=400, detail="Waiter can only be assigned to occupied tables")
+    
+    await db.tables.update_one(
+        {"_id": ObjectId(table_id)},
+        {"$set": {
+            "waiterId": waiter_id,
+            "waiterName": waiter_name,
+            "updatedAt": datetime.utcnow()
+        }}
+    )
+    
+    await log_audit("assign_waiter", "table", table_id, {"waiterId": waiter_id, "waiterName": waiter_name})
+    
+    return {"success": True, "waiterId": waiter_id, "waiterName": waiter_name}
+
+
+@router.delete("/{table_id}/waiter")
+async def remove_waiter(table_id: str):
+    """Remove waiter from table"""
+    db = get_db()
+    
+    table = await db.tables.find_one({"_id": ObjectId(table_id)})
+    if not table:
+        raise HTTPException(status_code=404, detail="Table not found")
+    
+    await db.tables.update_one(
+        {"_id": ObjectId(table_id)},
+        {"$set": {
+            "waiterId": None,
+            "waiterName": None,
+            "updatedAt": datetime.utcnow()
+        }}
+    )
+    
+    await log_audit("remove_waiter", "table", table_id)
+    
+    return {"success": True}
+
+
 # ============ RESERVATIONS ============
 
 @router.get("/reservations/all")
@@ -241,6 +292,47 @@ async def create_reservation(data: dict):
     await log_audit("create", "reservation", str(result.inserted_id))
     
     return serialize_doc(created)
+
+
+@router.put("/reservations/{reservation_id}")
+async def update_reservation(reservation_id: str, data: dict):
+    """Update reservation details"""
+    db = get_db()
+    
+    existing = await db.reservations.find_one({"_id": ObjectId(reservation_id)})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+    
+    data["updatedAt"] = datetime.utcnow()
+    data.pop("_id", None)
+    
+    # If table is changing, update table statuses
+    old_table_id = existing.get("tableId")
+    new_table_id = data.get("tableId")
+    
+    if old_table_id != new_table_id:
+        # Free old table
+        if old_table_id:
+            await db.tables.update_one(
+                {"_id": ObjectId(old_table_id)},
+                {"$set": {"status": "available", "reservedFor": None}}
+            )
+        # Reserve new table
+        if new_table_id:
+            await db.tables.update_one(
+                {"_id": ObjectId(new_table_id)},
+                {"$set": {"status": "reserved", "reservedFor": data.get("customerName")}}
+            )
+    
+    await db.reservations.update_one(
+        {"_id": ObjectId(reservation_id)},
+        {"$set": data}
+    )
+    
+    updated = await db.reservations.find_one({"_id": ObjectId(reservation_id)})
+    await log_audit("update", "reservation", reservation_id)
+    
+    return serialize_doc(updated)
 
 
 @router.patch("/reservations/{reservation_id}/status")

@@ -34,7 +34,7 @@ import {
   Bar,
   Cell
 } from 'recharts';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 
 import { Button } from '@/app/components/ui/button';
@@ -214,7 +214,45 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
 
   const uniqueCategories = useMemo(() => Array.from(new Set(ingredients.map(i => i.category))), [ingredients]);
 
-  // Real-time sync - when simulating, just refresh data more frequently
+  // Fetch ingredients from backend API
+  useEffect(() => {
+    const fetchIngredients = async () => {
+      try {
+        const API_URL = import.meta.env.VITE_API_URL || 'https://restaurant-management-system-24c2.onrender.com/api';
+        const response = await fetch(`${API_URL}/inventory`);
+        if (response.ok) {
+          const result = await response.json();
+          // API returns {data: [], total: number}
+          const items = result.data || result;
+          // Map API response to component state
+          const mappedIngredients = items.map((ing: any) => ({
+            id: ing._id || ing.id,
+            name: ing.name,
+            category: ing.category,
+            stockLevel: ing.stockLevel,
+            unit: ing.unit,
+            minThreshold: ing.minThreshold,
+            costPerUnit: ing.costPerUnit,
+            supplierId: ing.supplierId,
+            status: ing.status as Ingredient['status'],
+            usageRate: ing.usageRate as Ingredient['usageRate'],
+            lastDeduction: ing.lastDeduction
+          }));
+          setIngredients(mappedIngredients);
+        }
+      } catch (error) {
+        console.log('Using mock data: Could not fetch from API');
+        setIngredients([]);
+      }
+    };
+
+    fetchIngredients();
+    // Auto-refresh every 10 seconds
+    const interval = setInterval(fetchIngredients, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Simulation Logic
   useEffect(() => {
     let interval: any;
     if (isSimulating) {
@@ -276,15 +314,15 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-20">
+    <div className="bg-inventory-module min-h-screen pb-20">
       <div className="max-w-[1800px] mx-auto p-6 space-y-8">
         
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="module-container flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
            <div>
-             <h1 className="text-3xl font-bold tracking-tight text-gray-900">Inventory Management</h1>
-             <p className="text-muted-foreground flex items-center gap-2 mt-1">
-               <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+             <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-lg">Inventory Management</h1>
+             <p className="text-gray-200 flex items-center gap-2 mt-1">
+               <span className="flex h-2 w-2 rounded-full bg-green-300 animate-pulse" />
                {loading ? 'Loading inventory data...' : 'Connected to backend • Order-Driven mode active'}
              </p>
            </div>

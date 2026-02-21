@@ -154,15 +154,15 @@ export function NotificationSettings() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="bg-settings-module min-h-screen space-y-6 p-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Bell className="h-5 w-5 text-primary" />
               <div>
-                <CardTitle>Notification Settings</CardTitle>
-                <CardDescription>Configure alerts and notification preferences</CardDescription>
+                <CardTitle className="text-black">Notification Settings</CardTitle>
+                <CardDescription className="text-black">Configure alerts and notification preferences</CardDescription>
               </div>
             </div>
             <Button onClick={handleSave}>

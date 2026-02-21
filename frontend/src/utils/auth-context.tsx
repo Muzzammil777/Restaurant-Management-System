@@ -2,28 +2,43 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { authApi } from './api';
 
 // Define user roles
-export type UserRole = 'admin' | 'manager' | 'chef' | 'waiter' | 'cashier' | 'delivery' | 'staff';
+export type UserRole = 'admin' | 'manager' | 'waiter' | 'cashier';
 
-// Role permissions - which tabs each role can access
-export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-  admin: ['dashboard', 'menu', 'orders', 'kitchen', 'tables', 'inventory', 'staff', 'billing', 'delivery', 'offers', 'reports', 'notifications', 'settings'],
-  manager: ['dashboard', 'menu', 'orders', 'kitchen', 'tables', 'inventory', 'staff', 'billing', 'delivery', 'offers', 'reports', 'notifications'],
-  chef: ['kitchen', 'orders', 'inventory'],
+// Local storage key for role permissions
+const ROLE_PERMISSIONS_STORAGE_KEY = 'rms_role_permissions';
+
+// Default role permissions - which tabs each role can access
+const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, string[]> = {
+  admin: ['dashboard', 'menu', 'orders', 'kitchen', 'tables', 'inventory', 'staff', 'billing', 'offers', 'reports', 'notifications', 'settings'],
+  manager: ['dashboard', 'menu', 'orders', 'kitchen', 'tables', 'inventory', 'staff', 'billing', 'offers', 'reports', 'notifications'],
   waiter: ['orders', 'tables', 'menu'],
   cashier: ['orders', 'billing', 'tables'],
-  delivery: ['delivery', 'orders'],
-  staff: ['orders', 'menu'], // Default permissions for generic staff
+};
+
+// Get role permissions from localStorage or use defaults
+const getRolePermissions = (): Record<UserRole, string[]> => {
+  try {
+    const stored = localStorage.getItem(ROLE_PERMISSIONS_STORAGE_KEY);
+    if (stored) {
+      const storedPermissions = JSON.parse(stored);
+      // Merge stored permissions with defaults (in case some roles weren't saved)
+      return {
+        ...DEFAULT_ROLE_PERMISSIONS,
+        ...storedPermissions,
+      };
+    }
+  } catch (error) {
+    console.error('Error loading role permissions from localStorage:', error);
+  }
+  return DEFAULT_ROLE_PERMISSIONS;
 };
 
 // Get default tab for each role
 export const DEFAULT_TAB: Record<UserRole, string> = {
   admin: 'dashboard',
   manager: 'dashboard',
-  chef: 'kitchen',
   waiter: 'orders',
   cashier: 'billing',
-  delivery: 'delivery',
-  staff: 'orders',
 };
 
 export interface User {
@@ -45,13 +60,42 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [rolePermissions, setRolePermissions] = useState<Record<UserRole, string[]>>(getRolePermissions);
+
+  // Load role permissions from localStorage on mount and when updated
+  useEffect(() => {
+    const loadPermissions = () => {
+      const newPermissions = getRolePermissions();
+      setRolePermissions(newPermissions);
+    };
+    
+    // Load on mount
+    loadPermissions();
+    
+    // Listen for role-permissions-updated events
+    const handlePermissionsUpdate = () => {
+      loadPermissions();
+    };
+    
+    window.addEventListener('role-permissions-updated', handlePermissionsUpdate);
+    window.addEventListener('storage', handlePermissionsUpdate);
+    
+    return () => {
+      window.removeEventListener('role-permissions-updated', handlePermissionsUpdate);
+      window.removeEventListener('storage', handlePermissionsUpdate);
+    };
+  }, []);
 
   // Check for saved session on mount
   useEffect(() => {
     const savedUser = localStorage.getItem('rms_current_user');
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
+        const parsed = JSON.parse(savedUser);
+        // Normalize role to lowercase, fallback unknown roles to 'cashier'
+        const rawRole = (parsed.role || 'cashier').toLowerCase();
+        parsed.role = (['admin', 'manager', 'waiter', 'cashier'].includes(rawRole) ? rawRole : 'cashier') as UserRole;
+        setUser(parsed);
       } catch {
         localStorage.removeItem('rms_current_user');
       }
@@ -67,7 +111,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: result.user.id,
           email: result.user.email,
           name: result.user.name,
-          role: result.user.role as UserRole,
+          role: (['admin', 'manager', 'waiter', 'cashier'].includes((result.user.role || '').toLowerCase())
+            ? result.user.role.toLowerCase()
+            : 'cashier') as UserRole,
         };
         setUser(userData);
         localStorage.setItem('rms_current_user', JSON.stringify(userData));
@@ -88,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const hasPermission = (tab: string): boolean => {
     if (!user) return false;
-    return ROLE_PERMISSIONS[user.role]?.includes(tab) ?? false;
+    return rolePermissions[user.role]?.includes(tab) ?? false;
   };
 
   return (

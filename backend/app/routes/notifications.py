@@ -109,7 +109,50 @@ async def get_notification(notification_id: str):
 async def create_notification(data: dict):
     db = get_db()
 
+<<<<<<< HEAD
     notification = {
+=======
+
+@router.post("/send")
+async def send_notification(notification_id: Optional[str] = None, data: Optional[dict] = None):
+    """Send a notification (simulated)"""
+    db = get_db()
+    
+    # If notification_id is provided, mark existing notification as sent
+    if notification_id:
+        notification = await db.notifications.find_one({"_id": ObjectId(notification_id)})
+        if not notification:
+            raise HTTPException(status_code=404, detail="Notification not found")
+        
+        await db.notifications.update_one(
+            {"_id": ObjectId(notification_id)},
+            {"$set": {
+                "status": "sent",
+                "sentAt": datetime.utcnow()
+            }}
+        )
+        
+        await log_audit("send", "notification", notification_id, {
+            "type": notification.get("type"),
+            "channel": notification.get("channel")
+        })
+        
+        updated = await db.notifications.find_one({"_id": ObjectId(notification_id)})
+        return serialize_doc(updated)
+    
+    # Otherwise create and send new notification
+    if not data:
+        data = {}
+    
+    data["timestamp"] = datetime.utcnow()
+    data["status"] = "sent"  # In real implementation, this would be based on actual send result
+    data["sentAt"] = datetime.utcnow()
+    
+    result = await db.notifications.insert_one(data)
+    created = await db.notifications.find_one({"_id": result.inserted_id})
+    
+    await log_audit("send", "notification", str(result.inserted_id), {
+>>>>>>> d3e0b6370a1e1a0ae381e316c1750084767230a1
         "type": data.get("type"),
         "title": data.get("title"),
         "message": data.get("message"),
@@ -119,9 +162,30 @@ async def create_notification(data: dict):
         "created_at": datetime.utcnow(),
     }
 
+<<<<<<< HEAD
     result = await db.notifications.insert_one(notification)
     created = await db.notifications.find_one(
         {"_id": result.inserted_id}
+=======
+
+@router.post("/{notification_id}/retry")
+async def retry_notification(notification_id: str):
+    """Retry a failed notification"""
+    db = get_db()
+    
+    notification = await db.notifications.find_one({"_id": ObjectId(notification_id)})
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    
+    # Simulate retry
+    await db.notifications.update_one(
+        {"_id": ObjectId(notification_id)},
+        {"$set": {
+            "status": "sent",
+            "retriedAt": datetime.utcnow(),
+            "retryCount": notification.get("retryCount", 0) + 1
+        }}
+>>>>>>> d3e0b6370a1e1a0ae381e316c1750084767230a1
     )
 
     return serialize_doc(created)
@@ -179,8 +243,14 @@ async def mark_all_read():
 @router.post("/broadcast")
 async def send_broadcast(data: dict):
     db = get_db()
+<<<<<<< HEAD
 
     recipients = data.get("recipients", [])
+=======
+    
+    # Accept both recipientIds (frontend) and recipients for compatibility
+    recipients = data.get("recipientIds", data.get("recipients", []))
+>>>>>>> d3e0b6370a1e1a0ae381e316c1750084767230a1
     message = data.get("message", "")
     title = data.get("title", "")
 

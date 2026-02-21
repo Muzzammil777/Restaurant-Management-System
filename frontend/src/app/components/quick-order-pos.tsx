@@ -19,11 +19,12 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { API_BASE_URL } from '@/utils/supabase/info';
+import { tablesApi } from '@/utils/api';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/app/components/ui/dialog';
 import { restaurantState } from '@/app/services/restaurant-state';
 import { Switch } from '@/app/components/ui/switch';
 import { Progress } from '@/app/components/ui/progress';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/app/components/ui/collapsible';
 
 // ==================== INTERFACES ====================
@@ -77,6 +78,20 @@ interface RecentOrder {
   items: QuickOrderItem[];
   total: number;
   timestamp: Date;
+}
+
+interface TableData {
+  _id: string;
+  name: string;
+  displayNumber: string;
+  capacity: number;
+  location: string;
+  segment: string;
+  status: 'available' | 'occupied' | 'reserved' | 'cleaning';
+  reservationType?: string;
+  guestCount?: number;
+  waiterName?: string | null;
+  waiterId?: string | null;
 }
 
 interface QuickOrderPOSProps {
@@ -144,6 +159,8 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
   const [orderType, setOrderType] = useState<'dine-in' | 'takeaway'>('dine-in');
   const [tableNumber, setTableNumber] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [availableTables, setAvailableTables] = useState<TableData[]>([]);
+  const [tablesLoading, setTablesLoading] = useState(false);
 
   // Menu Data
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -222,6 +239,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
     if (open) {
       fetchMenuData();
       loadRecentOrders();
+      fetchAvailableTables();
     }
   }, [open]);
 
@@ -412,8 +430,16 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
         if (menuResponse.ok) {
           const menuResult = await menuResponse.json();
-          if (menuResult.success && menuResult.data) {
-            const availableItems = menuResult.data.filter((item: MenuItem) => item.available);
+          // Handle both array response and {success, data} format
+          const menuData = Array.isArray(menuResult) ? menuResult : (menuResult.data || []);
+          if (menuData.length > 0) {
+            // Map _id to id for frontend compatibility
+            const availableItems = menuData
+              .filter((item: MenuItem) => item.available !== false)
+              .map((item: any) => ({
+                ...item,
+                id: item._id || item.id,
+              }));
             setMenuItems(availableItems);
             menuFetched = true;
           }
@@ -429,8 +455,19 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
         if (comboResponse.ok) {
           const comboResult = await comboResponse.json();
-          if (comboResult.success && comboResult.data) {
-            const availableCombos = comboResult.data.filter((combo: ComboMeal) => combo.available);
+          // Handle both array response and {success, data} format
+          const comboData = Array.isArray(comboResult) ? comboResult : (comboResult.data || []);
+          if (comboData.length >= 0) {
+            // Map _id to id for frontend compatibility and normalize prices
+            const availableCombos = comboData
+              .filter((combo: ComboMeal) => combo.available !== false)
+              .map((combo: any) => ({
+                ...combo,
+                id: combo._id || combo.id,
+                items: combo.items || [],
+                originalPrice: Number(combo.originalPrice) || Number(combo.discountedPrice) || Number(combo.price) || 0,
+                discountedPrice: Number(combo.discountedPrice) || Number(combo.price) || Number(combo.originalPrice) || 0,
+              }));
             setComboMeals(availableCombos);
             comboFetched = true;
           }
@@ -489,6 +526,29 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
     setRecentOrders(mockRecentOrders);
   };
 
+  // Fetch available tables from API
+  const fetchAvailableTables = async () => {
+    setTablesLoading(true);
+    try {
+      const result = await tablesApi.list();
+      const tables: TableData[] = result.data || [];
+      // Filter out occupied, reserved, and cleaning tables - only show available (case-insensitive)
+      const available = tables.filter(t => t.status?.toLowerCase() === 'available');
+      // Sort by location and name
+      available.sort((a, b) => {
+        if (a.location !== b.location) return a.location.localeCompare(b.location);
+        return a.name.localeCompare(b.name);
+      });
+      setAvailableTables(available);
+    } catch (error) {
+      console.error('Error fetching tables:', error);
+      toast.error('Failed to load tables');
+      setAvailableTables([]);
+    } finally {
+      setTablesLoading(false);
+    }
+  };
+
   // ========== ORDER ITEM MANAGEMENT ==========
 
   // Feature #12: Double Tap to Add
@@ -523,6 +583,10 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
       (oi) => oi.name === item.name && !oi.isCombo
     );
 
+    // Ensure price is a valid number
+    const itemPrice = Number(item.price) || 0;
+    const itemName = item.name || 'Unknown Item';
+
     if (existingItem) {
       setOrderItems(
         orderItems.map((oi) =>
@@ -534,9 +598,9 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
     } else {
       const newItem: QuickOrderItem = {
         id: `${Date.now()}-${Math.random()}`,
-        name: item.name,
+        name: itemName,
         quantity: 1,
-        price: item.price,
+        price: itemPrice,
         isCombo: false,
         category: item.category,
         cookingStation: station,
@@ -545,7 +609,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
     }
 
     // Feature #10: Smart Notification
-    toast.success(`${item.name} added!`, { duration: 1500 });
+    toast.success(`${itemName} added!`, { duration: 1500 });
     
     // Feature #13: Sound Feedback
     playSound('add', soundEnabled);
@@ -553,15 +617,19 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
   // Feature #6: Add combo to order with split select capability
   const addComboToOrder = (combo: ComboMeal) => {
-    const comboItemsDetails = combo.items.map(itemId => 
+    const comboItemsDetails = (combo.items || []).map(itemId => 
       menuItems.find(mi => mi.id === itemId)
     ).filter(Boolean) as MenuItem[];
 
+    // Ensure price is a valid number - use discountedPrice, fall back to originalPrice or price
+    const comboPrice = Number(combo.discountedPrice) || Number(combo.originalPrice) || Number((combo as any).price) || 0;
+    const comboName = combo.name || 'Unknown Combo';
+
     const newCombo: QuickOrderItem = {
       id: `combo-${Date.now()}-${Math.random()}`,
-      name: combo.name,
+      name: comboName,
       quantity: 1,
-      price: combo.discountedPrice,
+      price: comboPrice,
       isCombo: true,
       comboItems: comboItemsDetails,
     };
@@ -569,7 +637,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
     setOrderItems([...orderItems, newCombo]);
     
     // Feature #10: Smart Notification
-    toast.success(`${combo.name} combo added!`, { duration: 1500 });
+    toast.success(`${comboName} combo added!`, { duration: 1500 });
     
     // Feature #13: Sound Feedback
     playSound('add', soundEnabled);
@@ -611,10 +679,15 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
   // Feature #8: Repeat recent order
   const repeatOrder = (order: RecentOrder) => {
-    setOrderItems([...orderItems, ...order.items.map(item => ({
+    const validatedItems = order.items.map(item => ({
       ...item,
-      id: `${Date.now()}-${Math.random()}`
-    }))]);
+      id: `${Date.now()}-${Math.random()}`,
+      name: item.name || 'Unknown Item',
+      price: Number(item.price) || 0,
+      quantity: Number(item.quantity) || 1
+    }));
+    
+    setOrderItems([...orderItems, ...validatedItems]);
     
     // Feature #10: Smart Notification
     toast.success('Order repeated!', { duration: 2000 });
@@ -704,12 +777,18 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
   // ========== ORDER CREATION ==========
 
-  // Calculate totals
+  // Safely parse numeric values
+  const safeNumber = (val: any, fallback: number = 0): number => {
+    const num = Number(val);
+    return isNaN(num) ? fallback : num;
+  };
+
+  // Calculate totals with safe number handling
   const subtotal = orderItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+    (sum, item) => sum + (safeNumber(item.price) * safeNumber(item.quantity, 1)),
     0
   );
-  const totalItems = orderItems.reduce((sum, item) => sum + item.quantity, 0);
+  const totalItems = orderItems.reduce((sum, item) => sum + safeNumber(item.quantity, 1), 0);
 
   // Feature #9: Order Flow Restriction - Validation
   const isOrderValid =
@@ -741,11 +820,11 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
   // Create order
   const handleCreateOrder = async () => {
-    // Role check: Only waiters can create orders
+    // Role check: Only waiters and admins can create orders
     const currentRole = restaurantState.getRole();
-    if (currentRole !== 'waiter') {
-      toast.error('Only waiters can create and send orders to kitchen', {
-        description: 'Please switch to waiter mode to create orders',
+    if (currentRole !== 'waiter' && currentRole !== 'admin') {
+      toast.error('Only waiters and admins can create and send orders to kitchen', {
+        description: 'Please switch to waiter or admin mode to create orders',
         duration: 4000,
       });
       playSound('error', soundEnabled);
@@ -761,7 +840,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
     try {
       const orderData = {
         type: orderType,
-        tableNumber: orderType === 'dine-in' ? parseInt(tableNumber) : undefined,
+        tableNumber: orderType === 'dine-in' ? tableNumber : undefined,
         customerName: customerName || undefined,
         items: orderItems.map((item) => ({
           name: item.name,
@@ -787,7 +866,22 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
       );
 
       const result = await response.json();
-      if (result.success) {
+      // Check if order was created (API returns the order object with _id)
+      if (result && (result._id || result.id || result.success)) {
+        // Mark table as occupied (walk-in) for dine-in orders
+        if (orderType === 'dine-in' && tableNumber) {
+          const selectedTable = availableTables.find(t => 
+            (t.displayNumber || t.name) === tableNumber
+          );
+          if (selectedTable) {
+            try {
+              await tablesApi.updateStatus(selectedTable._id, 'occupied', 2);
+            } catch (tableError) {
+              console.warn('Failed to update table status:', tableError);
+            }
+          }
+        }
+        
         // Feature #10: Smart Notification
         toast.success('🎉 Order created successfully!', { duration: 3000 });
         
@@ -797,10 +891,20 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
         onOrderCreated();
         resetForm();
         onOpenChange(false);
+      } else {
+        throw new Error(result.detail || 'Failed to create order');
       }
-    } catch (error) {
+    } catch (error: any) {
+      let errorMsg = 'Failed to create order';
+      if (error instanceof Error) {
+        errorMsg = error.message;
+      } else if (typeof error === 'string') {
+        errorMsg = error;
+      } else if (error && error.detail) {
+        errorMsg = error.detail;
+      }
       console.error('Error creating order:', error);
-      toast.error('Failed to create order');
+      toast.error(`Order creation failed: ${errorMsg}`);
       playSound('error', soundEnabled);
     }
   };
@@ -852,16 +956,16 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                 
                 {/* Feature #7: Menu Sync Badge + Role Warning */}
                 <div className="flex items-center gap-3">
-                  {currentRole !== 'waiter' && (
-                    <Badge className="bg-red-500/90 text-white border-white/30 animate-pulse">
-                      <AlertTriangle className="h-3 w-3 mr-1" />
-                      Admin Mode - Cannot Create Orders
-                    </Badge>
-                  )}
                   {currentRole === 'waiter' && (
                     <Badge className="bg-green-500/20 text-white border-white/30">
                       <Check className="h-3 w-3 mr-1" />
                       Waiter Mode Active
+                    </Badge>
+                  )}
+                  {currentRole === 'admin' && (
+                    <Badge className="bg-yellow-500/20 text-white border-white/30">
+                      <Check className="h-3 w-3 mr-1" />
+                      Admin Mode Active
                     </Badge>
                   )}
                   <Badge className="bg-blue-500/20 text-white border-white/30">
@@ -925,15 +1029,53 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                   {orderType === 'dine-in' && (
                     <div className="space-y-2">
                       <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                        Table Number *
+                        Select Table *
                       </Label>
-                      <Input
-                        type="number"
-                        placeholder="Enter table #"
+                      <Select
                         value={tableNumber}
-                        onChange={(e) => setTableNumber(e.target.value)}
-                        className="h-12 text-lg font-semibold text-center border-2"
-                      />
+                        onValueChange={(value) => setTableNumber(value)}
+                      >
+                        <SelectTrigger className="h-12 text-base font-medium border-2">
+                          <SelectValue placeholder={tablesLoading ? "Loading tables..." : "Select a table"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableTables.length === 0 ? (
+                            <SelectItem value="no-tables" disabled>
+                              {tablesLoading ? "Loading..." : "No tables available"}
+                            </SelectItem>
+                          ) : (
+                            <>
+                              {/* Group tables by location */}
+                              {['VIP', 'Main Hall', 'AC Hall'].map(location => {
+                                const locationTables = availableTables.filter(t => t.location === location);
+                                if (locationTables.length === 0) return null;
+                                return (
+                                  <div key={location}>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted">
+                                      {location}
+                                    </div>
+                                    {locationTables.map(table => (
+                                      <SelectItem key={table._id} value={table.displayNumber || table.name}>
+                                        <span className="flex items-center gap-2">
+                                          <span className="font-bold">{table.displayNumber || table.name}</span>
+                                          <span className="text-muted-foreground text-xs">
+                                            ({table.capacity} seats)
+                                          </span>
+                                        </span>
+                                      </SelectItem>
+                                    ))}
+                                  </div>
+                                );
+                              })}
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {availableTables.length === 0 && !tablesLoading && (
+                        <p className="text-xs text-amber-600">
+                          All tables are currently occupied. Please wait or use takeaway.
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -1155,7 +1297,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                                         ) : (
                                           <>
                                             <ChevronDown className="h-3 w-3 mr-1" />
-                                            View Items ({combo.items.length})
+                                            View Items ({(combo.items || []).length})
                                           </>
                                         )}
                                       </Button>
@@ -1169,7 +1311,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                                             className="overflow-hidden"
                                           >
                                             <div className="border rounded p-2 space-y-1 text-xs bg-gray-50">
-                                              {combo.items.map(itemId => {
+                                              {(combo.items || []).map(itemId => {
                                                 const item = menuItems.find(mi => mi.id === itemId);
                                                 return item ? (
                                                   <div key={itemId} className="flex justify-between">
@@ -1276,7 +1418,8 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                         </div>
                       ) : (
                         <ScrollArea className="h-[450px] pr-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">\n                            {filteredMenuItems.map((item) => (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
+                            {filteredMenuItems.map((item) => (
                               <Card
                                 key={item.id}
                                 className="cursor-pointer hover:shadow-lg transition-shadow duration-150 border-2 hover:border-[#8B5E34]/50 group active:scale-[0.98]"

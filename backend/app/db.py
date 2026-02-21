@@ -14,12 +14,12 @@ def init_db(uri: str = None):
     if not uri:
         raise RuntimeError('MONGODB_URI must be set')
     _client = AsyncIOMotorClient(uri)
-    # Try to get database from URI, fallback to 'rms'
+    # Try to get database from URI, fallback to 'restaurant_db'
     default_db = _client.get_default_database()
     if default_db is not None:
         db = default_db
     else:
-        db = _client['rms']
+        db = _client['restaurant_db']
     return db
 
 
