@@ -301,11 +301,7 @@ export function AdminDashboard() {
                             </Badge>
                           </td>
                           <td className="p-3 text-center font-semibold" style={{ color: '#8B5A2B' }}>
-<<<<<<< HEAD
-                            ₹{(item.revenue || 0).toFixed(2)}
-=======
                             ₹{(item.revenue ?? 0).toFixed(2)}
->>>>>>> d3e0b6370a1e1a0ae381e316c1750084767230a1
                           </td>
                           <td className="p-3 text-center">
                             <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground">

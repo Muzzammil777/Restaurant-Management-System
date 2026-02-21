@@ -1206,7 +1206,6 @@ export const billingApi = {
     });
   },
 
-<<<<<<< HEAD
   // Retry payment
   retryPayment: (paymentId: string, method?: string) => {
     const query = new URLSearchParams();
@@ -1215,7 +1214,7 @@ export const billingApi = {
       method: 'POST',
     });
   },
-=======
+
   // ===== ORDER-BILLING INTEGRATION =====
   
   // Process payment for an order
@@ -1234,7 +1233,6 @@ export const billingApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
->>>>>>> d3e0b6370a1e1a0ae381e316c1750084767230a1
 
   // Invoices
   listInvoices: (params?: { date_from?: string; date_to?: string }) => {

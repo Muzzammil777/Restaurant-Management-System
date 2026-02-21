@@ -135,9 +135,15 @@ export function NotificationManagement() {
   }
 
   return (
-<<<<<<< HEAD
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold">Notifications</h2>
+    <div className="bg-notifications-module min-h-screen space-y-6">
+      <div className="module-container flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight text-white drop-shadow-lg">Notifications</h2>
+          <p className="text-sm text-gray-200 mt-1">
+            Configure notification preferences and view notification history
+          </p>
+        </div>
+      </div>
 
       {/* SUMMARY CARDS */}
       <div className="grid grid-cols-3 gap-6">
@@ -174,16 +180,6 @@ export function NotificationManagement() {
             </p>
           </CardContent>
         </Card>
-=======
-    <div className="bg-notifications-module min-h-screen space-y-6">
-      <div className="module-container flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-white drop-shadow-lg">Notifications</h2>
-          <p className="text-sm text-gray-200 mt-1">
-            Configure notification preferences and view notification history
-          </p>
-        </div>
->>>>>>> d3e0b6370a1e1a0ae381e316c1750084767230a1
       </div>
 
       {/* FILTER BAR */}
