@@ -42,6 +42,7 @@ async def list_orders(
     status: Optional[str] = None,
     type: Optional[str] = None,
     table: Optional[int] = None,
+    waiter_id: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     limit: int = Query(100, le=500),
@@ -57,6 +58,8 @@ async def list_orders(
         query["type"] = type
     if table:
         query["tableNumber"] = table
+    if waiter_id and waiter_id != "all":
+        query["waiterId"] = waiter_id
     if date_from:
         query["createdAt"] = {"$gte": datetime.fromisoformat(date_from)}
     if date_to:
@@ -125,24 +128,39 @@ async def get_order(order_id: str):
 @router.post("")
 async def create_order(data: dict):
     """Create new order"""
-    db = get_db()
-    
-    # Generate order number
-    count = await db.orders.count_documents({})
-    data["orderNumber"] = f"#ORD-{count + 1001}"
-    data["createdAt"] = datetime.utcnow().isoformat() + 'Z'
-    data["status"] = data.get("status", "placed")
-    data["statusUpdatedAt"] = datetime.utcnow().isoformat() + 'Z'
-    
-    result = await db.orders.insert_one(data)
-    created = await db.orders.find_one({"_id": result.inserted_id})
-    
-    await log_audit("create", "order", str(result.inserted_id), {
-        "orderNumber": data["orderNumber"],
-        "total": data.get("total")
-    })
-    
-    return serialize_doc(created)
+    try:
+        db = get_db()
+        
+        # Remove id and _id fields to let MongoDB generate them
+        # This prevents duplicate key errors when frontend sends id: null
+        data.pop("id", None)
+        data.pop("_id", None)
+        
+        # Generate order number
+        count = await db.orders.count_documents({})
+        data["orderNumber"] = f"#ORD-{count + 1001}"
+        data["createdAt"] = datetime.utcnow().isoformat() + 'Z'
+        data["status"] = data.get("status", "placed")
+        data["statusUpdatedAt"] = datetime.utcnow().isoformat() + 'Z'
+        
+        result = await db.orders.insert_one(data)
+        created = await db.orders.find_one({"_id": result.inserted_id})
+        
+        # Try to log audit but don't fail if it doesn't work
+        try:
+            await log_audit("create", "order", str(result.inserted_id), {
+                "orderNumber": data["orderNumber"],
+                "total": data.get("total")
+            })
+        except Exception as e:
+            print(f"Audit log error: {e}")
+        
+        return serialize_doc(created)
+    except Exception as e:
+        print(f"Error creating order: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to create order: {str(e)}")
 
 
 @router.put("/{order_id}")
@@ -152,6 +170,7 @@ async def update_order(order_id: str, data: dict):
     
     data["updatedAt"] = datetime.utcnow().isoformat() + 'Z'
     data.pop("_id", None)
+    data.pop("id", None)  # Remove id field to prevent index conflicts
     
     result = await db.orders.update_one(
         {"_id": ObjectId(order_id)},
@@ -458,3 +477,36 @@ async def process_order_workflow(data: dict):
     new_status = action_to_status[action]
     
     return await update_order_status(order_id, new_status, deduct_inventory=deduct)
+
+
+@router.post("/fix-indexes")
+async def fix_orders_indexes():
+    """
+    Migration endpoint to fix the duplicate key error on orders.
+    Drops the problematic 'id' index and removes 'id' field from all documents.
+    """
+    db = get_db()
+    results = {"dropped_index": False, "removed_id_fields": 0, "errors": []}
+    
+    # Try to drop the id_1 index
+    try:
+        await db.orders.drop_index("id_1")
+        results["dropped_index"] = True
+    except Exception as e:
+        error_msg = str(e)
+        if "not found" in error_msg.lower() or "index not found" in error_msg.lower():
+            results["dropped_index"] = "not_found"
+        else:
+            results["errors"].append(f"Failed to drop index: {error_msg}")
+    
+    # Remove id field from all documents that have it
+    try:
+        update_result = await db.orders.update_many(
+            {"id": {"$exists": True}},
+            {"$unset": {"id": ""}}
+        )
+        results["removed_id_fields"] = update_result.modified_count
+    except Exception as e:
+        results["errors"].append(f"Failed to remove id fields: {str(e)}")
+    
+    return results

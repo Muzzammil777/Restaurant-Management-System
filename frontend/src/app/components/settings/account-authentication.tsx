@@ -146,8 +146,8 @@ export function AccountAuthentication() {
 
   const deleteUser = async (userId: string) => {
     const user = userAccounts.find(u => u._id === userId);
-    if (user?.role === 'Admin') {
-      toast.error('Cannot delete admin user');
+    if (user?.role?.toLowerCase() === 'admin') {
+      toast.error('Admin account cannot be deleted');
       return;
     }
     
@@ -307,12 +307,10 @@ export function AccountAuthentication() {
                       onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      <option value="admin">Admin</option>
                       <option value="manager">Manager</option>
                       <option value="chef">Chef</option>
-                      <option value="cashier">Cashier</option>
                       <option value="waiter">Waiter</option>
-                      <option value="delivery">Delivery</option>
+                      <option value="cashier">Cashier</option>
                     </select>
                   </div>
                   <div className="space-y-2">

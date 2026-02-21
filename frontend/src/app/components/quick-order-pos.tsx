@@ -564,8 +564,8 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
     try {
       const result = await tablesApi.list();
       const tables: TableData[] = result.data || [];
-      // Filter out occupied, reserved, and cleaning tables - only show available
-      const available = tables.filter(t => t.status === 'available');
+      // Filter out occupied, reserved, and cleaning tables - only show available (case-insensitive)
+      const available = tables.filter(t => t.status?.toLowerCase() === 'available');
       // Sort by location and name
       available.sort((a, b) => {
         if (a.location !== b.location) return a.location.localeCompare(b.location);

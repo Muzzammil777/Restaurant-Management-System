@@ -9,10 +9,10 @@ import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Textarea } from '@/app/components/ui/textarea';
 import { ScrollArea } from '@/app/components/ui/scroll-area';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/app/components/ui/dropdown-menu';
-import { Clock, Package, CheckCircle, XCircle, Plus, CreditCard, Eye, IndianRupee, UtensilsCrossed, Zap, Minus, Search, Repeat, Flame, AlertCircle, TrendingUp, Activity, ChefHat, Coffee, Timer, Undo2, Gauge, MoveRight, MoveLeft, Ban, Sparkles, Pizza, ShoppingBag, ArrowUpDown, ArrowUp, ArrowDown, Trash2 } from 'lucide-react';
+import { Clock, Package, CheckCircle, XCircle, Plus, CreditCard, Eye, IndianRupee, UtensilsCrossed, Zap, Minus, Search, Repeat, Flame, AlertCircle, TrendingUp, Activity, ChefHat, Coffee, Timer, Undo2, Gauge, MoveRight, MoveLeft, Ban, Sparkles, Pizza, ShoppingBag, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
-import { ordersApi, menuApi } from '@/utils/api';
+import { ordersApi, menuApi, staffApi } from '@/utils/api';
+import { useAuth } from '@/utils/auth-context';
 import { PaymentDialog } from '@/app/components/payment-dialog';
 import { QuickOrderPOS } from '@/app/components/quick-order-pos';
 
@@ -34,6 +34,8 @@ interface Order {
   tags?: string[];
   statusUpdatedAt?: string;
   notes?: string;
+  waiterId?: string;
+  waiterName?: string;
 }
 
 interface MenuItem {
@@ -43,6 +45,290 @@ interface MenuItem {
   price: number;
   description: string;
   available: boolean;
+}
+
+interface TakeOrderItem {
+  menuItemId: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+// ============ Take Order Sheet Component ============
+function TakeOrderSheet({
+  open,
+  onOpenChange,
+  order,
+  menuItems,
+  onOrderUpdated,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  order: Order | null;
+  menuItems: MenuItem[];
+  onOrderUpdated: () => void;
+}) {
+  const [selectedItems, setSelectedItems] = useState<TakeOrderItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  // Reset state when sheet opens
+  useEffect(() => {
+    if (open) {
+      // Pre-fill with existing items if any
+      if (order && order.items.length > 0) {
+        setSelectedItems(
+          order.items.map((item, idx) => ({
+            menuItemId: `existing-${idx}`,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+          }))
+        );
+      } else {
+        setSelectedItems([]);
+      }
+      setNotes(order?.notes || '');
+      setSearchQuery('');
+      setSelectedCategory('all');
+    }
+  }, [open, order]);
+
+  const categories = ['all', ...Array.from(new Set(menuItems.map((m) => m.category)))];
+
+  const filteredMenuItems = menuItems.filter((item) => {
+    if (!item.available) return false;
+    if (selectedCategory !== 'all' && item.category !== selectedCategory) return false;
+    if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    return true;
+  });
+
+  const addItem = (menuItem: MenuItem) => {
+    setSelectedItems((prev) => {
+      const existing = prev.find((i) => i.menuItemId === menuItem.id);
+      if (existing) {
+        return prev.map((i) =>
+          i.menuItemId === menuItem.id ? { ...i, quantity: i.quantity + 1 } : i
+        );
+      }
+      return [...prev, { menuItemId: menuItem.id, name: menuItem.name, price: menuItem.price, quantity: 1 }];
+    });
+  };
+
+  const removeItem = (menuItemId: string) => {
+    setSelectedItems((prev) => {
+      const existing = prev.find((i) => i.menuItemId === menuItemId);
+      if (existing && existing.quantity > 1) {
+        return prev.map((i) =>
+          i.menuItemId === menuItemId ? { ...i, quantity: i.quantity - 1 } : i
+        );
+      }
+      return prev.filter((i) => i.menuItemId !== menuItemId);
+    });
+  };
+
+  const total = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalQty = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  const handleSubmit = async () => {
+    if (!order || selectedItems.length === 0) {
+      toast.error('Please add at least one item');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await ordersApi.update(order.id, {
+        items: selectedItems.map((item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          menuItemId: item.menuItemId,
+        })),
+        total,
+        notes: notes || undefined,
+        status: 'placed',
+      });
+      toast.success('Order updated with items!');
+      onOrderUpdated();
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error updating order:', error);
+      toast.error('Failed to update order');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!order) return null;
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col">
+        <SheetHeader className="p-6 pb-4 border-b">
+          <SheetTitle className="flex items-center gap-2">
+            <ClipboardList className="h-5 w-5" />
+            Take Order — {order.orderNumber || `Table ${order.tableNumber}`}
+          </SheetTitle>
+          <SheetDescription>
+            {order.waiterName && `Waiter: ${order.waiterName} · `}
+            {order.type === 'dine-in' && order.tableNumber ? `Table ${order.tableNumber}` : order.type}
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {/* Search + Category Filters */}
+          <div className="p-4 border-b space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search menu items..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {categories.map((cat) => (
+                <Button
+                  key={cat}
+                  size="sm"
+                  variant={selectedCategory === cat ? 'default' : 'outline'}
+                  onClick={() => setSelectedCategory(cat)}
+                  className="capitalize text-xs"
+                >
+                  {cat === 'all' ? 'All' : cat}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Menu Items Grid */}
+          <ScrollArea className="flex-1 p-4">
+            <div className="grid grid-cols-2 gap-3">
+              {filteredMenuItems.map((item) => {
+                const selected = selectedItems.find((i) => i.menuItemId === item.id);
+                return (
+                  <div
+                    key={item.id}
+                    className={`border rounded-lg p-3 cursor-pointer transition-all hover:shadow-md ${
+                      selected
+                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => addItem(item)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{item.name}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{item.category}</p>
+                      </div>
+                      <p className="text-sm font-semibold flex items-center gap-0.5 ml-2 shrink-0">
+                        <IndianRupee className="h-3 w-3" />
+                        {item.price}
+                      </p>
+                    </div>
+                    {selected && (
+                      <div className="mt-2 flex items-center justify-between">
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="h-7 w-7"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeItem(item.id);
+                          }}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="text-sm font-bold">{selected.quantity}</span>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="h-7 w-7"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addItem(item);
+                          }}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {filteredMenuItems.length === 0 && (
+                <div className="col-span-2 py-8 text-center text-muted-foreground">
+                  No menu items found
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+
+          {/* Notes */}
+          {selectedItems.length > 0 && (
+            <div className="p-4 border-t">
+              <Label className="text-xs font-medium text-muted-foreground">Special Instructions</Label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="E.g., No onion, extra spicy..."
+                className="mt-1 h-16 resize-none text-sm"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Footer — Cart Summary + Submit */}
+        <SheetFooter className="p-4 border-t bg-gray-50">
+          <div className="w-full space-y-3">
+            {/* Cart Summary */}
+            {selectedItems.length > 0 && (
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {selectedItems.map((item) => (
+                  <div key={item.menuItemId} className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {item.quantity}x {item.name}
+                    </span>
+                    <span className="font-medium flex items-center gap-0.5">
+                      <IndianRupee className="h-3 w-3" />
+                      {(item.price * item.quantity).toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-between items-center pt-2 border-t">
+              <div>
+                <p className="text-sm text-muted-foreground">{totalQty} item{totalQty !== 1 ? 's' : ''}</p>
+                <p className="text-lg font-bold flex items-center gap-0.5">
+                  <IndianRupee className="h-4 w-4" /> {total.toFixed(2)}
+                </p>
+              </div>
+              <Button
+                onClick={handleSubmit}
+                disabled={selectedItems.length === 0 || submitting}
+                className="gap-2"
+                size="lg"
+              >
+                {submitting ? (
+                  <>Saving...</>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    Confirm Order ({totalQty})
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
 }
 
 
@@ -59,12 +345,18 @@ const SMART_NOTE_KEYWORDS = {
 };
 
 export function OrderManagement() {
+  const { user } = useAuth();
+  const isWaiter = user?.role === 'waiter';
+  const isAdminOrManager = user?.role === 'admin' || user?.role === 'manager';
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterTable, setFilterTable] = useState<string>('all');
+  const [filterWaiter, setFilterWaiter] = useState<string>('all');
+  const [waiters, setWaiters] = useState<{ id: string; name: string }[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -72,6 +364,10 @@ export function OrderManagement() {
   
   // Quick Order Panel State
   const [quickOrderOpen, setQuickOrderOpen] = useState(false);
+
+  // Take Order Sheet State
+  const [takeOrderOpen, setTakeOrderOpen] = useState(false);
+  const [takeOrderTarget, setTakeOrderTarget] = useState<Order | null>(null);
 
   // Innovation #9: Undo Last Action State
   const [lastAction, setLastAction] = useState<{
@@ -117,9 +413,21 @@ export function OrderManagement() {
   useEffect(() => {
     fetchOrders();
     fetchMenuItems();
+    fetchWaiters();
     const interval = setInterval(fetchOrders, 10000); // Refresh every 10 seconds
     return () => clearInterval(interval);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isWaiter]);
+
+  const fetchWaiters = async () => {
+    try {
+      const res = await staffApi.list({ role: 'Waiter' });
+      const data = Array.isArray(res) ? res : (res as any).data || [];
+      setWaiters(data.map((s: any) => ({ id: s._id || s.id, name: s.name })));
+    } catch (e) {
+      console.error('Failed to fetch waiters', e);
+    }
+  };
 
   // Innovation #9: Undo countdown effect
   useEffect(() => {
@@ -140,7 +448,8 @@ export function OrderManagement() {
 
   const fetchOrders = async () => {
     try {
-      const result = await ordersApi.list();
+      const params = isWaiter && user?.id ? { waiterId: user.id } : undefined;
+      const result = await ordersApi.list(params);
       const rawOrders = (result as any)?.data || result || [];
       setOrders(Array.isArray(rawOrders) ? rawOrders.map(normalizeOrder) : []);
     } catch (error) {
@@ -332,9 +641,12 @@ export function OrderManagement() {
 
   // Filter and search orders
   const filteredOrders = orders.filter(order => {
+    // Waiters only see their own orders (strictly — even unassigned orders are hidden)
+    if (isWaiter && order.waiterId !== user?.id) return false;
     if (filterStatus !== 'all' && order.status !== filterStatus) return false;
     if (filterType !== 'all' && order.type !== filterType) return false;
     if (filterTable !== 'all' && order.tableNumber?.toString() !== filterTable) return false;
+    if (!isWaiter && filterWaiter !== 'all' && order.waiterId !== filterWaiter) return false;
     if (searchQuery && !generateOrderDisplayId(order.id, order.orderNumber).toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
@@ -407,8 +719,14 @@ export function OrderManagement() {
       {/* Header Section */}
       <div className="module-container flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-white drop-shadow-lg">Orders</h1>
-          <p className="text-gray-200">View, manage, and track all customer orders</p>
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">
+            {isWaiter ? `Your Orders` : 'Orders'}
+          </h1>
+          <p className="text-gray-200">
+            {isWaiter
+              ? `Showing orders assigned to you, ${user?.name || ''}`
+              : 'View, manage, and track all customer orders'}
+          </p>
         </div>
         
         {/* Quick Order Button */}
@@ -537,12 +855,30 @@ export function OrderManagement() {
               </SelectContent>
             </Select>
 
+            {/* Only admins/managers can filter by waiter */}
+            {!isWaiter && (
+              <Select value={filterWaiter} onValueChange={setFilterWaiter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Waiter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Waiters</SelectItem>
+                  {waiters.map(w => (
+                    <SelectItem key={w.id} value={w.id}>
+                      {w.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
             <Button 
               variant="outline" 
               onClick={() => {
                 setFilterStatus('all');
                 setFilterType('all');
                 setFilterTable('all');
+                setFilterWaiter('all');
                 setSearchQuery('');
               }}
             >
@@ -750,8 +1086,12 @@ export function OrderManagement() {
                         <UtensilsCrossed className="h-3.5 w-3.5" />
                         <span>Table {order.tableNumber}</span>
                       </div>
-                    )}
-                    {order.customerName && (
+                    )}                    {order.waiterName && (
+                      <div className="flex items-center gap-1">
+                        <ChefHat className="h-3.5 w-3.5" />
+                        <span>Waiter: {order.waiterName}</span>
+                      </div>
+                    )}                    {order.customerName && (
                       <div className="font-medium text-foreground">
                         {order.customerName}
                       </div>
@@ -827,8 +1167,23 @@ export function OrderManagement() {
 
                   {/* Context-Aware Action Buttons */}
                   <div className="flex flex-col gap-2 pt-2">
-                    {/* Primary Action */}
-                    {order.status === 'placed' && (
+                    {/* Take Order — for placed orders with no items */}
+                    {order.status === 'placed' && (!order.items || order.items.length === 0 || order.items.every(i => !i.name || i.name === 'Unknown Item')) && (
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setTakeOrderTarget(order);
+                          setTakeOrderOpen(true);
+                        }}
+                        className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700"
+                      >
+                        <ClipboardList className="h-4 w-4" />
+                        Take Order
+                      </Button>
+                    )}
+
+                    {/* Primary Action — Accept (only when items exist) */}
+                    {order.status === 'placed' && order.items && order.items.length > 0 && !order.items.every(i => !i.name || i.name === 'Unknown Item') && (
                       <Button
                         size="sm"
                         onClick={() => updateOrderStatus(order.id, 'preparing')}
@@ -963,6 +1318,15 @@ export function OrderManagement() {
             );
           })}</div>
       )}
+
+      {/* Take Order Sheet */}
+      <TakeOrderSheet
+        open={takeOrderOpen}
+        onOpenChange={setTakeOrderOpen}
+        order={takeOrderTarget}
+        menuItems={menuItems}
+        onOrderUpdated={fetchOrders}
+      />
 
       {/* Redesigned Quick Order (POS Mode) */}
       <QuickOrderPOS

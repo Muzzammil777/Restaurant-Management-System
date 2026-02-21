@@ -43,34 +43,6 @@ async def list_tables(
         query["capacity"] = {"$gte": capacity}
     
     tables = await db.tables.find(query).sort("name", 1).to_list(100)
-    
-    # If no tables exist, seed default tables
-    if not tables:
-        default_tables = [
-            # VIP Section
-            {"name": "V1", "displayNumber": "V1", "capacity": 4, "location": "VIP", "segment": "Front", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
-            {"name": "V2", "displayNumber": "V2", "capacity": 6, "location": "VIP", "segment": "Front", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
-            {"name": "V3", "displayNumber": "V3", "capacity": 4, "location": "VIP", "segment": "Back", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
-            # Main Hall - Front
-            {"name": "M1", "displayNumber": "M1", "capacity": 2, "location": "Main Hall", "segment": "Front", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
-            {"name": "M2", "displayNumber": "M2", "capacity": 2, "location": "Main Hall", "segment": "Front", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
-            {"name": "M3", "displayNumber": "M3", "capacity": 4, "location": "Main Hall", "segment": "Front", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
-            # Main Hall - Middle
-            {"name": "M4", "displayNumber": "M4", "capacity": 4, "location": "Main Hall", "segment": "Middle", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
-            {"name": "M5", "displayNumber": "M5", "capacity": 6, "location": "Main Hall", "segment": "Middle", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
-            # Main Hall - Back
-            {"name": "M6", "displayNumber": "M6", "capacity": 2, "location": "Main Hall", "segment": "Back", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
-            {"name": "M7", "displayNumber": "M7", "capacity": 4, "location": "Main Hall", "segment": "Back", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
-            # AC Hall - Front
-            {"name": "A1", "displayNumber": "A1", "capacity": 4, "location": "AC Hall", "segment": "Front", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
-            {"name": "A2", "displayNumber": "A2", "capacity": 4, "location": "AC Hall", "segment": "Front", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
-            # AC Hall - Middle
-            {"name": "A3", "displayNumber": "A3", "capacity": 6, "location": "AC Hall", "segment": "Middle", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
-            {"name": "A4", "displayNumber": "A4", "capacity": 2, "location": "AC Hall", "segment": "Middle", "status": "available", "reservationType": "None", "guestCount": 0, "waiterName": None, "waiterId": None},
-        ]
-        await db.tables.insert_many(default_tables)
-        tables = await db.tables.find({}).sort("name", 1).to_list(100)
-    
     total = await db.tables.count_documents(query if query else {})
     
     return {"data": [serialize_doc(table) for table in tables], "total": total}
@@ -129,17 +101,27 @@ async def get_table(table_id: str):
 @router.post("")
 async def create_table(data: dict):
     """Create new table"""
-    db = get_db()
-    
-    data["createdAt"] = datetime.utcnow()
-    data["status"] = data.get("status", "available")
-    
-    result = await db.tables.insert_one(data)
-    created = await db.tables.find_one({"_id": result.inserted_id})
-    
-    await log_audit("create", "table", str(result.inserted_id), {"name": data.get("name")})
-    
-    return serialize_doc(created)
+    try:
+        db = get_db()
+        
+        data["createdAt"] = datetime.utcnow()
+        data["status"] = data.get("status", "available")
+        
+        result = await db.tables.insert_one(data)
+        created = await db.tables.find_one({"_id": result.inserted_id})
+        
+        # Try to log audit but don't fail if it doesn't work
+        try:
+            await log_audit("create", "table", str(result.inserted_id), {"name": data.get("name")})
+        except Exception as e:
+            print(f"Audit log error: {e}")
+        
+        return serialize_doc(created)
+    except Exception as e:
+        print(f"Error creating table: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to create table: {str(e)}")
 
 
 @router.put("/{table_id}")

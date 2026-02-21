@@ -78,7 +78,7 @@ async def login(payload: LoginIn, request: Request):
         'id': str(user['_id']),
         'email': user['email'],
         'name': user.get('name', ''),
-        'role': user.get('role', 'staff'),
+        'role': user.get('role', 'waiter'),
         'phone': user.get('phone'),
         'shift': user.get('shift'),
         'department': user.get('department'),
@@ -101,7 +101,8 @@ async def list_staff(
     coll = db.get_collection('staff')
     filt = {}
     if role:
-        filt['role'] = role
+        # Case-insensitive role filter using regex
+        filt['role'] = {'$regex': f'^{role}$', '$options': 'i'}
     if active is not None:
         filt['active'] = active
     if shift:
@@ -154,12 +155,18 @@ async def create_staff(payload: StaffIn, request: Request):
     existing = await coll.find_one({'email': payload.email})
     if existing:
         raise HTTPException(status_code=409, detail='Email already exists')
-    
+
+    # Enforce only one admin account
+    if payload.role and payload.role.value == 'admin':
+        admin_exists = await coll.find_one({'role': 'admin'})
+        if admin_exists:
+            raise HTTPException(status_code=400, detail='An admin account already exists. Only one admin is allowed.')
+
     pw_hash = hash_password(payload.password) if payload.password else None
     doc = {
         'name': payload.name,
         'email': payload.email,
-        'role': payload.role.value if payload.role else 'staff',
+        'role': payload.role.value if payload.role else 'waiter',
         'password_hash': pw_hash,
         'phone': payload.phone,
         'shift': payload.shift.value if payload.shift else 'morning',
@@ -179,7 +186,7 @@ async def create_staff(payload: StaffIn, request: Request):
         resourceId=str(res.inserted_id),
         userId=request.headers.get('x-user-id'),
         userName=request.headers.get('x-user-name'),
-        details={'email': payload.email, 'role': payload.role.value if payload.role else 'staff'},
+        details={'email': payload.email, 'role': payload.role.value if payload.role else 'waiter'},
         ip=request.client.host if request.client else None
     )
     return serialize_doc(created)
@@ -597,7 +604,8 @@ async def export_staff_csv(
     coll = db.get_collection('staff')
     filt = {}
     if role:
-        filt['role'] = role
+        # Case-insensitive role filter using regex
+        filt['role'] = {'$regex': f'^{role}$', '$options': 'i'}
     if active is not None:
         filt['active'] = active
     if shift:

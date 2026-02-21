@@ -72,12 +72,11 @@ export function StaffManagement() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Roles</SelectItem>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="manager">Manager</SelectItem>
               <SelectItem value="chef">Chef</SelectItem>
               <SelectItem value="waiter">Waiter</SelectItem>
               <SelectItem value="cashier">Cashier</SelectItem>
-              <SelectItem value="manager">Manager</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="delivery">Delivery</SelectItem>
             </SelectContent>
           </Select>
           <Select value={shiftFilter} onValueChange={setShiftFilter}>

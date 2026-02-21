@@ -14,7 +14,6 @@ const ROLE_ICONS: Record<UserRole, React.ReactNode> = {
   chef: <ChefHat className="h-5 w-5" />,
   waiter: <Users className="h-5 w-5" />,
   cashier: <CreditCard className="h-5 w-5" />,
-  staff: <Users className="h-5 w-5" />,
 };
 
 export function LoginPage() {
@@ -128,7 +127,7 @@ export function LoginPage() {
                 <span>Role-based access control</span>
               </div>
               <div className="flex justify-center gap-4 flex-wrap">
-                {(['admin', 'manager', 'chef', 'waiter', 'cashier', 'delivery'] as UserRole[]).map((role) => (
+                {(['admin', 'manager', 'chef', 'waiter', 'cashier'] as UserRole[]).map((role) => (
                   <div key={role} className="flex flex-col items-center gap-1 text-muted-foreground">
                     <div className="p-2 rounded-lg bg-muted">
                       {ROLE_ICONS[role]}

@@ -24,6 +24,7 @@ import {
   getKitchenLoad 
 } from './utils';
 import { ordersApi, menuApi } from '@/utils/api';
+import { useAuth } from '@/utils/auth-context';
 
 // Animated Counter Component for count-up effect
 function AnimatedCounter({ value, className = '' }: { value: number; className?: string }) {
@@ -44,6 +45,7 @@ function AnimatedCounter({ value, className = '' }: { value: number; className?:
 }
 
 export function OrderManagement() {
+  const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,7 +128,9 @@ export function OrderManagement() {
           status: order.status || 'placed',
           type: order.type || 'dine-in',
           createdAt: order.createdAt || order.created_at || new Date().toISOString(),
-          items: normalizedItems
+          items: normalizedItems,
+          waiterId: order.waiterId || order.waiter_id,
+          waiterName: order.waiterName || order.waiter_name,
         };
       }));
     } catch (error) {
@@ -249,8 +253,16 @@ export function OrderManagement() {
     }
   };
 
-  // Filter and search orders
+  // Filter and search orders - waiters only see their own orders
   const filteredOrders = orders.filter(order => {
+    // For waiters, filter to show only their orders
+    if (user?.role === 'waiter') {
+      const waiterId = user.id;
+      // Show orders assigned to this waiter or orders for tables assigned to this waiter
+      const isWaiterOrder = order.waiterId === waiterId || order.waiterName === user.name;
+      if (!isWaiterOrder) return false;
+    }
+    
     if (filterStatus !== 'all' && order.status !== filterStatus) return false;
     if (filterType !== 'all' && order.type !== filterType) return false;
     if (filterTable !== 'all' && order.tableNumber?.toString() !== filterTable) return false;
