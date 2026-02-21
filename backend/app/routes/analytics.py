@@ -60,25 +60,18 @@ async def get_analytics():
     occupied_tables = await db.tables.count_documents({"status": "occupied"})
     table_occupancy = (occupied_tables / total_tables * 100) if total_tables > 0 else 0
 
-    # Order type breakdown (dine-in vs takeaway vs delivery)
+    # Order type breakdown — field is "type" on orders
     order_type_pipeline = [
-        {"$group": {"_id": "$orderType", "count": {"$sum": 1}}}
+        {"$group": {"_id": "$type", "count": {"$sum": 1}}}
     ]
     order_type_result = await db.orders.aggregate(order_type_pipeline).to_list(10)
     order_types = {r["_id"]: r["count"] for r in order_type_result if r["_id"]}
 
-    # Category distribution from menu items
+    # Category distribution — category is stored directly on order items
     category_pipeline = [
         {"$unwind": "$items"},
-        {"$lookup": {
-            "from": "menu_items",
-            "localField": "items.menuItemId",
-            "foreignField": "_id",
-            "as": "menuItem"
-        }},
-        {"$unwind": {"path": "$menuItem", "preserveNullAndEmptyArrays": True}},
         {"$group": {
-            "_id": {"$ifNull": ["$menuItem.category", "Other"]},
+            "_id": {"$ifNull": ["$items.category", "Other"]},
             "count": {"$sum": {"$ifNull": ["$items.quantity", 1]}}
         }},
         {"$sort": {"count": -1}}
