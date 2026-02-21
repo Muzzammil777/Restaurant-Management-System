@@ -47,12 +47,20 @@ interface ComboMeal {
   id: string;
   name: string;
   description: string;
-  items: string[]; // menu item IDs
+  items?: string[]; // menu item IDs (optional)
   originalPrice: number;
   discountedPrice: number;
   image: string;
   available: boolean;
   calories?: number;
+  customizations?: string[]; // from backend
+  addons?: string[]; // from backend
+  badges?: string[]; // from backend
+  cuisine?: string; // from backend
+  spiceLevel?: string; // from backend
+  prepTime?: string; // from backend
+  dietType?: string; // from backend
+  offer?: string; // from backend
 }
 
 interface QuickOrderItem {
@@ -133,21 +141,45 @@ const playSound = (type: 'add' | 'remove' | 'complete' | 'error', soundEnabled: 
   oscillator.connect(gainNode);
   gainNode.connect(audioContext.destination);
   
-  const frequencies = {
-    add: 800,
-    remove: 400,
-    complete: 1000,
-    error: 200,
-  };
+  oscillator.frequency.value = 
+    type === 'add' ? 800 : 
+    type === 'remove' ? 400 : 
+    type === 'complete' ? 1000 : 300;
   
-  oscillator.frequency.value = frequencies[type];
   oscillator.type = 'sine';
+  gainNode.gain.value = 0.1;
   
-  gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-  
-  oscillator.start(audioContext.currentTime);
+  oscillator.start();
   oscillator.stop(audioContext.currentTime + 0.1);
+};
+
+// Helper function to calculate combo item count
+const getComboItemCount = (combo: any): number => {
+  // If combo has items array, use its length
+  if (combo.items && Array.isArray(combo.items) && combo.items.length > 0) {
+    return combo.items.length;
+  }
+  
+  // Otherwise, count other meaningful fields
+  let count = 0;
+  
+  // Count customizations
+  if (combo.customizations && Array.isArray(combo.customizations)) {
+    count += combo.customizations.length;
+  }
+  
+  // Count addons
+  if (combo.addons && Array.isArray(combo.addons)) {
+    count += combo.addons.length;
+  }
+  
+  // Count badges
+  if (combo.badges && Array.isArray(combo.badges)) {
+    count += combo.badges.length;
+  }
+  
+  // If no items found, return 1 (the combo itself)
+  return count > 0 ? count : 1;
 };
 
 // ==================== MAIN COMPONENT ====================
@@ -1297,7 +1329,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                                         ) : (
                                           <>
                                             <ChevronDown className="h-3 w-3 mr-1" />
-                                            View Items ({(combo.items || []).length})
+                                            View Items ({getComboItemCount(combo)})
                                           </>
                                         )}
                                       </Button>
@@ -1310,19 +1342,88 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                                             exit={{ height: 0, opacity: 0 }}
                                             className="overflow-hidden"
                                           >
-                                            <div className="border rounded p-2 space-y-1 text-xs bg-gray-50">
-                                              {(combo.items || []).map(itemId => {
-                                                const item = menuItems.find(mi => mi.id === itemId);
-                                                return item ? (
-                                                  <div key={itemId} className="flex justify-between">
-                                                    <span>• {item.name}</span>
-                                                    <span className="text-muted-foreground flex items-center">
-                                                      <IndianRupee className="h-3 w-3" />
-                                                      {item.price}
-                                                    </span>
+                                            <div className="border rounded p-3 space-y-2 text-xs bg-gray-50">
+                                              {/* Show combo description */}
+                                              {combo.description && (
+                                                <div className="text-muted-foreground italic">
+                                                  {combo.description}
+                                                </div>
+                                              )}
+                                              
+                                              {/* Show customizations if available */}
+                                              {combo.customizations && Array.isArray(combo.customizations) && combo.customizations.length > 0 && (
+                                                <div>
+                                                  <div className="font-medium text-xs mb-1">Customizations:</div>
+                                                  {combo.customizations.map((custom: string, idx: number) => (
+                                                    <div key={idx} className="flex items-center gap-1">
+                                                      <span className="text-green-600">•</span>
+                                                      <span>{custom}</span>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              )}
+                                              
+                                              {/* Show addons if available */}
+                                              {combo.addons && Array.isArray(combo.addons) && combo.addons.length > 0 && (
+                                                <div>
+                                                  <div className="font-medium text-xs mb-1">Add-ons:</div>
+                                                  {combo.addons.map((addon: string, idx: number) => (
+                                                    <div key={idx} className="flex items-center gap-1">
+                                                      <span className="text-blue-600">•</span>
+                                                      <span>{addon}</span>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              )}
+                                              
+                                              {/* Show badges if available */}
+                                              {combo.badges && Array.isArray(combo.badges) && combo.badges.length > 0 && (
+                                                <div>
+                                                  <div className="font-medium text-xs mb-1">Special:</div>
+                                                  <div className="flex flex-wrap gap-1">
+                                                    {combo.badges.map((badge: string, idx: number) => (
+                                                      <Badge key={idx} variant="secondary" className="text-xs">
+                                                        {badge}
+                                                      </Badge>
+                                                    ))}
                                                   </div>
-                                                ) : null;
-                                              })}
+                                                </div>
+                                              )}
+                                              
+                                              {/* Show other details */}
+                                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                                {combo.calories && (
+                                                  <div className="flex items-center gap-1">
+                                                    <Flame className="h-3 w-3 text-orange-500" />
+                                                    <span>{combo.calories} cal</span>
+                                                  </div>
+                                                )}
+                                                {combo.cuisine && (
+                                                  <div className="flex items-center gap-1">
+                                                    <Package className="h-3 w-3 text-blue-500" />
+                                                    <span>{combo.cuisine}</span>
+                                                  </div>
+                                                )}
+                                                {combo.spiceLevel && (
+                                                  <div className="flex items-center gap-1">
+                                                    <AlertTriangle className="h-3 w-3 text-red-500" />
+                                                    <span>{combo.spiceLevel}</span>
+                                                  </div>
+                                                )}
+                                                {combo.prepTime && (
+                                                  <div className="flex items-center gap-1">
+                                                    <Clock className="h-3 w-3 text-green-500" />
+                                                    <span>{combo.prepTime}</span>
+                                                  </div>
+                                                )}
+                                              </div>
+                                              
+                                              {/* If no details available */}
+                                              {(!combo.customizations?.length && !combo.addons?.length && !combo.badges?.length && !combo.calories && !combo.cuisine) && (
+                                                <div className="text-muted-foreground text-center py-2">
+                                                  Combo details not available
+                                                </div>
+                                              )}
                                             </div>
                                           </motion.div>
                                         )}

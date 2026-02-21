@@ -277,9 +277,23 @@ async def update_order_status(order_id: str, status: str, deduct_inventory: bool
 
 @router.delete("/{order_id}")
 async def delete_order(order_id: str):
-    """Delete order (soft delete - mark as cancelled)"""
+    """Delete order - hard delete cancelled orders, soft delete others"""
     db = get_db()
     
+    # Check if order exists and get its status
+    order = await db.orders.find_one({"_id": ObjectId(order_id)})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # If order is already cancelled, do hard delete
+    if order.get("status") == "cancelled":
+        result = await db.orders.delete_one({"_id": ObjectId(order_id)})
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Order not found")
+        await log_audit("hard_delete", "order", order_id)
+        return {"success": True, "deleted": True}
+    
+    # For other statuses, do soft delete (mark as cancelled)
     result = await db.orders.update_one(
         {"_id": ObjectId(order_id)},
         {"$set": {"status": "cancelled", "cancelledAt": datetime.utcnow().isoformat() + 'Z'}}
@@ -288,9 +302,9 @@ async def delete_order(order_id: str):
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Order not found")
     
-    await log_audit("cancel", "order", order_id)
+    await log_audit("soft_delete", "order", order_id)
     
-    return {"success": True}
+    return {"success": True, "deleted": False}
 
 
 # ============ KITCHEN DISPLAY ============
