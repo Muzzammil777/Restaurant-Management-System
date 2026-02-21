@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime
+import traceback
 from .db import get_db
 
 
@@ -28,18 +29,23 @@ async def log_audit(
         device: The device/browser info
         status: The status of the action ('success', 'failed', 'warning')
     """
-    db = get_db()
-    coll = db.get_collection('audit_logs')
-    doc = {
-        'action': action,
-        'resource': resource,
-        'resourceId': resourceId,
-        'userId': userId,
-        'userName': userName,
-        'details': details,
-        'ip': ip,
-        'device': device,
-        'status': status,
-        'createdAt': datetime.utcnow().isoformat()
-    }
-    await coll.insert_one(doc)
+    try:
+        db = get_db()
+        coll = db.get_collection('audit_logs')
+        doc = {
+            'action': action,
+            'resource': resource,
+            'resourceId': resourceId,
+            'userId': userId,
+            'userName': userName,
+            'details': details,
+            'ip': ip,
+            'device': device,
+            'status': status,
+            'createdAt': datetime.utcnow().isoformat()
+        }
+        await coll.insert_one(doc)
+    except Exception as e:
+        # Log to console but don't crash the main operation
+        print(f"Audit logging failed: {e}")
+        traceback.print_exc()

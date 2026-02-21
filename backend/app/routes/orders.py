@@ -128,24 +128,34 @@ async def get_order(order_id: str):
 @router.post("")
 async def create_order(data: dict):
     """Create new order"""
-    db = get_db()
-    
-    # Generate order number
-    count = await db.orders.count_documents({})
-    data["orderNumber"] = f"#ORD-{count + 1001}"
-    data["createdAt"] = datetime.utcnow().isoformat() + 'Z'
-    data["status"] = data.get("status", "placed")
-    data["statusUpdatedAt"] = datetime.utcnow().isoformat() + 'Z'
-    
-    result = await db.orders.insert_one(data)
-    created = await db.orders.find_one({"_id": result.inserted_id})
-    
-    await log_audit("create", "order", str(result.inserted_id), {
-        "orderNumber": data["orderNumber"],
-        "total": data.get("total")
-    })
-    
-    return serialize_doc(created)
+    try:
+        db = get_db()
+        
+        # Generate order number
+        count = await db.orders.count_documents({})
+        data["orderNumber"] = f"#ORD-{count + 1001}"
+        data["createdAt"] = datetime.utcnow().isoformat() + 'Z'
+        data["status"] = data.get("status", "placed")
+        data["statusUpdatedAt"] = datetime.utcnow().isoformat() + 'Z'
+        
+        result = await db.orders.insert_one(data)
+        created = await db.orders.find_one({"_id": result.inserted_id})
+        
+        # Try to log audit but don't fail if it doesn't work
+        try:
+            await log_audit("create", "order", str(result.inserted_id), {
+                "orderNumber": data["orderNumber"],
+                "total": data.get("total")
+            })
+        except Exception as e:
+            print(f"Audit log error: {e}")
+        
+        return serialize_doc(created)
+    except Exception as e:
+        print(f"Error creating order: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to create order: {str(e)}")
 
 
 @router.put("/{order_id}")

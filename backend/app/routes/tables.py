@@ -101,17 +101,27 @@ async def get_table(table_id: str):
 @router.post("")
 async def create_table(data: dict):
     """Create new table"""
-    db = get_db()
-    
-    data["createdAt"] = datetime.utcnow()
-    data["status"] = data.get("status", "available")
-    
-    result = await db.tables.insert_one(data)
-    created = await db.tables.find_one({"_id": result.inserted_id})
-    
-    await log_audit("create", "table", str(result.inserted_id), {"name": data.get("name")})
-    
-    return serialize_doc(created)
+    try:
+        db = get_db()
+        
+        data["createdAt"] = datetime.utcnow()
+        data["status"] = data.get("status", "available")
+        
+        result = await db.tables.insert_one(data)
+        created = await db.tables.find_one({"_id": result.inserted_id})
+        
+        # Try to log audit but don't fail if it doesn't work
+        try:
+            await log_audit("create", "table", str(result.inserted_id), {"name": data.get("name")})
+        except Exception as e:
+            print(f"Audit log error: {e}")
+        
+        return serialize_doc(created)
+    except Exception as e:
+        print(f"Error creating table: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to create table: {str(e)}")
 
 
 @router.put("/{table_id}")
