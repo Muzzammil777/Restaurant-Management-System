@@ -32,7 +32,7 @@ app = FastAPI(title='RMS Backend (FastAPI)')
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://127.0.0.1:59007", "http://127.0.0.1:59987", "http://127.0.0.1:63519", "http://127.0.0.1:59987", "*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

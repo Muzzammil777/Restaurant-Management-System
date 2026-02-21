@@ -9,7 +9,8 @@ import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Textarea } from '@/app/components/ui/textarea';
 import { ScrollArea } from '@/app/components/ui/scroll-area';
-import { Clock, Package, CheckCircle, XCircle, Plus, CreditCard, Eye, IndianRupee, UtensilsCrossed, Zap, Minus, Search, Repeat, Flame, AlertCircle, TrendingUp, Activity, ChefHat, Coffee, Timer, Undo2, Gauge, MoveRight, MoveLeft, Ban, Sparkles, Pizza, ShoppingBag } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/app/components/ui/dropdown-menu';
+import { Clock, Package, CheckCircle, XCircle, Plus, CreditCard, Eye, IndianRupee, UtensilsCrossed, Zap, Minus, Search, Repeat, Flame, AlertCircle, TrendingUp, Activity, ChefHat, Coffee, Timer, Undo2, Gauge, MoveRight, MoveLeft, Ban, Sparkles, Pizza, ShoppingBag, ArrowUpDown, ArrowUp, ArrowDown, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ordersApi, menuApi } from '@/utils/api';
 import { PaymentDialog } from '@/app/components/payment-dialog';
@@ -67,6 +68,7 @@ export function OrderManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
   
   // Quick Order Panel State
   const [quickOrderOpen, setQuickOrderOpen] = useState(false);
@@ -157,6 +159,33 @@ export function OrderManagement() {
       setMenuItems(Array.isArray(items) ? items.filter((item: MenuItem) => item.available !== false) : []);
     } catch (error) {
       console.error('Error fetching menu items:', error);
+    }
+  };
+
+  const deleteOrder = async (orderId: string, orderDisplayId: string) => {
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      `Are you sure you want to delete order ${orderDisplayId}?` +
+      '\n\n• Active orders will be marked as cancelled' +
+      '\n• Cancelled orders will be permanently deleted'
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      // Don't modify the ID - use it as is since it's already a MongoDB ObjectId
+      await ordersApi.delete(orderId);
+      toast.success('Order deleted successfully!');
+      fetchOrders();
+    } catch (error: any) {
+      console.error('Error deleting order:', error);
+      if (error.message?.includes('404') || error.message?.includes('not found')) {
+        toast.error('Order not found. It may have been already deleted.');
+        // Refresh orders to show current state
+        fetchOrders();
+      } else {
+        toast.error('Failed to delete order');
+      }
     }
   };
 
@@ -310,7 +339,7 @@ export function OrderManagement() {
     return true;
   });
 
-  // Sort orders: bottleneck orders first, then by age
+  // Sort orders: bottleneck orders first, then by age, then by user preference
   const sortedOrders = [...filteredOrders].sort((a, b) => {
     const aAge = getOrderAge(a);
     const bAge = getOrderAge(b);
@@ -329,8 +358,14 @@ export function OrderManagement() {
     if (aDelay === 'warning' && bDelay !== 'warning') return -1;
     if (bDelay === 'warning' && aDelay !== 'warning') return 1;
 
-    // Most recent first for same priority (higher timestamp = newer)
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    // Extract order ID numbers for sorting
+    const aOrderId = generateOrderDisplayId(a.id, a.orderNumber);
+    const bOrderId = generateOrderDisplayId(b.id, b.orderNumber);
+    const aOrderNum = parseInt(aOrderId.replace(/[^0-9]/g, '')) || 0;
+    const bOrderNum = parseInt(bOrderId.replace(/[^0-9]/g, '')) || 0;
+
+    // Sort by user preference (newest/oldest) based on order ID number
+    return sortBy === 'newest' ? bOrderNum - aOrderNum : aOrderNum - bOrderNum;
   });
 
   // Calculate statistics
@@ -451,7 +486,7 @@ export function OrderManagement() {
       {/* Smart Filters & Search */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid gap-4 md:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-6">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
@@ -513,6 +548,31 @@ export function OrderManagement() {
             >
               Clear Filters
             </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <ArrowUpDown className="h-4 w-4" />
+                  Sort
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem 
+                  onClick={() => setSortBy('newest')}
+                  className={sortBy === 'newest' ? 'bg-accent' : ''}
+                >
+                  <ArrowDown className="h-4 w-4 mr-2" />
+                  New to Old
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setSortBy('oldest')}
+                  className={sortBy === 'oldest' ? 'bg-accent' : ''}
+                >
+                  <ArrowUp className="h-4 w-4 mr-2" />
+                  Old to New
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </CardContent>
       </Card>
@@ -574,8 +634,18 @@ export function OrderManagement() {
                   delayLevel === 'warning' ? 'border-yellow-400 border-2' : ''
                 }`}
               >
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start mb-2">
+                <CardHeader className="pb-3 relative">
+                  {/* Delete Button - Top Right Corner */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteOrder(order.id, generateOrderDisplayId(order.id, order.orderNumber))}
+                    className="absolute top-2 right-2 h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                  
+                  <div className="flex justify-between items-start mb-2 pr-10">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <CardTitle className="text-lg font-semibold">
@@ -723,11 +793,12 @@ export function OrderManagement() {
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {new Date(order.createdAt).toLocaleTimeString('en-US', {
+                        {new Date(order.createdAt).toLocaleTimeString('en-IN', {
                           hour: '2-digit',
                           minute: '2-digit',
-                          hour12: true
-                        })}
+                          hour12: true,
+                          timeZone: 'Asia/Kolkata'
+                        })} IST
                       </span>
                       {order.paymentMethod && (
                         <span className="flex items-center gap-1">
