@@ -456,12 +456,12 @@ export function BillingPaymentComprehensive() {
     try {
       // Create invoice
       const invoiceResult = await mockApi.createInvoice(invoiceData);
-      const billId = invoiceResult?.id || 'bill-' + Date.now();
+      const billId = invoiceResult?.data?.id || 'bill-' + Date.now();
       
       // Call workflow endpoint to notify bill is generated
       if (selectedOrder.tableId) {
         try {
-          const totalAmount = invoiceResult?.totalAmount || invoiceData.totalAmount || 0;
+          const totalAmount = invoiceResult?.data?.grandTotal || invoiceData.grandTotal || 0;
           await workflowApi.billGenerated(
             selectedOrder.tableId,
             selectedOrder.id,
@@ -490,7 +490,7 @@ export function BillingPaymentComprehensive() {
         // Call workflow endpoint to notify payment completed
         try {
           const paymentId = 'payment-' + Date.now();
-          const totalAmount = invoiceResult?.totalAmount || invoiceData.totalAmount || 0;
+          const totalAmount = invoiceResult?.data?.grandTotal || invoiceData.grandTotal || 0;
           
           await workflowApi.paymentCompleted(
             selectedOrder.tableId,
