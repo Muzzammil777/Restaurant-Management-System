@@ -18,9 +18,9 @@ import {
   Calendar,
   Download,
   Star,
-  Loader2,
 } from 'lucide-react';
 import { analyticsApi } from '@/utils/api';
+import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
 
 const CATEGORY_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#f97316'];
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -114,14 +114,7 @@ export function ReportsAnalytics() {
   const delivery = orderTypes['delivery'] ?? 0;
 
   if (loading) {
-    return (
-      <div className="bg-analytics-module min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3 text-white">
-          <Loader2 className="h-10 w-10 animate-spin" />
-          <p className="text-sm">Loading analytics...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner message="Loading analytics..." icon="orders" />;
   }
 
   return (

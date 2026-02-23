@@ -98,9 +98,15 @@ interface TableCardProps {
   onCheckout: (tableId: string) => void;
   onRequestOrder: (tableId: string) => void;
   onSeatGuests: (tableId: string, guestCount: number) => void;
+  currentUser?: any;
 }
 
-function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout, onRequestOrder, onSeatGuests }: TableCardProps) {
+function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout, onRequestOrder, onSeatGuests, currentUser }: TableCardProps) {
+  const isWaiter = currentUser?.role === 'waiter';
+  const isAdminOrManager = currentUser?.role === 'admin' || currentUser?.role === 'manager';
+  const isMyTable = isWaiter && table.waiterId === currentUser?.id;
+  // Waiter can interact with their own table or unassigned occupied tables
+  const canInteract = isAdminOrManager || !isWaiter || isMyTable || !table.waiterId;
   const [cleaningTimeLeft, setCleaningTimeLeft] = useState<number>(0);
   const [isPulsing, setIsPulsing] = useState(false);
   const [seatCount, setSeatCount] = useState(2);
@@ -229,23 +235,37 @@ function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout, onRequ
 
           {/* Waiter Assignment */}
           {table.status === 'Occupied' && !table.waiterName && (
-            <Select
-              onValueChange={(value) => {
-                const [waiterId, waiterName] = value.split('|');
-                onAssignWaiter(table.id, waiterId, waiterName);
-              }}
-            >
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue placeholder="Assign Waiter" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableWaiters.map((waiter) => (
-                  <SelectItem key={waiter.id} value={`${waiter.id}|${waiter.name}`}>
-                    {waiter.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            isWaiter ? (
+              // Waiter: one-click claim
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full border-green-500 text-green-700 hover:bg-green-50"
+                onClick={(e) => { e.stopPropagation(); onAssignWaiter(table.id, currentUser.id, currentUser.name); }}
+              >
+                <UserPlus className="w-3 h-3 mr-1" />
+                Claim This Table
+              </Button>
+            ) : (
+              // Admin / Manager: dropdown
+              <Select
+                onValueChange={(value) => {
+                  const [waiterId, waiterName] = value.split('|');
+                  onAssignWaiter(table.id, waiterId, waiterName);
+                }}
+              >
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Assign Waiter" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableWaiters.map((waiter) => (
+                    <SelectItem key={waiter.id} value={`${waiter.id}|${waiter.name}`}>
+                      {waiter.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )
           )}
 
           {table.waiterName && (
@@ -299,8 +319,8 @@ function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout, onRequ
             </div>
           )}
 
-          {/* Request Order Button */}
-          {(table.status === 'Occupied' || table.status === 'Eating') && !table.currentOrderId && (
+          {/* Request Order Button — shown only to admin/manager or the assigned waiter */}
+          {(table.status === 'Occupied' || table.status === 'Eating') && !table.currentOrderId && canInteract && (
             <Button
               size="sm"
               className="w-full bg-stone-800 hover:bg-stone-900 text-white"
@@ -311,8 +331,8 @@ function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout, onRequ
             </Button>
           )}
 
-          {/* Checkout Button */}
-          {table.status === 'Eating' && table.currentOrderId && (
+          {/* Checkout Button — shown only to admin/manager or the assigned waiter */}
+          {table.status === 'Eating' && table.currentOrderId && canInteract && (
             <Button
               size="sm"
               className="w-full bg-[#8B5A2B] hover:bg-[#6B4520] text-white"
@@ -700,6 +720,15 @@ export function TableManagementComprehensive() {
   const handleSeatGuests = async (tableId: string, guestCount: number) => {
     try {
       await tablesApi.updateStatus(tableId, 'occupied', guestCount);
+
+      // If a waiter is logged in, auto-assign them to this table
+      if (user?.role === 'waiter') {
+        try {
+          await tablesApi.assignWaiter(tableId, user.id, user.name);
+        } catch (e) {
+          console.warn('Could not auto-assign waiter on seat:', e);
+        }
+      }
       
       // Call workflow endpoint to notify guest arrival
       try {
@@ -848,13 +877,16 @@ export function TableManagementComprehensive() {
           <p className="text-gray-600 mt-1">Monitor and manage restaurant floor</p>
         </div>
         <div className="flex gap-3">
-          <Button
-            className="bg-[#8B5A2B] hover:bg-[#6B4520] text-white"
-            onClick={() => setAddTableDialogOpen(true)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Table
-          </Button>
+          {/* Only admin/manager can add tables */}
+          {(user?.role === 'admin' || user?.role === 'manager') && (
+            <Button
+              className="bg-[#8B5A2B] hover:bg-[#6B4520] text-white"
+              onClick={() => setAddTableDialogOpen(true)}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Table
+            </Button>
+          )}
           <Button
             className="bg-[#8B5A2B] hover:bg-[#6B4520] text-white"
             onClick={handleWalkIn}
@@ -957,6 +989,7 @@ export function TableManagementComprehensive() {
                         onCheckout={handleCheckout}
                         onRequestOrder={handleRequestOrder}
                         onSeatGuests={handleSeatGuests}
+                        currentUser={user}
                       />
                     ))}
                   </AnimatePresence>

@@ -8,6 +8,7 @@ import { Badge } from '@/app/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { ShoppingCart, Plus, Minus, Trash2, Clock, CreditCard, IndianRupee } from 'lucide-react';
 import { menuApi, ordersApi } from '@/utils/api';
+import { LoadingMenu } from '@/app/components/ui/loading-spinner';
 import { USE_MOCK_DATA, mockMenuItems } from '@/utils/mock-data';
 import { toast } from 'sonner';
 
@@ -154,14 +155,7 @@ export function CustomerView() {
   const categories = Array.from(new Set(menuItems.map(item => item.category)));
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading menu...</p>
-        </div>
-      </div>
-    );
+    return <LoadingMenu />;
   }
 
   return (
