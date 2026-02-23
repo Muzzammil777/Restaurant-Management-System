@@ -532,8 +532,12 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
     try {
       const result = await tablesApi.list();
       const tables: TableData[] = result.data || [];
-      // Filter out occupied, reserved, and cleaning tables - only show available (case-insensitive)
-      const available = tables.filter(t => t.status?.toLowerCase() === 'available');
+      // Show both available tables AND occupied tables (for waiters taking orders on their assigned tables)
+      // Filter to only show available and occupied tables (not reserved or cleaning)
+      const available = tables.filter(t => {
+        const status = t.status?.toLowerCase();
+        return status === 'available' || status === 'occupied';
+      });
       // Sort by location and name
       available.sort((a, b) => {
         if (a.location !== b.location) return a.location.localeCompare(b.location);
@@ -1059,8 +1063,13 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                                         <span className="flex items-center gap-2">
                                           <span className="font-bold">{table.displayNumber || table.name}</span>
                                           <span className="text-muted-foreground text-xs">
-                                            ({table.capacity} seats)
+                                            ({table.capacity} seats{table.status?.toLowerCase() === 'occupied' ? ', Occupied' : ''})
                                           </span>
+                                          {table.status?.toLowerCase() === 'occupied' && table.waiterName && (
+                                            <span className="text-xs text-emerald-600">
+                                              • {table.waiterName}
+                                            </span>
+                                          )}
                                         </span>
                                       </SelectItem>
                                     ))}

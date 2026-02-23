@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { mockApi, type MockOrder, type MockInvoice } from '@/app/services/mock-api';
+import { workflowApi } from '@/utils/api';
 
 // ============================================================================
 // BILL GENERATION CARD COMPONENT
@@ -455,6 +456,23 @@ export function BillingPaymentComprehensive() {
     try {
       // Create invoice
       const invoiceResult = await mockApi.createInvoice(invoiceData);
+      const billId = invoiceResult?.id || 'bill-' + Date.now();
+      
+      // Call workflow endpoint to notify bill is generated
+      if (selectedOrder.tableId) {
+        try {
+          const totalAmount = invoiceResult?.totalAmount || invoiceData.totalAmount || 0;
+          await workflowApi.billGenerated(
+            selectedOrder.tableId,
+            selectedOrder.id,
+            billId,
+            totalAmount,
+            invoiceData
+          );
+        } catch (e) {
+          console.warn('Could not notify workflow of bill generation:', e);
+        }
+      }
       
       // Update order status to completed
       await mockApi.updateOrderStatus(selectedOrder.id, 'completed');
@@ -468,6 +486,23 @@ export function BillingPaymentComprehensive() {
           kitchenStatus: 'Idle',
           currentOrderId: null
         });
+
+        // Call workflow endpoint to notify payment completed
+        try {
+          const paymentId = 'payment-' + Date.now();
+          const totalAmount = invoiceResult?.totalAmount || invoiceData.totalAmount || 0;
+          
+          await workflowApi.paymentCompleted(
+            selectedOrder.tableId,
+            billId,
+            paymentId,
+            totalAmount,
+            'cash', // Can be dynamic based on payment method
+            'available'
+          );
+        } catch (e) {
+          console.warn('Could not notify workflow of payment completion:', e);
+        }
       }
 
       toast.success('Payment completed! Table set to cleaning.', {

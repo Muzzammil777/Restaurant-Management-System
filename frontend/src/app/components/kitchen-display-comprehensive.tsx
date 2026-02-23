@@ -13,7 +13,7 @@ import {
   AlertTriangle, Coffee, Zap, Users, LogOut, Crown
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { ordersApi, tablesApi } from '@/utils/api';
+import { ordersApi, tablesApi, workflowApi } from '@/utils/api';
 import { KDSTerminalLogin, type KitchenTerminalStation, TERMINAL_STATIONS } from '@/app/components/kds-terminal-login';
 
 // Kitchen Order type matching backend data
@@ -399,6 +399,20 @@ export function KitchenDisplayComprehensive() {
       // Update on server
       const cleanId = orderId.replace('order:', '').replace(/^.*:/, '');
       await ordersApi.update(cleanId, { items: updatedItems });
+
+      // If this is the first item being completed and order is still "placed", notify workflow that chef started preparing
+      const hasAnyCompleted = updatedItems.some(item => item.completed);
+      const hadAnyCompletedBefore = order.items.some(item => item.completed);
+      
+      if (hasAnyCompleted && !hadAnyCompletedBefore && order.tableId && order.status === 'placed') {
+        try {
+          // Get current user for chef ID (can be enhanced later)
+          const userId = localStorage.getItem('rms_current_user') ? JSON.parse(localStorage.getItem('rms_current_user') || '{}').id : 'chef';
+          await workflowApi.orderPreparing(order.tableId, cleanId, userId, 20); // 20 min estimate
+        } catch (e) {
+          console.warn('Could not notify workflow of order preparing:', e);
+        }
+      }
     } catch (error) {
       toast.error('Failed to update item');
       fetchOrders(); // Revert on error
@@ -417,6 +431,13 @@ export function KitchenDisplayComprehensive() {
           await tablesApi.update(order.tableId, {
             kitchenStatus: 'Ready'
           });
+          
+          // Call workflow endpoint to notify order is ready
+          try {
+            await workflowApi.orderReady(order.tableId, cleanId);
+          } catch (e) {
+            console.warn('Could not notify workflow of order ready:', e);
+          }
         } catch (e) {
           // Table update is not critical
           console.warn('Could not update table status:', e);
