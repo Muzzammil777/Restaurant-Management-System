@@ -345,13 +345,13 @@ function TakeOrderSheet({
 
 // Innovation #6: Smart Notes Keywords
 const SMART_NOTE_KEYWORDS = {
-  'no onion': { icon: '🧅', color: 'text-orange-600', bg: 'bg-orange-50' },
-  'no garlic': { icon: '🧄', color: 'text-orange-600', bg: 'bg-orange-50' },
-  'extra spicy': { icon: '🌶', color: 'text-red-600', bg: 'bg-red-50' },
-  'mild': { icon: '😊', color: 'text-green-600', bg: 'bg-green-50' },
-  'urgent': { icon: '⚡', color: 'text-yellow-600', bg: 'bg-yellow-50' },
-  'allergy': { icon: '⚠️', color: 'text-red-600', bg: 'bg-red-50' },
-  'vip': { icon: '👑', color: 'text-purple-600', bg: 'bg-purple-50' },
+  'no onion': { icon: '', color: 'text-orange-600', bg: 'bg-orange-50' },
+  'no garlic': { icon: '', color: 'text-orange-600', bg: 'bg-orange-50' },
+  'extra spicy': { icon: '', color: 'text-red-600', bg: 'bg-red-50' },
+  'mild': { icon: '', color: 'text-green-600', bg: 'bg-green-50' },
+  'urgent': { icon: '', color: 'text-yellow-600', bg: 'bg-yellow-50' },
+  'allergy': { icon: '', color: 'text-red-600', bg: 'bg-red-50' },
+  'vip': { icon: '', color: 'text-purple-600', bg: 'bg-purple-50' },
 };
 
 export function OrderManagement() {
@@ -603,11 +603,11 @@ export function OrderManagement() {
     const isUrgent = order.notes?.toLowerCase().includes('urgent');
 
     if (hasPriorityTag || isVIP || isUrgent || ageInMinutes > 30) {
-      return { level: 'high', badge: '🔴 Urgent', color: 'bg-red-500 text-white' };
+      return { level: 'high', badge: 'Urgent', color: 'bg-red-500 text-white' };
     } else if (ageInMinutes > 15) {
-      return { level: 'medium', badge: '🟡 Normal', color: 'bg-yellow-500 text-white' };
+      return { level: 'medium', badge: 'Normal', color: 'bg-yellow-500 text-white' };
     }
-    return { level: 'low', badge: '🟢 Low', color: 'bg-green-500 text-white' };
+    return { level: 'low', badge: 'Low', color: 'bg-green-500 text-white' };
   };
 
   // Innovation #6: Parse and highlight smart notes
@@ -961,7 +961,7 @@ export function OrderManagement() {
                     <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
                       <div className="flex items-center gap-2 text-red-700">
                         <AlertCircle className="h-4 w-4 animate-pulse" />
-                        <p className="text-xs font-medium">⚠️ Kitchen Bottleneck - Priority Attention Needed!</p>
+                        <p className="text-xs font-medium">Kitchen Bottleneck - Priority Attention Needed!</p>
                       </div>
                     </div>
                   )}
