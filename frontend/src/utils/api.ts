@@ -826,6 +826,11 @@ export const tablesApi = {
     fetchApi<any>(`/tables/${tableId}/waiter`, {
       method: 'DELETE',
     }),
+
+  // Reset all tables to available
+  resetAll: () => fetchApi<{ success: boolean; modified: number }>('/tables/reset-all', {
+    method: 'POST',
+  }),
 };
 
 

@@ -12,7 +12,7 @@ import { LoadingTables } from '@/app/components/ui/loading-spinner';
 import {
   Users, Clock, Utensils, Sparkles, CheckCircle, UserPlus,
   AlertCircle, ChefHat, Timer, MapPin, Calendar, X, Coffee, DollarSign,
-  Plus, ChevronsRight, Minus
+  Plus, ChevronsRight, Minus, RotateCcw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { tablesApi } from '@/utils/api';
@@ -611,6 +611,7 @@ export function TableManagementComprehensive() {
   const [newTableLocation, setNewTableLocation] = useState<Location>('Main Hall');
   const [newTableSegment, setNewTableSegment] = useState('Front');
   const [creatingTable, setCreatingTable] = useState(false);
+  const [statusDialogTable, setStatusDialogTable] = useState<any>(null);
 
   useEffect(() => {
     fetchData();
@@ -769,12 +770,27 @@ export function TableManagementComprehensive() {
   };
 
   const handleUpdateTableStatus = async (tableId: string, status: 'Cleaning' | 'Available') => {
+    await handleTableStatusChange(tableId, status);
+  };
+
+  const handleResetAllTables = async () => {
+    if (!confirm('Reset ALL tables to Available? This will clear all waiter assignments, guest counts, and active orders.')) return;
     try {
-      const updateData: any = { status: status.toLowerCase() };
-      if (status === 'Cleaning') {
+      const result = await tablesApi.resetAll();
+      toast.success(`Reset ${result.modified} tables to Available`);
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to reset tables');
+    }
+  };
+
+  const handleTableStatusChange = async (tableId: string, newStatus: TableStatus) => {
+    try {
+      const updateData: any = { status: newStatus.toLowerCase() };
+      if (newStatus === 'Cleaning') {
         updateData.cleaningEndTime = Date.now() + 10 * 60 * 1000; // 10-minute timer
-      } else {
-        // Freeing the table — clear assignment and guest info
+      } else if (newStatus === 'Available') {
+        // Clear assignment and guest info when freeing the table
         updateData.cleaningEndTime = null;
         updateData.waiterId = null;
         updateData.waiterName = null;
@@ -783,10 +799,11 @@ export function TableManagementComprehensive() {
         updateData.kitchenStatus = null;
       }
       await tablesApi.update(tableId, updateData);
-      toast.success(`Table marked as ${status === 'Cleaning' ? 'Under Cleaning' : 'Available'}`);
+      toast.success(`Table marked as ${newStatus}`);
+      setStatusDialogTable(null);
       fetchData();
     } catch (error) {
-      toast.error(`Failed to update table status`);
+      toast.error('Failed to update table status');
     }
   };
 
@@ -927,13 +944,23 @@ export function TableManagementComprehensive() {
         <div className="flex gap-3">
           {/* Only admin/manager can add tables */}
           {(user?.role === 'admin' || user?.role === 'manager') && (
-            <Button
-              className="bg-[#8B5A2B] hover:bg-[#6B4520] text-white"
-              onClick={() => setAddTableDialogOpen(true)}
-            >
-              <Plus className="w-4 h-4 mr-2" />
+            <>
+              <Button
+                variant="outline"
+                className="border-red-300 text-red-700 hover:bg-red-50"
+                onClick={handleResetAllTables}
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Reset All Tables
+              </Button>
+              <Button
+                className="bg-[#8B5A2B] hover:bg-[#6B4520] text-white"
+                onClick={() => setAddTableDialogOpen(true)}
+              >
+                <Plus className="w-4 h-4 mr-2" />
               Add Table
             </Button>
+            </>
           )}
           <Button
             className="bg-[#8B5A2B] hover:bg-[#6B4520] text-white"
@@ -1031,7 +1058,7 @@ export function TableManagementComprehensive() {
                       <TableCard
                         key={table.id}
                         table={table}
-                        onClick={() => {}}
+                        onClick={() => setStatusDialogTable(table)}
                         waiters={waiters}
                         onAssignWaiter={handleAssignWaiter}
                         onCheckout={handleCheckout}
@@ -1083,6 +1110,48 @@ export function TableManagementComprehensive() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Table Status Dialog */}
+      <Dialog open={!!statusDialogTable} onOpenChange={(open) => { if (!open) setStatusDialogTable(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              Table {statusDialogTable?.displayNumber}
+              <span className={cn(
+                'text-xs font-medium px-2 py-1 rounded-full border ml-1',
+                statusDialogTable?.status === 'Available' && 'bg-green-50 text-green-700 border-green-200',
+                statusDialogTable?.status === 'Occupied' && 'bg-blue-50 text-blue-700 border-blue-200',
+                statusDialogTable?.status === 'Eating' && 'bg-purple-50 text-purple-700 border-purple-200',
+                statusDialogTable?.status === 'Reserved' && 'bg-amber-50 text-amber-700 border-amber-200',
+                statusDialogTable?.status === 'Cleaning' && 'bg-gray-50 text-gray-700 border-gray-200',
+              )}>
+                {statusDialogTable?.status}
+              </span>
+            </DialogTitle>
+            <DialogDescription>Change the status of this table</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-2 py-2">
+            {([
+              { status: 'Available' as TableStatus, icon: <CheckCircle className="w-4 h-4" />, color: 'border-green-400 text-green-700 hover:bg-green-50' },
+              { status: 'Occupied' as TableStatus, icon: <Users className="w-4 h-4" />, color: 'border-blue-400 text-blue-700 hover:bg-blue-50' },
+              { status: 'Eating' as TableStatus, icon: <Utensils className="w-4 h-4" />, color: 'border-purple-400 text-purple-700 hover:bg-purple-50' },
+              { status: 'Reserved' as TableStatus, icon: <Calendar className="w-4 h-4" />, color: 'border-amber-400 text-amber-700 hover:bg-amber-50' },
+              { status: 'Cleaning' as TableStatus, icon: <Sparkles className="w-4 h-4" />, color: 'border-gray-400 text-gray-700 hover:bg-gray-50' },
+            ]).map(({ status, icon, color }) => (
+              <Button
+                key={status}
+                variant="outline"
+                className={cn('w-full justify-start gap-2', color, statusDialogTable?.status === status && 'ring-2 ring-offset-1')}
+                onClick={() => statusDialogTable && handleTableStatusChange(statusDialogTable.id, status)}
+              >
+                {icon}
+                {status}
+                {statusDialogTable?.status === status && <span className="ml-auto text-xs opacity-60">current</span>}
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Table Dialog */}
       <Dialog open={addTableDialogOpen} onOpenChange={setAddTableDialogOpen}>
