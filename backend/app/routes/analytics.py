@@ -12,26 +12,6 @@ from ..db import get_db
 router = APIRouter(tags=["Analytics"])
 
 
-<<<<<<< HEAD
-def _safe_float(value, default: float = 0.0) -> float:
-    """Convert any numeric BSON type (Decimal128, Int64, etc.) to a plain Python float."""
-    if value is None:
-        return default
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
-
-
-def _safe_int(value, default: int = 0) -> int:
-    """Convert any numeric BSON type to a plain Python int."""
-    if value is None:
-        return default
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return default
-=======
 def to_number(value, default: float = 0.0) -> float:
     if value is None:
         return default
@@ -131,7 +111,6 @@ def extract_items(order: dict):
             items.append({"name": name, "quantity": max(quantity, 1), "price": 0.0, "category": "Other"})
 
     return items
->>>>>>> 35fcda2 (report)
 
 
 @router.get("")
@@ -142,25 +121,6 @@ async def get_analytics():
     all_orders = await db.orders.find({}).to_list(50000)
 
     # Total orders
-<<<<<<< HEAD
-    total_orders = _safe_int(await db.orders.count_documents({}))
-
-    # Completed orders
-    completed_orders = _safe_int(await db.orders.count_documents({"status": "completed"}))
-
-    # Active orders (in progress)
-    active_orders = _safe_int(await db.orders.count_documents({
-        "status": {"$in": ["pending", "confirmed", "preparing", "ready", "placed"]}
-    }))
-
-    # Total revenue from completed orders
-    revenue_pipeline = [
-        {"$match": {"status": "completed"}},
-        {"$group": {"_id": None, "total": {"$sum": "$total"}}}
-    ]
-    revenue_result = await db.orders.aggregate(revenue_pipeline).to_list(1)
-    total_revenue = _safe_float(revenue_result[0]["total"] if revenue_result else 0)
-=======
     total_orders = len(all_orders)
 
     completed_statuses = {"completed"}
@@ -174,39 +134,10 @@ async def get_analytics():
 
     # Total revenue from completed orders
     total_revenue = sum(get_order_total(order) for order in all_orders if normalize_status(order.get("status")) in completed_statuses)
->>>>>>> 35fcda2 (report)
 
     # Average order value
     avg_order_value = round(total_revenue / completed_orders, 2) if completed_orders > 0 else 0.0
 
-<<<<<<< HEAD
-    # Popular items with revenue (avgPrepTime defaulted to 0 — not tracked per-item)
-    popular_pipeline = [
-        {"$unwind": "$items"},
-        {"$group": {
-            "_id": "$items.name",
-            "count": {"$sum": "$items.quantity"},
-            "revenue": {"$sum": {"$multiply": [
-                {"$ifNull": ["$items.price", 0]},
-                {"$ifNull": ["$items.quantity", 1]}
-            ]}}
-        }},
-        {"$sort": {"count": -1}},
-        {"$limit": 10},
-        {"$project": {"name": "$_id", "count": 1, "revenue": 1, "_id": 0}}
-    ]
-    raw_popular = await db.orders.aggregate(popular_pipeline).to_list(10)
-    popular_items = [
-        {
-            "name": str(item.get("name", "")),
-            "count": _safe_int(item.get("count", 0)),
-            "revenue": round(_safe_float(item.get("revenue", 0)), 2),
-            "avgPrepTime": 0,
-        }
-        for item in raw_popular
-        if item.get("name")
-    ]
-=======
     # Popular items with revenue
     popular_map = {}
     for order in all_orders:
@@ -218,7 +149,6 @@ async def get_analytics():
             popular_map[key]["revenue"] += item["price"] * item["quantity"]
 
     popular_items = sorted(popular_map.values(), key=lambda item: item["count"], reverse=True)[:10]
->>>>>>> 35fcda2 (report)
 
     # Table occupancy
     total_tables = _safe_int(await db.tables.count_documents({}))
@@ -226,36 +156,6 @@ async def get_analytics():
     table_occupancy = round((occupied_tables / total_tables * 100), 1) if total_tables > 0 else 0.0
 
     # Order type breakdown — field is "type" on orders
-<<<<<<< HEAD
-    order_type_pipeline = [
-        {"$group": {"_id": "$type", "count": {"$sum": 1}}}
-    ]
-    order_type_result = await db.orders.aggregate(order_type_pipeline).to_list(10)
-    order_types = {str(r["_id"]): _safe_int(r["count"]) for r in order_type_result if r["_id"]}
-
-    # Category distribution — category is stored directly on order items
-    category_pipeline = [
-        {"$unwind": "$items"},
-        {"$group": {
-            "_id": {"$ifNull": ["$items.category", "Other"]},
-            "count": {"$sum": {"$ifNull": ["$items.quantity", 1]}}
-        }},
-        {"$sort": {"count": -1}}
-    ]
-    category_result = await db.orders.aggregate(category_pipeline).to_list(20)
-    categories = [
-        {"name": str(r["_id"]), "value": _safe_int(r["count"])}
-        for r in category_result if r["_id"]
-    ]
-
-    # Total customers
-    total_customers = _safe_int(await db.customers.count_documents({}))
-
-    # Staff counts
-    total_staff = _safe_int(await db.staff.count_documents({"active": True}))
-    on_duty_staff = _safe_int(await db.staff.count_documents({"active": True, "status": "on-duty"}))
-    on_leave_staff = _safe_int(await db.staff.count_documents({"active": True, "status": "on-leave"}))
-=======
     order_types = {}
     for order in all_orders:
         order_type = normalize_order_type(order)
@@ -282,7 +182,11 @@ async def get_analytics():
             if key:
                 customer_keys.add(key)
         total_customers = len(customer_keys)
->>>>>>> 35fcda2 (report)
+
+    # Staff counts
+    total_staff = await db.staff.count_documents({"active": True})
+    on_duty_staff = await db.staff.count_documents({"active": True, "status": "on-duty"})
+    on_leave_staff = await db.staff.count_documents({"active": True, "status": "on-leave"})
 
     return {
         "success": True,
@@ -342,17 +246,10 @@ async def get_daily_analytics(date: str = None):
     
     return {
         "date": target_date.isoformat()[:10],
-<<<<<<< HEAD
-        "orders": _safe_int(orders_result[0]["total"] if orders_result else 0),
-        "revenue": _safe_float(orders_result[0]["revenue"] if orders_result else 0),
-        "completed": _safe_int(orders_result[0]["completed"] if orders_result else 0),
-        "hourly": [{"hour": _safe_int(h["_id"]), "orders": _safe_int(h["orders"]), "revenue": round(_safe_float(h["revenue"]), 2)} for h in hourly_result]
-=======
         "orders": total_orders,
         "revenue": round(total_revenue, 2),
         "completed": completed_count,
         "hourly": [{"hour": h["hour"], "orders": h["orders"], "revenue": round(h["revenue"], 2)} for h in hourly_result]
->>>>>>> 35fcda2 (report)
     }
 
 
@@ -397,10 +294,6 @@ async def get_weekly_analytics():
         {"date": row["date"], "orders": row["orders"], "revenue": round(row["revenue"], 2)}
         for row in [daily_buckets[k] for k in sorted(daily_buckets.keys())]
     ]
-<<<<<<< HEAD
-    prev_items = await db.orders.aggregate(prev_items_pipeline).to_list(100)
-    prev_counts = {str(i["_id"]): _safe_int(i["count"]) for i in prev_items}
-=======
 
     current_item_counts = {}
     current_item_revenue = {}
@@ -417,7 +310,6 @@ async def get_weekly_analytics():
             prev_counts[name] = prev_counts.get(name, 0) + item["quantity"]
 
     top_items = sorted(current_item_counts.items(), key=lambda row: row[1], reverse=True)[:10]
->>>>>>> 35fcda2 (report)
 
     def trend(item_name, curr_count):
         prev = prev_counts.get(str(item_name), 0)
@@ -428,15 +320,6 @@ async def get_weekly_analytics():
     return {
         "startDate": week_start.isoformat()[:10],
         "endDate": today.isoformat()[:10],
-<<<<<<< HEAD
-        "daily": [{"date": d["_id"], "orders": _safe_int(d["orders"]), "revenue": round(_safe_float(d["revenue"]), 2)} for d in daily_result],
-        "topItems": [{
-            "name": str(i["_id"]),
-            "count": _safe_int(i["count"]),
-            "revenue": round(_safe_float(i.get("revenue", 0)), 2),
-            "trend": trend(i["_id"], _safe_int(i["count"]))
-        } for i in top_items if i.get("_id")]
-=======
         "daily": daily_result,
         "topItems": [{
             "name": name,
@@ -444,7 +327,6 @@ async def get_weekly_analytics():
             "revenue": round(current_item_revenue.get(name, 0.0), 2),
             "trend": trend(name, count)
         } for name, count in top_items]
->>>>>>> 35fcda2 (report)
     }
 
 
@@ -510,17 +392,6 @@ async def get_staff_performance():
     results = []
     for s in staff_list:
         sid = str(s["_id"])
-<<<<<<< HEAD
-        perf = perf_map.get(sid, {})
-        att = att_map.get(sid, {})
-        total_att = _safe_int(att.get("total", 0))
-        present_att = _safe_int(att.get("present", 0))
-        attendance_pct = f"{round((present_att / total_att) * 100)}%" if total_att > 0 else "N/A"
-        raw_rating = perf.get("avg_rating")
-        avg_rating = round(_safe_float(raw_rating), 1) if raw_rating is not None else None
-        performance_score = min(100, round(avg_rating * 20)) if avg_rating is not None else None
-        avg_service_mins = perf.get("avg_service_mins")
-=======
         perf = perf_map.get(sid, {"orders_total": 0, "ratings": [], "service_times": []})
         att = att_map.get(sid, {"total": 0, "present": 0})
         total_att = att.get("total", 0)
@@ -529,18 +400,12 @@ async def get_staff_performance():
         avg_rating = round(sum(perf["ratings"]) / len(perf["ratings"]), 1) if perf["ratings"] else None
         avg_service = round(sum(perf["service_times"]) / len(perf["service_times"])) if perf["service_times"] else None
         performance_score = min(100, round(avg_rating * 20)) if avg_rating else None
->>>>>>> 35fcda2 (report)
         results.append({
             "id": sid,
             "name": s.get("name", ""),
             "role": s.get("role", ""),
-<<<<<<< HEAD
-            "orders_handled": _safe_int(perf.get("total_orders", 0)),
-            "avg_service_time": f"{round(_safe_float(avg_service_mins))} mins" if avg_service_mins else "N/A",
-=======
             "orders_handled": perf["orders_total"],
             "avg_service_time": f"{avg_service} mins" if avg_service is not None else "—",
->>>>>>> 35fcda2 (report)
             "rating": avg_rating,
             "attendance": attendance_pct,
             "performance_score": performance_score,
