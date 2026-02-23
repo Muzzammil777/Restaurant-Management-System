@@ -11,21 +11,41 @@ from ..db import get_db
 router = APIRouter(tags=["Analytics"])
 
 
+def _safe_float(value, default: float = 0.0) -> float:
+    """Convert any numeric BSON type (Decimal128, Int64, etc.) to a plain Python float."""
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_int(value, default: int = 0) -> int:
+    """Convert any numeric BSON type to a plain Python int."""
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 @router.get("")
 async def get_analytics():
     """Get dashboard analytics"""
     db = get_db()
 
     # Total orders
-    total_orders = await db.orders.count_documents({})
+    total_orders = _safe_int(await db.orders.count_documents({}))
 
     # Completed orders
-    completed_orders = await db.orders.count_documents({"status": "completed"})
+    completed_orders = _safe_int(await db.orders.count_documents({"status": "completed"}))
 
     # Active orders (in progress)
-    active_orders = await db.orders.count_documents({
-        "status": {"$in": ["pending", "confirmed", "preparing", "ready"]}
-    })
+    active_orders = _safe_int(await db.orders.count_documents({
+        "status": {"$in": ["pending", "confirmed", "preparing", "ready", "placed"]}
+    }))
 
     # Total revenue from completed orders
     revenue_pipeline = [
@@ -33,12 +53,12 @@ async def get_analytics():
         {"$group": {"_id": None, "total": {"$sum": "$total"}}}
     ]
     revenue_result = await db.orders.aggregate(revenue_pipeline).to_list(1)
-    total_revenue = revenue_result[0]["total"] if revenue_result else 0
+    total_revenue = _safe_float(revenue_result[0]["total"] if revenue_result else 0)
 
     # Average order value
-    avg_order_value = total_revenue / completed_orders if completed_orders > 0 else 0
+    avg_order_value = round(total_revenue / completed_orders, 2) if completed_orders > 0 else 0.0
 
-    # Popular items with revenue
+    # Popular items with revenue (avgPrepTime defaulted to 0 — not tracked per-item)
     popular_pipeline = [
         {"$unwind": "$items"},
         {"$group": {
@@ -53,19 +73,29 @@ async def get_analytics():
         {"$limit": 10},
         {"$project": {"name": "$_id", "count": 1, "revenue": 1, "_id": 0}}
     ]
-    popular_items = await db.orders.aggregate(popular_pipeline).to_list(10)
+    raw_popular = await db.orders.aggregate(popular_pipeline).to_list(10)
+    popular_items = [
+        {
+            "name": str(item.get("name", "")),
+            "count": _safe_int(item.get("count", 0)),
+            "revenue": round(_safe_float(item.get("revenue", 0)), 2),
+            "avgPrepTime": 0,
+        }
+        for item in raw_popular
+        if item.get("name")
+    ]
 
     # Table occupancy
-    total_tables = await db.tables.count_documents({})
-    occupied_tables = await db.tables.count_documents({"status": "occupied"})
-    table_occupancy = (occupied_tables / total_tables * 100) if total_tables > 0 else 0
+    total_tables = _safe_int(await db.tables.count_documents({}))
+    occupied_tables = _safe_int(await db.tables.count_documents({"status": "occupied"}))
+    table_occupancy = round((occupied_tables / total_tables * 100), 1) if total_tables > 0 else 0.0
 
     # Order type breakdown — field is "type" on orders
     order_type_pipeline = [
         {"$group": {"_id": "$type", "count": {"$sum": 1}}}
     ]
     order_type_result = await db.orders.aggregate(order_type_pipeline).to_list(10)
-    order_types = {r["_id"]: r["count"] for r in order_type_result if r["_id"]}
+    order_types = {str(r["_id"]): _safe_int(r["count"]) for r in order_type_result if r["_id"]}
 
     # Category distribution — category is stored directly on order items
     category_pipeline = [
@@ -77,10 +107,18 @@ async def get_analytics():
         {"$sort": {"count": -1}}
     ]
     category_result = await db.orders.aggregate(category_pipeline).to_list(20)
-    categories = [{"name": r["_id"], "value": r["count"]} for r in category_result if r["_id"]]
+    categories = [
+        {"name": str(r["_id"]), "value": _safe_int(r["count"])}
+        for r in category_result if r["_id"]
+    ]
 
     # Total customers
-    total_customers = await db.customers.count_documents({})
+    total_customers = _safe_int(await db.customers.count_documents({}))
+
+    # Staff counts
+    total_staff = _safe_int(await db.staff.count_documents({"active": True}))
+    on_duty_staff = _safe_int(await db.staff.count_documents({"active": True, "status": "on-duty"}))
+    on_leave_staff = _safe_int(await db.staff.count_documents({"active": True, "status": "on-leave"}))
 
     return {
         "success": True,
@@ -88,13 +126,16 @@ async def get_analytics():
             "totalOrders": total_orders,
             "completedOrders": completed_orders,
             "totalRevenue": total_revenue,
-            "avgOrderValue": round(avg_order_value, 2),
+            "avgOrderValue": avg_order_value,
             "popularItems": popular_items,
-            "tableOccupancy": round(table_occupancy, 1),
+            "tableOccupancy": table_occupancy,
             "activeOrders": active_orders,
             "totalCustomers": total_customers,
             "orderTypes": order_types,
             "categoryDistribution": categories,
+            "totalStaff": total_staff,
+            "onDutyStaff": on_duty_staff,
+            "onLeaveStaff": on_leave_staff,
         }
     }
 
@@ -137,10 +178,10 @@ async def get_daily_analytics(date: str = None):
     
     return {
         "date": target_date.isoformat()[:10],
-        "orders": orders_result[0]["total"] if orders_result else 0,
-        "revenue": orders_result[0]["revenue"] if orders_result else 0,
-        "completed": orders_result[0]["completed"] if orders_result else 0,
-        "hourly": [{"hour": h["_id"], "orders": h["orders"], "revenue": h["revenue"]} for h in hourly_result]
+        "orders": _safe_int(orders_result[0]["total"] if orders_result else 0),
+        "revenue": _safe_float(orders_result[0]["revenue"] if orders_result else 0),
+        "completed": _safe_int(orders_result[0]["completed"] if orders_result else 0),
+        "hourly": [{"hour": _safe_int(h["_id"]), "orders": _safe_int(h["orders"]), "revenue": round(_safe_float(h["revenue"]), 2)} for h in hourly_result]
     }
 
 
@@ -192,10 +233,10 @@ async def get_weekly_analytics():
         }}
     ]
     prev_items = await db.orders.aggregate(prev_items_pipeline).to_list(100)
-    prev_counts = {i["_id"]: i["count"] for i in prev_items}
+    prev_counts = {str(i["_id"]): _safe_int(i["count"]) for i in prev_items}
 
     def trend(item_name, curr_count):
-        prev = prev_counts.get(item_name, 0)
+        prev = prev_counts.get(str(item_name), 0)
         if prev == 0:
             return 0
         return round(((curr_count - prev) / prev) * 100)
@@ -203,13 +244,13 @@ async def get_weekly_analytics():
     return {
         "startDate": week_ago.isoformat()[:10],
         "endDate": today.isoformat()[:10],
-        "daily": [{"date": d["_id"], "orders": d["orders"], "revenue": d["revenue"]} for d in daily_result],
+        "daily": [{"date": d["_id"], "orders": _safe_int(d["orders"]), "revenue": round(_safe_float(d["revenue"]), 2)} for d in daily_result],
         "topItems": [{
-            "name": i["_id"],
-            "count": i["count"],
-            "revenue": round(i["revenue"], 2),
-            "trend": trend(i["_id"], i["count"])
-        } for i in top_items]
+            "name": str(i["_id"]),
+            "count": _safe_int(i["count"]),
+            "revenue": round(_safe_float(i.get("revenue", 0)), 2),
+            "trend": trend(i["_id"], _safe_int(i["count"]))
+        } for i in top_items if i.get("_id")]
     }
 
 
@@ -249,17 +290,19 @@ async def get_staff_performance():
         sid = str(s["_id"])
         perf = perf_map.get(sid, {})
         att = att_map.get(sid, {})
-        total_att = att.get("total", 0)
-        present_att = att.get("present", 0)
-        attendance_pct = f"{round((present_att / total_att) * 100)}%" if total_att > 0 else "—"
-        avg_rating = round(perf.get("avg_rating", 0), 1) if perf.get("avg_rating") else None
-        performance_score = min(100, round(avg_rating * 20)) if avg_rating else None
+        total_att = _safe_int(att.get("total", 0))
+        present_att = _safe_int(att.get("present", 0))
+        attendance_pct = f"{round((present_att / total_att) * 100)}%" if total_att > 0 else "N/A"
+        raw_rating = perf.get("avg_rating")
+        avg_rating = round(_safe_float(raw_rating), 1) if raw_rating is not None else None
+        performance_score = min(100, round(avg_rating * 20)) if avg_rating is not None else None
+        avg_service_mins = perf.get("avg_service_mins")
         results.append({
             "id": sid,
             "name": s.get("name", ""),
             "role": s.get("role", ""),
-            "orders_handled": perf.get("total_orders", 0),
-            "avg_service_time": f"{round(perf.get('avg_service_mins', 0))} mins" if perf.get("avg_service_mins") else "—",
+            "orders_handled": _safe_int(perf.get("total_orders", 0)),
+            "avg_service_time": f"{round(_safe_float(avg_service_mins))} mins" if avg_service_mins else "N/A",
             "rating": avg_rating,
             "attendance": attendance_pct,
             "performance_score": performance_score,
