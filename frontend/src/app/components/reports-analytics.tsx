@@ -20,7 +20,7 @@ import {
   Star,
 } from 'lucide-react';
 import { analyticsApi } from '@/utils/api';
-import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
+import { LoadingReports } from '@/app/components/ui/loading-spinner';
 
 const CATEGORY_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#f97316'];
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -114,7 +114,7 @@ export function ReportsAnalytics() {
   const delivery = orderTypes['delivery'] ?? 0;
 
   if (loading) {
-    return <LoadingSpinner message="Loading analytics..." icon="orders" />;
+    return <LoadingReports />;
   }
 
   return (

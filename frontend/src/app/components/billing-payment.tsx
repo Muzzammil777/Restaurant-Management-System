@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { jsPDF } from 'jspdf';
+import { LoadingBilling } from '@/app/components/ui/loading-spinner';
+import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
@@ -85,10 +86,10 @@ export function BillingPayment() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [showInvoicePreview, setShowInvoicePreview] = useState(false);
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchOrders();
-    fetchInvoices();
+    Promise.all([fetchOrders(), fetchInvoices()]).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -424,6 +425,8 @@ export function BillingPayment() {
   };
 
   const totals = calculateTotals();
+
+  if (loading) return <LoadingBilling />;
 
   return (
     <div className="bg-billing-module min-h-screen space-y-6 p-6">

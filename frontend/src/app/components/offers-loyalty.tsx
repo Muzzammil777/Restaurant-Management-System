@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { offersApi } from "@/utils/api";
+import { LoadingOffers } from '@/app/components/ui/loading-spinner';
 import {
   Card,
   CardContent,
@@ -710,6 +711,8 @@ export function OffersLoyalty() {
   const activeMembershipPlans = membershipPlans.filter(
     (plan) => plan.status === "active",
   ).length;
+
+  if (loading) return <LoadingOffers />;
 
   return (
     <div className="bg-offers-module min-h-screen p-6 space-y-6">

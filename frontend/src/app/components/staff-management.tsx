@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Button } from '@/app/components/ui/button';
+import { useState, useEffect } from 'react';
+import { LoadingStaff } from '@/app/components/ui/loading-spinner';
 import { Input } from '@/app/components/ui/input';
 import {
   Tabs,
@@ -34,10 +34,16 @@ import { StaffReports } from "./staff/StaffReports";
 
 export function StaffManagement() {
   const [activeTab, setActiveTab] = useState('overview');
+  const [loading, setLoading] = useState(true);
   const [globalSearch, setGlobalSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [shiftFilter, setShiftFilter] = useState('all');
   const { user } = useAuth();
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 350);
+    return () => clearTimeout(t);
+  }, []);
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -50,6 +56,8 @@ export function StaffManagement() {
     { id: 'shift-timings', label: 'Shift Timings', icon: Clock, description: 'Schedule management' },
     { id: 'reports', label: 'Reports', icon: FileBarChart, description: 'Analytics & insights' },
   ];
+
+  if (loading) return <LoadingStaff />;
 
   return (
     <div className="bg-staff-module min-h-screen flex flex-col">

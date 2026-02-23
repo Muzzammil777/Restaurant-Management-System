@@ -12,10 +12,11 @@ import { LoadingOrders } from '@/app/components/ui/loading-spinner';
 import {
   Clock, Package, CheckCircle, XCircle, AlertCircle, Zap, 
   Undo2, Play, ChefHat, Utensils, DollarSign, Trash2, Search,
-  Timer, AlertTriangle, Coffee, Ban, Activity
+  Timer, AlertTriangle, Coffee, Ban, Activity, Bell
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ordersApi, workflowApi } from '@/utils/api';
+import { useAuth } from '@/utils/auth-context';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -266,6 +267,7 @@ interface UndoState {
 // ============================================================================
 
 export function OrderManagementComprehensive() {
+  const { user } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -449,6 +451,37 @@ export function OrderManagementComprehensive() {
           </Badge>
         </div>
       </div>
+
+      {/* Ready to Serve Banner — visible only to waiters */}
+      {user?.role === 'waiter' && ordersByStatus.ready.length > 0 && (
+        <div className="bg-amber-50 border-2 border-amber-400 rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2 text-amber-800">
+            <Bell className="w-5 h-5 animate-bounce" />
+            <h2 className="font-bold text-lg">Orders Ready to Serve</h2>
+            <Badge className="bg-amber-500 text-white">{ordersByStatus.ready.length}</Badge>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {ordersByStatus.ready.map(order => (
+              <div key={order.id} className="bg-white border border-amber-300 rounded-lg p-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-bold text-gray-900">{order.displayId}</p>
+                  <p className="text-sm text-gray-600">
+                    {order.tableNumber ? `Table ${order.tableNumber}` : order.type} · {order.customerName}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  className="bg-amber-500 hover:bg-amber-600 text-white whitespace-nowrap"
+                  onClick={() => handleStatusChange(order.id, 'served')}
+                >
+                  <Utensils className="w-3 h-3 mr-1" />
+                  Serve Now
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <Card>

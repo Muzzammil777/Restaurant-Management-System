@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
+import { LoadingAlerts } from '@/app/components/ui/loading-spinner';
 import {
   Card,
   CardContent,
@@ -132,7 +132,7 @@ export function NotificationManagement() {
   ).length;
 
   if (loading) {
-    return <LoadingSpinner message="Loading notifications..." icon="settings" />;
+    return <LoadingAlerts />;
   }
 
   return (

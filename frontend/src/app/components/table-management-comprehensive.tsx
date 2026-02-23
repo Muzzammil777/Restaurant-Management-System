@@ -98,10 +98,11 @@ interface TableCardProps {
   onCheckout: (tableId: string) => void;
   onRequestOrder: (tableId: string) => void;
   onSeatGuests: (tableId: string, guestCount: number) => void;
+  onUpdateStatus?: (tableId: string, status: 'Cleaning' | 'Available') => void;
   currentUser?: any;
 }
 
-function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout, onRequestOrder, onSeatGuests, currentUser }: TableCardProps) {
+function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout, onRequestOrder, onSeatGuests, onUpdateStatus, currentUser }: TableCardProps) {
   const isWaiter = currentUser?.role === 'waiter';
   const isAdminOrManager = currentUser?.role === 'admin' || currentUser?.role === 'manager';
   const isMyTable = isWaiter && table.waiterId === currentUser?.id;
@@ -344,6 +345,29 @@ function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout, onRequ
               <DollarSign className="w-4 h-4 mr-1" />
               Checkout
             </Button>
+          )}
+
+          {/* Waiter: Mark table as Under Cleaning or Available */}
+          {isMyTable && (table.status === 'Eating' || table.status === 'Occupied') && (
+            <div className="space-y-1.5" onClick={(e) => e.stopPropagation()}>
+              <Button
+                size="sm"
+                className="w-full bg-gray-600 hover:bg-gray-700 text-white"
+                onClick={(e) => { e.stopPropagation(); onUpdateStatus?.(table.id, 'Cleaning'); }}
+              >
+                <Sparkles className="w-3 h-3 mr-1" />
+                Under Cleaning
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full border-green-500 text-green-700 hover:bg-green-50"
+                onClick={(e) => { e.stopPropagation(); onUpdateStatus?.(table.id, 'Available'); }}
+              >
+                <CheckCircle className="w-3 h-3 mr-1" />
+                Mark Available
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -744,6 +768,28 @@ export function TableManagementComprehensive() {
     }
   };
 
+  const handleUpdateTableStatus = async (tableId: string, status: 'Cleaning' | 'Available') => {
+    try {
+      const updateData: any = { status: status.toLowerCase() };
+      if (status === 'Cleaning') {
+        updateData.cleaningEndTime = Date.now() + 10 * 60 * 1000; // 10-minute timer
+      } else {
+        // Freeing the table — clear assignment and guest info
+        updateData.cleaningEndTime = null;
+        updateData.waiterId = null;
+        updateData.waiterName = null;
+        updateData.guestCount = 0;
+        updateData.currentOrderId = null;
+        updateData.kitchenStatus = null;
+      }
+      await tablesApi.update(tableId, updateData);
+      toast.success(`Table marked as ${status === 'Cleaning' ? 'Under Cleaning' : 'Available'}`);
+      fetchData();
+    } catch (error) {
+      toast.error(`Failed to update table status`);
+    }
+  };
+
   const handleRequestOrder = async (tableId: string) => {
     const table = tables.find(t => t.id === tableId);
     if (!table) return;
@@ -847,9 +893,11 @@ export function TableManagementComprehensive() {
     }
   };
 
-  const filteredTables = selectedLocation === 'All'
+  const isWaiterUser = user?.role === 'waiter';
+  const filteredTables = (selectedLocation === 'All'
     ? tables
-    : tables.filter(t => t.location === selectedLocation);
+    : tables.filter(t => t.location === selectedLocation)
+  ).filter(t => !isWaiterUser || t.waiterId === user?.id);
 
   const reservationTables = tables.filter(
     t => t.reservationStatus && !['Cancelled', 'Expired'].includes(t.reservationStatus)
@@ -989,6 +1037,7 @@ export function TableManagementComprehensive() {
                         onCheckout={handleCheckout}
                         onRequestOrder={handleRequestOrder}
                         onSeatGuests={handleSeatGuests}
+                        onUpdateStatus={handleUpdateTableStatus}
                         currentUser={user}
                       />
                     ))}

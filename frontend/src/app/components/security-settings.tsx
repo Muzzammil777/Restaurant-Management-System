@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { LoadingSettings } from '@/app/components/ui/loading-spinner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -78,6 +79,12 @@ const navigationItems: NavigationItem[] = [
 
 export function SecuritySettings() {
   const [activeSection, setActiveSection] = useState<SettingsSection>('account');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 350);
+    return () => clearTimeout(t);
+  }, []);
 
   const renderContent = () => {
     switch (activeSection) {
@@ -97,6 +104,8 @@ export function SecuritySettings() {
         return <AccountAuthentication />;
     }
   };
+
+  if (loading) return <LoadingSettings />;
 
   return (
     <div className="bg-settings-module min-h-screen space-y-6">

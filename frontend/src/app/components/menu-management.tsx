@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Button } from "@/app/components/ui/button";
+import { LoadingMenu } from '@/app/components/ui/loading-spinner';
 import {
   Card,
   CardContent,
 } from "@/app/components/ui/card";
+import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import {
@@ -129,6 +130,7 @@ export function MenuManagement() {
   // DATA: Menu Items
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [comboMeals, setComboMeals] = useState<ComboMeal[]>([]);
+  const [loading, setLoading] = useState(true);
 
 useEffect(() => {
   const loadMenuData = async () => {
@@ -147,6 +149,8 @@ useEffect(() => {
     } catch (error) {
       console.error("Failed to load menu data:", error);
       toast.error("Failed to load menu data from server");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -329,6 +333,8 @@ useEffect(() => {
     const cuisineMatch = activeCuisine === "all" || c.cuisine === activeCuisine;
     return searchMatch && cuisineMatch;
   });
+
+  if (loading) return <LoadingMenu />;
 
   return (
     <div className="min-h-screen bg-[#FDFCFB] flex justify-center" style={{ padding: '32px' }}>

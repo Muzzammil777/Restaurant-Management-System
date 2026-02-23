@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { LoadingOrders } from '@/app/components/ui/loading-spinner';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
@@ -692,7 +693,7 @@ export function OrderManagement() {
   const tableNumbers = Array.from(new Set(orders.map(o => o.tableNumber).filter(Boolean)));
 
   if (loading) {
-    return <div className="flex items-center justify-center h-full">Loading orders...</div>;
+    return <LoadingOrders />;
   }
 
   return (

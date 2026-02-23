@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { LoadingInventory } from '@/app/components/ui/loading-spinner';
 import { 
-  Package, 
+  Package,
   AlertTriangle, 
   ShoppingCart, 
   FileText, 
@@ -312,6 +313,8 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
       default: return 'bg-white hover:bg-gray-50 border-l-4 border-l-green-500';
     }
   };
+
+  if (loading) return <LoadingInventory />;
 
   return (
     <div className="bg-inventory-module min-h-screen pb-20">
