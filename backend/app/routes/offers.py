@@ -15,6 +15,18 @@ from ..audit import log_audit
 
 router = APIRouter(tags=["Offers"])
 
+ALLOWED_MEMBERSHIP_TIERS = {"silver", "gold", "platinum"}
+TIER_DISPLAY_NAMES = {
+    "silver": "Silver",
+    "gold": "Gold",
+    "platinum": "Platinum",
+}
+TIER_SORT_ORDER = {"silver": 1, "gold": 2, "platinum": 3}
+
+
+def normalize_membership_tier(value):
+    return str(value or "").strip().lower()
+
 
 def serialize_doc(doc):
     """Convert MongoDB document to JSON-serializable dict"""
@@ -240,8 +252,36 @@ async def delete_coupon(coupon_id: str, request: Request):
 async def list_memberships():
     """Get all membership plans"""
     db = get_db()
-    plans = await db.membership_plans.find().sort("monthlyPrice", 1).to_list(20)
-    return [serialize_doc(plan) for plan in plans]
+    plans = await db.membership_plans.find().to_list(200)
+
+    best_by_tier = {}
+    for plan in plans:
+        tier_key = normalize_membership_tier(plan.get("tier"))
+        if tier_key not in ALLOWED_MEMBERSHIP_TIERS:
+            continue
+
+        plan["tier"] = tier_key
+        plan["name"] = TIER_DISPLAY_NAMES[tier_key]
+        current = best_by_tier.get(tier_key)
+
+        if current is None:
+            best_by_tier[tier_key] = plan
+            continue
+
+        current_status = str(current.get("status") or "").lower()
+        plan_status = str(plan.get("status") or "").lower()
+        if plan_status == "active" and current_status != "active":
+            best_by_tier[tier_key] = plan
+            continue
+
+        current_updated = current.get("updatedAt") or current.get("createdAt") or datetime.min
+        plan_updated = plan.get("updatedAt") or plan.get("createdAt") or datetime.min
+        if plan_updated > current_updated:
+            best_by_tier[tier_key] = plan
+
+    deduped = list(best_by_tier.values())
+    deduped.sort(key=lambda p: (TIER_SORT_ORDER.get(normalize_membership_tier(p.get("tier")), 99), p.get("monthlyPrice", 0)))
+    return [serialize_doc(plan) for plan in deduped]
 
 
 @router.get("/memberships/{plan_id}")
@@ -259,6 +299,18 @@ async def create_membership(data: dict, request: Request):
     """Create membership plan"""
     db = get_db()
     await require_offers_permission(request)
+
+    tier = normalize_membership_tier(data.get("tier"))
+    if tier not in ALLOWED_MEMBERSHIP_TIERS:
+        raise HTTPException(status_code=400, detail="Tier must be one of: silver, gold, platinum")
+
+    existing_by_tier = await db.membership_plans.find().to_list(200)
+    has_same_tier = any(normalize_membership_tier(plan.get("tier")) == tier for plan in existing_by_tier)
+    if has_same_tier:
+        raise HTTPException(status_code=400, detail=f"A '{tier}' membership plan already exists")
+
+    data["tier"] = tier
+    data["name"] = TIER_DISPLAY_NAMES[tier]
     
     data["createdAt"] = datetime.utcnow()
     data["status"] = data.get("status", "active")
@@ -276,6 +328,24 @@ async def update_membership(plan_id: str, data: dict, request: Request):
     """Update membership plan"""
     db = get_db()
     await require_offers_permission(request)
+
+    current_plan = await db.membership_plans.find_one({"_id": ObjectId(plan_id)})
+    if not current_plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    incoming_tier = normalize_membership_tier(data.get("tier") or current_plan.get("tier"))
+    if incoming_tier not in ALLOWED_MEMBERSHIP_TIERS:
+        raise HTTPException(status_code=400, detail="Tier must be one of: silver, gold, platinum")
+
+    all_plans = await db.membership_plans.find().to_list(200)
+    for plan in all_plans:
+        if str(plan.get("_id")) == plan_id:
+            continue
+        if normalize_membership_tier(plan.get("tier")) == incoming_tier:
+            raise HTTPException(status_code=400, detail=f"A '{incoming_tier}' membership plan already exists")
+
+    data["tier"] = incoming_tier
+    data["name"] = TIER_DISPLAY_NAMES[incoming_tier]
     
     data["updatedAt"] = datetime.utcnow()
     data.pop("_id", None)
@@ -284,9 +354,6 @@ async def update_membership(plan_id: str, data: dict, request: Request):
         {"_id": ObjectId(plan_id)},
         {"$set": data}
     )
-    
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Plan not found")
     
     updated = await db.membership_plans.find_one({"_id": ObjectId(plan_id)})
     return serialize_doc(updated)

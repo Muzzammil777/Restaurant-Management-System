@@ -118,7 +118,7 @@ export function ReportsAnalytics() {
       <div className="bg-analytics-module min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-white">
           <Loader2 className="h-10 w-10 animate-spin" />
-          <p className="text-sm">Loading analyticsâ€¦</p>
+          <p className="text-sm">Loading analytics...</p>
         </div>
       </div>
     );
@@ -196,7 +196,7 @@ export function ReportsAnalytics() {
                 <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">â‚¹{totalRevenue.toLocaleString('en-IN')}</div>
+                <div className="text-2xl font-bold">INR {totalRevenue.toLocaleString('en-IN')}</div>
                 <p className="text-xs text-muted-foreground mt-1">All completed orders</p>
               </CardContent>
             </Card>
@@ -218,7 +218,7 @@ export function ReportsAnalytics() {
                 <CardTitle className="text-sm font-medium text-muted-foreground">Avg. Order Value</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">â‚¹{Math.round(avgOrderValue).toLocaleString('en-IN')}</div>
+                <div className="text-2xl font-bold">INR {Math.round(avgOrderValue).toLocaleString('en-IN')}</div>
                 <p className="text-xs text-muted-foreground mt-1">Per completed order</p>
               </CardContent>
             </Card>
@@ -238,7 +238,7 @@ export function ReportsAnalytics() {
             <CardHeader>
               <CardTitle>Sales Trend</CardTitle>
               <CardDescription>
-                Daily sales and order count â€” {weeklyData?.startDate ?? ''} to {weeklyData?.endDate ?? ''}
+                Daily sales and order count - {weeklyData?.startDate ?? ''} to {weeklyData?.endDate ?? ''}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -253,8 +253,8 @@ export function ReportsAnalytics() {
                     <XAxis dataKey="name" />
                     <YAxis yAxisId="left" />
                     <YAxis yAxisId="right" orientation="right" />
-                    <Tooltip formatter={(val: any, name: string) => name === 'Sales (â‚¹)' ? `â‚¹${val.toLocaleString('en-IN')}` : val} />
-                    <Line yAxisId="left" type="monotone" dataKey="sales" stroke="#3b82f6" strokeWidth={2} name="Sales (â‚¹)" />
+                    <Tooltip formatter={(val: any, name: string) => name === 'Sales (INR)' ? `INR ${val.toLocaleString('en-IN')}` : val} />
+                    <Line yAxisId="left" type="monotone" dataKey="sales" stroke="#3b82f6" strokeWidth={2} name="Sales (INR)" />
                     <Line yAxisId="right" type="monotone" dataKey="orders" stroke="#10b981" strokeWidth={2} name="Orders" />
                   </LineChart>
                 </ResponsiveContainer>
@@ -308,7 +308,7 @@ export function ReportsAnalytics() {
                     <span className="text-sm">Dine-in Orders</span>
                   </div>
                   <span className="font-semibold">
-                    {dineIn > 0 ? `${dineIn} (${totalOrders > 0 ? Math.round((dineIn / totalOrders) * 100) : 0}%)` : 'â€”'}
+                    {dineIn > 0 ? `${dineIn} (${totalOrders > 0 ? Math.round((dineIn / totalOrders) * 100) : 0}%)` : '-'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between p-3 border rounded-lg">
@@ -317,7 +317,7 @@ export function ReportsAnalytics() {
                     <span className="text-sm">Takeaway Orders</span>
                   </div>
                   <span className="font-semibold">
-                    {takeaway > 0 ? `${takeaway} (${totalOrders > 0 ? Math.round((takeaway / totalOrders) * 100) : 0}%)` : 'â€”'}
+                    {takeaway > 0 ? `${takeaway} (${totalOrders > 0 ? Math.round((takeaway / totalOrders) * 100) : 0}%)` : '-'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between p-3 border rounded-lg">
@@ -326,7 +326,7 @@ export function ReportsAnalytics() {
                     <span className="text-sm">Delivery Orders</span>
                   </div>
                   <span className="font-semibold">
-                    {delivery > 0 ? `${delivery} (${totalOrders > 0 ? Math.round((delivery / totalOrders) * 100) : 0}%)` : 'â€”'}
+                    {delivery > 0 ? `${delivery} (${totalOrders > 0 ? Math.round((delivery / totalOrders) * 100) : 0}%)` : '-'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between p-3 border rounded-lg">
@@ -346,7 +346,7 @@ export function ReportsAnalytics() {
           <Card>
             <CardHeader>
               <CardTitle>Top Selling Items</CardTitle>
-              <CardDescription>Most popular dishes â€” {weeklyData?.startDate ?? ''} to {weeklyData?.endDate ?? ''}</CardDescription>
+              <CardDescription>Most popular dishes - {weeklyData?.startDate ?? ''} to {weeklyData?.endDate ?? ''}</CardDescription>
             </CardHeader>
             <CardContent>
               {popularItems.length === 0 ? (
@@ -375,7 +375,7 @@ export function ReportsAnalytics() {
                         </TableCell>
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell>{item.orders}</TableCell>
-                        <TableCell>{item.revenue > 0 ? `â‚¹${item.revenue.toLocaleString('en-IN')}` : 'â€”'}</TableCell>
+                        <TableCell>{item.revenue > 0 ? `INR ${item.revenue.toLocaleString('en-IN')}` : '-'}</TableCell>
                         <TableCell>
                           {item.trend !== 0 ? (
                             item.trend > 0 ? (
@@ -390,7 +390,7 @@ export function ReportsAnalytics() {
                               </Badge>
                             )
                           ) : (
-                            <span className="text-xs text-muted-foreground">â€”</span>
+                            <span className="text-xs text-muted-foreground">-</span>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
@@ -468,7 +468,7 @@ export function ReportsAnalytics() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-purple-600">
-                  {peakHour ? peakHour.hour : 'â€”'}
+                  {peakHour ? peakHour.hour : '-'}
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
                   {peakHour ? `${peakHour.orders} orders during this hour` : 'No data yet'}
@@ -485,7 +485,7 @@ export function ReportsAnalytics() {
                   {dailyData?.orders ?? 0}
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  â‚¹{(dailyData?.revenue ?? 0).toLocaleString('en-IN')} revenue
+                  INR {(dailyData?.revenue ?? 0).toLocaleString('en-IN')} revenue
                 </p>
               </CardContent>
             </Card>
@@ -547,7 +547,7 @@ export function ReportsAnalytics() {
                           <Badge variant="outline">{staff.role}</Badge>
                         </TableCell>
                         <TableCell>{staff.orders_handled ?? 0}</TableCell>
-                        <TableCell>{staff.avg_service_time ?? 'â€”'}</TableCell>
+                        <TableCell>{staff.avg_service_time ?? '-'}</TableCell>
                         <TableCell>
                           {staff.rating ? (
                             <div className="flex items-center gap-1">
@@ -555,16 +555,16 @@ export function ReportsAnalytics() {
                               <span>{staff.rating}</span>
                             </div>
                           ) : (
-                            <span className="text-muted-foreground text-sm">â€”</span>
+                            <span className="text-muted-foreground text-sm">-</span>
                           )}
                         </TableCell>
                         <TableCell>
-                          {staff.attendance && staff.attendance !== 'â€”' ? (
+                          {staff.attendance && staff.attendance !== '-' ? (
                             <Badge className={staff.attendance === '100%' ? 'bg-green-500' : 'bg-blue-500'}>
                               {staff.attendance}
                             </Badge>
                           ) : (
-                            <span className="text-muted-foreground text-sm">â€”</span>
+                            <span className="text-muted-foreground text-sm">-</span>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
@@ -579,7 +579,7 @@ export function ReportsAnalytics() {
                               <span className="font-semibold w-8 text-right">{staff.performance_score}</span>
                             </div>
                           ) : (
-                            <span className="text-muted-foreground text-sm">â€”</span>
+                            <span className="text-muted-foreground text-sm">-</span>
                           )}
                         </TableCell>
                       </TableRow>
