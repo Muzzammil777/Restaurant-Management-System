@@ -144,6 +144,12 @@ async def create_order(data: dict):
         data["statusUpdatedAt"] = datetime.utcnow().isoformat() + 'Z'
         
         result = await db.orders.insert_one(data)
+        # Update the inserted document to set 'id' equal to its string _id
+        # This prevents future unique-index conflicts on the 'id' field
+        await db.orders.update_one(
+            {"_id": result.inserted_id},
+            {"$set": {"id": str(result.inserted_id)}}
+        )
         created = await db.orders.find_one({"_id": result.inserted_id})
         
         # Try to log audit but don't fail if it doesn't work

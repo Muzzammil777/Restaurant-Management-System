@@ -56,6 +56,15 @@ async def startup():
         from .db import init_db
         init_db()
         print("✅ MongoDB connected successfully")
+        # Drop the problematic unique index on 'id' field in orders collection
+        # (causes E11000 dup key errors when id is null/missing)
+        try:
+            db = get_db()
+            await db.orders.drop_index("id_1")
+            print("✅ Dropped legacy 'id_1' unique index from orders collection")
+        except Exception as idx_err:
+            # Index may not exist — that's fine
+            print(f"ℹ️  Index drop skipped: {idx_err}")
         # Start the backup scheduler
         await start_scheduler()
     except Exception as e:
