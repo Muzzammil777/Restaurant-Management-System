@@ -636,8 +636,8 @@ export function StaffShiftTimings({ globalSearch = '' }: StaffShiftTimingsProps)
             </div>
             <div className="flex items-center gap-3">
               <Button 
-                variant="ghost" 
-                className="text-gray-400 font-bold uppercase tracking-widest text-[11px] px-6"
+                variant="outline" 
+                className="text-black border border-gray-300 hover:border-gray-400 hover:text-black font-bold uppercase tracking-widest text-[11px] px-6"
                 onClick={() => setRatesDialogOpen(true)}
               >
                 Modify Financial Rates

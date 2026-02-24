@@ -248,7 +248,7 @@ function AppContent() {
                 className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
                   hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
                   data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
-                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                  data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
                 style={{ fontFamily: 'Inter, sans-serif' }}
               >
                 <LayoutDashboard className="h-4 w-4" />
@@ -261,7 +261,7 @@ function AppContent() {
                 className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
                   hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
                   data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
-                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                  data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
                 style={{ fontFamily: 'Inter, sans-serif' }}
               >
                 <UtensilsCrossed className="h-4 w-4" />
@@ -274,7 +274,7 @@ function AppContent() {
                 className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
                   hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
                   data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
-                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                  data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
                 style={{ fontFamily: 'Inter, sans-serif' }}
               >
                 <ShoppingCart className="h-4 w-4" />
@@ -287,7 +287,7 @@ function AppContent() {
                 className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
                   hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
                   data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
-                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                  data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
                 style={{ fontFamily: 'Inter, sans-serif' }}
               >
                 <ChefHat className="h-4 w-4" />
@@ -300,7 +300,7 @@ function AppContent() {
                 className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
                   hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
                   data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
-                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                  data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
                 style={{ fontFamily: 'Inter, sans-serif' }}
               >
                 <Users className="h-4 w-4" />
@@ -313,7 +313,7 @@ function AppContent() {
                 className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
                   hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
                   data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
-                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                  data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
                 style={{ fontFamily: 'Inter, sans-serif' }}
               >
                 <Package className="h-4 w-4" />
@@ -323,10 +323,10 @@ function AppContent() {
             {hasPermission('staff') && (
               <TabsTrigger 
                 value="staff" 
-                className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
+                className="gap-2 px-4 py-2.5 rounded-xl font-medium text-black transition-all duration-300
                   hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
                   data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
-                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                  data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
                 style={{ fontFamily: 'Inter, sans-serif' }}
               >
                 <UserCog className="h-4 w-4" />
@@ -339,7 +339,7 @@ function AppContent() {
                 className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
                   hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
                   data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
-                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                  data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
                 style={{ fontFamily: 'Inter, sans-serif' }}
               >
                 <CreditCard className="h-4 w-4" />
@@ -352,7 +352,7 @@ function AppContent() {
                 className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
                   hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
                   data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
-                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                  data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
                 style={{ fontFamily: 'Inter, sans-serif' }}
               >
                 <Tag className="h-4 w-4" />
@@ -365,7 +365,7 @@ function AppContent() {
                 className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
                   hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
                   data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
-                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                  data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
                 style={{ fontFamily: 'Inter, sans-serif' }}
               >
                 <BarChart3 className="h-4 w-4" />
@@ -378,7 +378,7 @@ function AppContent() {
                 className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
                   hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
                   data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
-                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                  data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
                 style={{ fontFamily: 'Inter, sans-serif' }}
               >
                 <BellRing className="h-4 w-4" />
@@ -391,7 +391,7 @@ function AppContent() {
                 className="gap-2 px-4 py-2.5 rounded-xl font-medium text-[#6B5B4F] transition-all duration-300
                   hover:bg-[#F5EDE5] hover:text-[#8B5A2B]
                   data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B]
-                  data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
+                  data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25"
                 style={{ fontFamily: 'Inter, sans-serif' }}
               >
                 <Settings className="h-4 w-4" />

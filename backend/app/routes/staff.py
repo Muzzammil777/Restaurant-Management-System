@@ -24,6 +24,9 @@ def serialize_doc(doc):
         for key, value in doc.items():
             if isinstance(value, ObjectId):
                 result[key] = str(value)
+            elif isinstance(value, datetime):
+                # Always emit UTC datetimes with 'Z' suffix so JS parses them correctly
+                result[key] = value.isoformat() + 'Z'
             elif isinstance(value, dict):
                 result[key] = serialize_doc(value)
             elif isinstance(value, list):

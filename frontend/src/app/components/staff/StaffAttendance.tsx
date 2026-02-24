@@ -287,11 +287,11 @@ export function StaffAttendance({ globalSearch = '' }: StaffAttendanceProps) {
         <div className="flex flex-wrap items-center gap-2">
           <Button 
             variant="outline" 
-            className="gap-2 bg-white border-gray-200 shadow-sm"
+            className="gap-2 text-white border-white/30 hover:text-white hover:bg-white/10"
             onClick={handleExportCsv}
             disabled={exporting}
           >
-            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarIcon className="h-4 w-4 text-[#8B5A2B]" />}
+            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarIcon className="h-4 w-4 text-white" />}
             Export
           </Button>
           <Dialog open={manualEntryOpen} onOpenChange={setManualEntryOpen}>
@@ -471,14 +471,14 @@ export function StaffAttendance({ globalSearch = '' }: StaffAttendanceProps) {
             <div className="flex justify-between items-start mb-4">
               <div>
                 <p className="text-[10px] font-bold text-white-600 uppercase tracking-widest mb-1">Active On-Site</p>
-                {loading ? (
+                {onlineLoading ? (
                   <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
                 ) : (
-                  <div className="text-4xl font-bold text-[#2D2D2D]">{activeOnSite}/{totalStaff}</div>
+                  <div className="text-4xl font-bold text-[#2D2D2D]">{onlineUsers.length}/{totalStaff}</div>
                 )}
                 <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                  <span className="inline-block h-2 w-2 rounded-full bg-green-400" />
-                  {onlineUsers.length} online now
+                  <span className="inline-block h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+                  {onlineUsers.length} logged in now
                 </p>
               </div>
               <Badge className="bg-green-50 text-green-600 border-none font-bold text-[10px]">+5.2%</Badge>
@@ -487,7 +487,7 @@ export function StaffAttendance({ globalSearch = '' }: StaffAttendanceProps) {
               <motion.div 
                 className="bg-green-500 h-full rounded-full"
                 initial={{ width: 0 }}
-                animate={{ width: totalStaff > 0 ? `${(activeOnSite / totalStaff) * 100}%` : '0%' }}
+                animate={{ width: totalStaff > 0 ? `${(onlineUsers.length / totalStaff) * 100}%` : '0%' }}
                 transition={{ duration: 1, ease: "easeOut" }}
               />
             </div>
