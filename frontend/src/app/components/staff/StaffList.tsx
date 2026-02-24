@@ -310,7 +310,7 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
         <div className="flex flex-wrap items-center gap-2">
           <Button 
             variant="outline" 
-            className="gap-2 bg-white border-gray-200"
+            className="gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20"
             onClick={handleExportCsv}
             disabled={exporting}
           >

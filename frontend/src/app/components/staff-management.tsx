@@ -128,16 +128,16 @@ export function StaffManagement() {
                   className={cn(
                     'flex items-start gap-3 p-3 rounded-lg transition-colors text-left min-w-[180px]',
                     isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-card border border-border hover:bg-muted shadow-sm'
+                      ? 'bg-[#8B5A2B] text-white shadow-lg'
+                      : 'bg-white/10 border border-white/20 text-white hover:bg-white/20 shadow-sm backdrop-blur-sm'
                   )}
                 >
-                  <Icon className={cn('h-5 w-5 mt-0.5 flex-shrink-0', isActive ? '' : 'text-muted-foreground')} />
+                  <Icon className="h-5 w-5 mt-0.5 flex-shrink-0 text-white" />
                   <div className="flex-1 min-w-0">
-                    <p className={cn('text-sm font-medium', isActive ? '' : '')}>
+                    <p className="text-sm font-medium text-white">
                       {item.label}
                     </p>
-                    <p className={cn('text-xs mt-0.5', isActive ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
+                    <p className={cn('text-xs mt-0.5', isActive ? 'text-white/80' : 'text-white/60')}>
                       {item.description}
                     </p>
                   </div>

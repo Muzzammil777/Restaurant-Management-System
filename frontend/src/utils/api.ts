@@ -76,6 +76,9 @@ export const staffApi = {
   // Alias for list - get all staff
   getAll: () => fetchApi<any[]>('/staff'),
 
+  // Get staff who logged in within the last N minutes (default 30)
+  getOnline: (minutes = 30) => fetchApi<any[]>(`/staff/online?minutes=${minutes}`),
+
   // Get staff statistics
   getStats: () => fetchApi<any>('/staff/stats'),
 

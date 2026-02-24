@@ -64,10 +64,10 @@
   position: relative;
 }
 
-/* Staff Management - Team working in kitchen */
+/* Staff Management - Restaurant team/staff photo */
 .bg-staff-module {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.5) 100%), 
-              url('https://images.unsplash.com/photo-1541542684-4f99a1415b5e?w=1920&q=80') center/cover no-repeat fixed;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0.55) 100%), 
+              url('https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?w=1920&q=80') center/cover no-repeat fixed;
   min-height: 100%;
   position: relative;
 }

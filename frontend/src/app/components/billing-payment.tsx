@@ -35,9 +35,7 @@ import {
   Calculator,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { API_BASE_URL } from '@/utils/supabase/info';
-import { mockApi } from '@/app/services/mock-api';
-import { ordersApi } from '@/utils/api';
+import { ordersApi, billingApi } from '@/utils/api';
 
 interface Order {
   id: string;
@@ -88,6 +86,7 @@ export function BillingPayment() {
   const [showInvoicePreview, setShowInvoicePreview] = useState(false);
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     Promise.all([fetchOrders(), fetchInvoices()]).finally(() => setLoading(false));
@@ -100,99 +99,86 @@ export function BillingPayment() {
     setSubtotal(total);
   }, [billItems]);
 
+  const normalizeOrder = (o: any): Order => ({
+    id: o._id || o.id,
+    table_number: o.tableNumber || o.table_number || 0,
+    customer_name: o.customerName || o.customer_name || 'Guest',
+    items: (o.items || []).map((item: any) => ({
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+    })),
+    total: o.total || o.totalAmount || 0,
+    status: o.status,
+  });
+
   const fetchOrders = async () => {
     try {
-      const allOrders: Order[] = [];
+      // Fetch served and bill_requested orders from the real backend in parallel
+      const [servedRes, billRes] = await Promise.all([
+        ordersApi.list({ status: 'served' }),
+        ordersApi.list({ status: 'bill_requested' }),
+      ]);
 
-      // Fetch bill_requested orders from the real API
-      try {
-        const realResult = await ordersApi.list({ status: 'bill_requested' });
-        const realOrders: any[] = Array.isArray(realResult)
-          ? realResult
-          : (realResult as any)?.data || [];
-        const normalizedReal: Order[] = realOrders.map((o: any) => ({
-          id: o._id || o.id,
-          table_number: o.tableNumber || o.table_number || o.name || 0,
-          customer_name: o.customerName || o.customer_name || 'Guest',
-          items: (o.items || []).map((item: any) => ({
-            name: item.name,
-            quantity: item.quantity,
-            price: item.price,
-          })),
-          total: o.total || o.totalAmount || 0,
-          status: o.status,
-        }));
-        allOrders.push(...normalizedReal);
-      } catch (e) {
-        console.warn('Could not fetch real bill_requested orders:', e);
-      }
+      const extract = (res: any): any[] =>
+        Array.isArray(res) ? res : (res?.data ?? []);
 
-      // Also fetch from mock API (bill_requested, completed, ready)
-      const mockResult = await mockApi.getOrders();
-      if (mockResult.success) {
-        const mockOrders = mockResult.data
-          .filter((order: any) =>
-            order.status === 'bill_requested' ||
-            order.status === 'completed' ||
-            order.status === 'ready'
-          )
-          .map((o: any) => ({
-            id: o.id,
-            table_number: o.tableNumber || o.table_number || 0,
-            customer_name: o.customerName || o.customer_name || 'Guest',
-            items: (o.items || []).map((item: any) => ({
-              name: item.name,
-              quantity: item.quantity,
-              price: item.price,
-            })),
-            total: o.totalAmount || o.total || 0,
-            status: o.status,
-          }));
-        // Deduplicate by id
-        const existingIds = new Set(allOrders.map(o => o.id));
-        mockOrders.forEach((o: Order) => {
-          if (!existingIds.has(o.id)) allOrders.push(o);
-        });
-      }
+      const combined = [...extract(servedRes), ...extract(billRes)];
 
-      // Sort: bill_requested first, then by id descending
-      allOrders.sort((a, b) => {
+      // Deduplicate by id
+      const seen = new Set<string>();
+      const unique = combined.filter(o => {
+        const id = o._id || o.id;
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+
+      // bill_requested first, then served
+      unique.sort((a, b) => {
         if (a.status === 'bill_requested' && b.status !== 'bill_requested') return -1;
         if (a.status !== 'bill_requested' && b.status === 'bill_requested') return 1;
         return 0;
       });
 
-      setOrders(allOrders);
+      setOrders(unique.map(normalizeOrder));
     } catch (error) {
       console.error('Error fetching orders:', error);
+      toast.error('Failed to load orders');
     }
   };
 
   const fetchInvoices = async () => {
-    // Mock invoice data - replace with actual API call
-    const mockInvoices: Invoice[] = [
-      {
-        id: '1',
-        invoice_number: 'INV-2026-0001',
-        customer_name: 'John Doe',
-        table_number: 5,
-        items: [
-          { id: '1', name: 'Butter Chicken', quantity: 2, price: 320, total: 640 },
-          { id: '2', name: 'Naan', quantity: 4, price: 40, total: 160 },
-        ],
-        subtotal: 800,
-        tax_rate: 5,
-        tax_amount: 40,
-        discount_type: 'percentage',
-        discount_value: 10,
-        discount_amount: 80,
-        grand_total: 760,
-        payment_mode: 'UPI',
-        status: 'paid',
-        created_at: new Date().toISOString(),
-      },
-    ];
-    setInvoices(mockInvoices);
+    try {
+      const res = await billingApi.listInvoices();
+      const raw: any[] = Array.isArray(res) ? res : [];
+      const normalized: Invoice[] = raw.map((inv: any) => ({
+        id: inv._id || inv.id,
+        invoice_number: inv.invoiceNumber || inv.invoice_number || inv.id,
+        customer_name: inv.customerName || inv.customer_name || 'Guest',
+        table_number: inv.tableNumber || inv.table_number || 0,
+        items: (inv.items || []).map((item: any, idx: number) => ({
+          id: item.id || `item-${idx}`,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          total: item.quantity * item.price,
+        })),
+        subtotal: inv.subtotal || 0,
+        tax_rate: inv.taxPercent ?? inv.tax_rate ?? 5,
+        tax_amount: inv.taxAmount ?? inv.tax_amount ?? 0,
+        discount_type: inv.discountType || inv.discount_type || 'flat',
+        discount_value: inv.discountValue ?? inv.discount_value ?? 0,
+        discount_amount: inv.discountAmount ?? inv.discount_amount ?? 0,
+        grand_total: inv.grandTotal || inv.grand_total || 0,
+        payment_mode: inv.paymentMethod || inv.payment_mode || 'cash',
+        status: inv.status || 'paid',
+        created_at: inv.createdAt || inv.created_at || new Date().toISOString(),
+      }));
+      setInvoices(normalized);
+    } catch (error) {
+      console.error('Error fetching invoices:', error);
+    }
   };
 
   const loadOrderIntoBill = (order: Order) => {
@@ -248,43 +234,81 @@ export function BillingPayment() {
     };
   };
 
-  const generateInvoice = () => {
+  const generateInvoice = async () => {
     if (billItems.length === 0) {
       toast.error('Please add items to the bill');
       return;
     }
+    setIsGenerating(true);
 
     const totals = calculateTotals();
-    const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(4, '0')}`;
 
-    const invoice: Invoice = {
-      id: Date.now().toString(),
-      invoice_number: invoiceNumber,
-      customer_name: selectedOrder?.customer_name || 'Walk-in Customer',
-      table_number: selectedOrder?.table_number || 0,
-      items: billItems,
+    const invoicePayload = {
+      orderId: selectedOrder?.id,
+      tableId: selectedOrder?.id ? undefined : undefined,
+      tableNumber: selectedOrder?.table_number,
+      customerName: selectedOrder?.customer_name || 'Walk-in Customer',
+      items: billItems.map(item => ({ name: item.name, quantity: item.quantity, price: item.price })),
       subtotal: totals.subtotal,
-      tax_rate: taxRate,
-      tax_amount: totals.taxAmount,
-      discount_type: discountType,
-      discount_value: discountValue,
-      discount_amount: totals.discountAmount,
-      grand_total: totals.grandTotal,
-      payment_mode: paymentMode,
+      taxPercent: taxRate,
+      taxAmount: totals.taxAmount,
+      discountType,
+      discountValue,
+      discountAmount: totals.discountAmount,
+      grandTotal: totals.grandTotal,
+      paymentMethod: paymentMode,
       status: 'paid',
-      created_at: new Date().toISOString(),
     };
 
-    setInvoices([invoice, ...invoices]);
-    setPreviewInvoice(invoice);
-    setShowInvoicePreview(true);
-    
-    // Reset form
-    setBillItems([]);
-    setSelectedOrder(null);
-    setDiscountValue(0);
-    
-    toast.success(`Invoice ${invoiceNumber} generated successfully!`);
+    try {
+      // Persist invoice to backend
+      const created = await billingApi.createInvoice(invoicePayload);
+      const invoiceNumber = created?.invoiceNumber || `INV-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(4, '0')}`;
+
+      // Mark order as completed in backend
+      if (selectedOrder?.id) {
+        try {
+          await ordersApi.updateStatus(selectedOrder.id, 'completed', false);
+        } catch (e) {
+          console.warn('Could not mark order as completed:', e);
+        }
+      }
+
+      const invoice: Invoice = {
+        id: created?._id || created?.id || Date.now().toString(),
+        invoice_number: invoiceNumber,
+        customer_name: selectedOrder?.customer_name || 'Walk-in Customer',
+        table_number: selectedOrder?.table_number || 0,
+        items: billItems,
+        subtotal: totals.subtotal,
+        tax_rate: taxRate,
+        tax_amount: totals.taxAmount,
+        discount_type: discountType,
+        discount_value: discountValue,
+        discount_amount: totals.discountAmount,
+        grand_total: totals.grandTotal,
+        payment_mode: paymentMode,
+        status: 'paid',
+        created_at: created?.createdAt || new Date().toISOString(),
+      };
+
+      setInvoices(prev => [invoice, ...prev]);
+      setPreviewInvoice(invoice);
+      setShowInvoicePreview(true);
+
+      // Remove the order from the list since it's now billed
+      setOrders(prev => prev.filter(o => o.id !== selectedOrder?.id));
+      setBillItems([]);
+      setSelectedOrder(null);
+      setDiscountValue(0);
+
+      toast.success(`Invoice ${invoiceNumber} generated successfully!`);
+    } catch (error) {
+      console.error('Failed to generate invoice:', error);
+      toast.error('Failed to save invoice. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const downloadInvoice = (invoice: Invoice) => {
@@ -742,9 +766,9 @@ export function BillingPayment() {
                       </RadioGroup>
                     </div>
 
-                    <Button onClick={generateInvoice} className="w-full" size="lg">
+                    <Button onClick={generateInvoice} className="w-full" size="lg" disabled={isGenerating}>
                       <Receipt className="h-5 w-5 mr-2" />
-                      Generate Invoice & Process Payment
+                      {isGenerating ? 'Processing...' : 'Generate Invoice & Process Payment'}
                     </Button>
                   </>
                 )}
