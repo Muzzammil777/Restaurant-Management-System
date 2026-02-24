@@ -7,6 +7,10 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
+# Set default MongoDB URI if not in environment
+if not os.getenv('MONGODB_URI'):
+    os.environ['MONGODB_URI'] = 'mongodb+srv://priyadharshini:Ezhilithanya@cluster0.crvutrr.mongodb.net/restaurant_db'
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .db import init_db, get_db
@@ -26,7 +30,6 @@ from .routes import notifications as notifications_router
 from .routes import billing as billing_router
 from .routes import analytics as analytics_router
 from .routes import recipes as recipes_router
-from .routes import workflow as workflow_router
 
 
 app = FastAPI(title='RMS Backend (FastAPI)')
@@ -41,7 +44,7 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://127.0.0.1:59007", "http://127.0.0.1:59987", "http://127.0.0.1:63519", "http://127.0.0.1:59987", "*", "https://restaurant-management-system-omega-five.vercel.app", "http://localhost:3000"],
     allow_origin_regex=r"https://restaurant-management-system.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
@@ -56,15 +59,6 @@ async def startup():
         from .db import init_db
         init_db()
         print("✅ MongoDB connected successfully")
-        # Drop the problematic unique index on 'id' field in orders collection
-        # (causes E11000 dup key errors when id is null/missing)
-        try:
-            db = get_db()
-            await db.orders.drop_index("id_1")
-            print("✅ Dropped legacy 'id_1' unique index from orders collection")
-        except Exception as idx_err:
-            # Index may not exist — that's fine
-            print(f"ℹ️  Index drop skipped: {idx_err}")
         # Start the backup scheduler
         await start_scheduler()
     except Exception as e:
@@ -88,9 +82,6 @@ app.include_router(orders_router.router, prefix='/api/orders')
 app.include_router(tables_router.router, prefix='/api/tables')
 app.include_router(inventory_router.router, prefix='/api/inventory')
 app.include_router(recipes_router.router, prefix='/api/recipes')
-
-# Workflow Integration (Tables → Orders → Kitchen → Billing)
-app.include_router(workflow_router.router, prefix='/api/workflow')
 
 # Customer Operations
 app.include_router(customers_router.router, prefix='/api/customers')
