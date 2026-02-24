@@ -48,6 +48,7 @@ import { Separator } from '@/app/components/ui/separator';
 import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/app/components/ui/dropdown-menu';
 import { Progress } from '@/app/components/ui/progress';
+import { ordersApi } from '@/utils/api';
 
 // --- Types ---
 
@@ -201,13 +202,13 @@ export function BillingPayment() {
 
   // Handlers
   const handleInvoiceGenerated = (invoice: Invoice) => {
-    setInvoices(prev => [invoice, ...prev]);
+    setInvoices(prev => [...prev, invoice]);
     // Remove order from served list
     setOrders(prev => prev.filter(o => o.orderNumber !== invoice.orderId));
   };
 
   const handleRefundProcessed = (refund: Refund) => {
-    setRefunds(prev => [refund, ...prev]);
+    setRefunds(prev => [...prev, refund]);
     setInvoices(prev => prev.map(inv => {
       if (inv.id === refund.invoiceId) {
         return {
@@ -217,6 +218,26 @@ export function BillingPayment() {
       }
       return inv;
     }));
+  };
+
+  const handleDeleteOrder = async (orderId: string, orderNumber: string) => {
+    try {
+      const result = await ordersApi.delete(orderId);
+      if (result.success) {
+        // Remove order from local state
+        setOrders(prev => prev.filter(o => o.id !== orderId));
+        // Clear selected order if it was the deleted one
+        if (selectedOrder?.id === orderId) {
+          setSelectedOrder(null);
+        }
+        toast.success(`Order ${orderNumber} deleted successfully`);
+      } else {
+        toast.error('Failed to delete order');
+      }
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      toast.error('Failed to delete order');
+    }
   };
 
   const downloadInvoicePdf = (invoice: Invoice) => {
@@ -443,6 +464,35 @@ function BillGenerationTab({ orders, onInvoiceGenerated }: { orders: Order[], on
       );
   }, [orders, searchTerm]);
 
+  const handleDeleteOrder = async (orderId: string, orderNumber: string) => {
+    try {
+      const result = await ordersApi.delete(orderId);
+      if (result.success) {
+        // Remove order from local state by calling parent update
+        onInvoiceGenerated({
+          id: `inv_${Date.now()}`,
+          invoiceNumber: `INV-${Date.now()}`,
+          date: new Date().toISOString(),
+          orderId: orderNumber,
+          customerName: '',
+          items: [],
+          subtotal: 0,
+          taxAmount: 0,
+          discountAmount: 0,
+          grandTotal: 0,
+          payments: [],
+          status: 'Paid'
+        });
+        toast.success(`Order ${orderNumber} deleted successfully`);
+      } else {
+        toast.error('Failed to delete order');
+      }
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      toast.error('Failed to delete order');
+    }
+  };
+
   // Derived Totals
   const totals = useMemo(() => {
     if (!selectedOrder) return { subtotal: 0, tax: 0, discount: 0, total: 0 };
@@ -546,150 +596,170 @@ function BillGenerationTab({ orders, onInvoiceGenerated }: { orders: Order[], on
   };
 
   return (
-    <div className="grid lg:grid-cols-12 gap-6 h-[calc(100vh-220px)] min-h-[600px]">
+    <div className="grid lg:grid-cols-12 gap-4 h-[calc(100vh-140px)]">
       
       {/* Left Panel: Order Selection */}
-      <div className="lg:col-span-4 flex flex-col gap-4">
-        <Card className="flex-1 flex flex-col border-none shadow-md overflow-hidden bg-white">
-          <CardHeader className="pb-3 border-b sticky top-0 z-10 bg-white">
-            <CardTitle>Served Orders</CardTitle>
-            <CardDescription>Select an order to generate bill</CardDescription>
-            <div className="relative mt-2">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      <div className="lg:col-span-4 flex flex-col">
+        <Card className="flex-1 flex flex-col border shadow-sm overflow-hidden bg-white">
+          <CardHeader className="pb-2 border-b bg-white">
+            <CardTitle className="text-sm">Served Orders</CardTitle>
+            <CardDescription className="text-xs">Select an order to generate bill</CardDescription>
+            <div className="relative mt-1">
+              <Search className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
               <Input 
-                placeholder="Search Table or Order ID..." 
-                className="pl-9 bg-gray-50 border-gray-200 focus:bg-white transition-all"
+                placeholder="Search..." 
+                className="pl-7 h-8 text-xs bg-gray-50 border-gray-200 focus:bg-white transition-all"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
           </CardHeader>
-          <CardContent className="flex-1 overflow-y-auto p-0 bg-[#F7F3EE]/50">
-             <div className="p-3 space-y-3">
+          <CardContent className="flex-1 overflow-y-auto p-2 bg-[#F7F3EE]/30">
+             <div className="space-y-2">
                {filteredOrders.map(order => (
                  <motion.div 
                    key={order.id} 
                    whileHover={{ scale: 1.01 }}
-                   onClick={() => setSelectedOrder(order)}
+                   onClick={() => {
+                     try {
+                       console.log('🔍 Order clicked:', order);
+                       console.log('🔍 Order details:', {
+                         id: order.id,
+                         orderNumber: order.orderNumber,
+                         tableNumber: order.tableNumber,
+                         customerName: order.customerName,
+                         items: order.items,
+                         totalAmount: order.totalAmount,
+                         status: order.status
+                       });
+                       setSelectedOrder(order);
+                       toast.success(`Order ${order.orderNumber || order.id} selected for billing`);
+                     } catch (error) {
+                       console.error('🔍 Error selecting order:', error);
+                       toast.error('Failed to select order');
+                     }
+                   }}
                    className={cn(
-                     "p-4 rounded-xl border cursor-pointer transition-all group relative overflow-hidden",
+                     "p-3 rounded-lg border cursor-pointer transition-all group relative overflow-hidden",
                      selectedOrder?.id === order.id 
-                       ? 'bg-white border-[#8B5A2B] shadow-md ring-1 ring-[#8B5A2B]/20' 
-                       : 'bg-white border-gray-200 hover:border-[#8B5A2B]/50 hover:shadow-md'
+                       ? 'bg-white border-[#8B5A2B] shadow-sm ring-1 ring-[#8B5A2B]/20' 
+                       : 'bg-white border-gray-200 hover:border-[#8B5A2B]/50 hover:shadow-sm'
                    )}
                  >
-                   <div className="flex justify-between items-start mb-2 relative z-10">
-                     <div className="flex items-center gap-2">
-                       <Badge variant={selectedOrder?.id === order.id ? 'default' : 'secondary'} className={cn("rounded-md font-bold", selectedOrder?.id === order.id ? 'bg-[#8B5A2B]' : 'bg-gray-100 text-gray-700')}>
-                         Table {order.tableNumber}
+                   <div className="flex justify-between items-start mb-1 relative z-10">
+                     <div className="flex items-center gap-1">
+                       <Badge variant={selectedOrder?.id === order.id ? 'default' : 'secondary'} className={cn("rounded text-xs font-bold", selectedOrder?.id === order.id ? 'bg-[#8B5A2B]' : 'bg-gray-100 text-gray-700')}>
+                         T{order.tableNumber}
                        </Badge>
                        <span className="text-xs font-mono text-muted-foreground">{order.orderNumber}</span>
                      </div>
-                     <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px] uppercase font-bold tracking-wider">
-                       {order.status}
-                     </Badge>
+                     <div className="flex items-center gap-1">
+                       <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[8px] uppercase font-bold tracking-wider">
+                         {order.status}
+                       </Badge>
+                       <button
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           handleDeleteOrder(order.id, order.orderNumber);
+                         }}
+                         className="p-0.5 rounded text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors"
+                         title="Delete order"
+                       >
+                         <Trash2 className="h-3 w-3" />
+                       </button>
+                     </div>
                    </div>
                    <div className="flex justify-between items-end relative z-10">
                      <div>
-                       <p className="font-semibold text-gray-900 group-hover:text-[#8B5A2B] transition-colors">{order.customerName}</p>
-                       <p className="text-xs text-muted-foreground">{order.items?.length || 0} Items</p>
+                       <p className="font-medium text-xs text-gray-900 group-hover:text-[#8B5A2B] transition-colors truncate">{order.customerName}</p>
+                       <p className="text-[10px] text-muted-foreground">{order.items?.length || 0} items</p>
                      </div>
-                     <p className="font-bold text-lg text-[#000000]">₹{order.totalAmount}</p>
+                     <p className="font-bold text-sm text-[#000000]">₹{order.totalAmount}</p>
                    </div>
                    {/* Selection Indicator */}
                    {selectedOrder?.id === order.id && (
-                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#8B5A2B]" />
+                     <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[#8B5A2B]" />
                    )}
                  </motion.div>
                ))}
                {filteredOrders.length === 0 && (
-                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                     <Receipt className="h-8 w-8 opacity-20" />
-                   </div>
-                   <p className="font-medium text-gray-900">No Served Orders</p>
-                   <p className="text-sm mt-1">Orders must be marked as 'Served' in kitchen first.</p>
-                 </div>
-               )}
-             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Right Panel: Bill Summary & Payment */}
-      <div className="lg:col-span-8 flex flex-col gap-4">
-        <Card className="flex-1 flex flex-col border-none shadow-md overflow-hidden bg-white">
-          {selectedOrder ? (
-            <>
-              <CardHeader className="border-b pb-4 bg-white sticky top-0 z-20">
+                 <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                   <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-2">
+              <CardHeader className="border-b pb-2 bg-white">
                 <div className="flex justify-between items-center">
                    <div>
-                     <CardTitle className="flex items-center gap-2">
+                     <CardTitle className="flex items-center gap-2 text-sm">
                        Bill Summary
                        <Badge variant="outline" className="font-normal text-xs bg-gray-50">
-                         {selectedOrder.orderNumber}
+                         {selectedOrder.orderNumber || 'No Number'}
                        </Badge>
                      </CardTitle>
-                     <CardDescription>Table {selectedOrder.tableNumber} • {format(new Date(), 'dd MMM yyyy')}</CardDescription>
+                     <CardDescription className="text-xs">Table {selectedOrder.tableNumber || 'N/A'} • {format(new Date(), 'dd MMM yyyy')}</CardDescription>
                    </div>
                    <div className="text-right">
-                     <p className="text-sm text-muted-foreground">Customer</p>
-                     <p className="font-medium text-[#000000]">{selectedOrder.customerName}</p>
+                     <p className="text-xs text-muted-foreground">Customer</p>
+                     <p className="font-medium text-sm text-[#000000]">{selectedOrder.customerName || 'Walk-in Customer'}</p>
                    </div>
                 </div>
               </CardHeader>
               
-              <div className="flex-1 grid md:grid-cols-12 divide-x h-full overflow-hidden">
+              <div className="grid md:grid-cols-12 divide-x h-[calc(100vh-200px)] overflow-hidden">
                 {/* Middle: Item List (Read Only) */}
                 <div className="md:col-span-5 flex flex-col bg-gray-50/30 overflow-hidden">
-                  <div className="p-3 border-b bg-gray-50/80 text-xs font-semibold uppercase tracking-wider text-muted-foreground flex justify-between">
+                  <div className="p-2 border-b bg-gray-50/80 text-xs font-semibold uppercase tracking-wider text-muted-foreground flex justify-between">
                     <span>Item Details</span>
                     <span>Amt</span>
                   </div>
-                  <ScrollArea className="flex-1 p-4">
-                    <div className="space-y-4">
-                      {(selectedOrder.items || []).map((item, idx) => (
-                        <div key={idx} className="flex justify-between items-start text-sm group">
-                          <div className="flex gap-3">
-                            <span className="bg-white border h-6 w-6 rounded flex items-center justify-center text-xs font-bold text-gray-600 shadow-sm">
+                  <ScrollArea className="flex-1 p-2">
+                    <div className="space-y-2">
+                      {(selectedOrder.items || []).map((item, idx) => {
+                        if (!item || !item.name || !item.price) {
+                          console.warn('🔍 Invalid item found:', item);
+                          return null;
+                        }
+                        return (
+                        <div key={idx} className="flex justify-between items-start text-xs group">
+                          <div className="flex gap-2">
+                            <span className="bg-white border h-4 w-4 rounded flex items-center justify-center text-[10px] font-bold text-gray-600 shadow-sm">
                               {item.quantity}
                             </span>
                             <div>
-                              <p className="font-medium text-gray-900">{item.name}</p>
-                              <p className="text-xs text-muted-foreground">₹{item.price} each</p>
+                              <p className="font-medium text-gray-900 text-xs">{item.name}</p>
+                              <p className="text-[10px] text-muted-foreground">₹{item.price} each</p>
                             </div>
                           </div>
-                          <p className="font-semibold tabular-nums">₹{item.price * item.quantity}</p>
+                          <p className="font-semibold tabular-nums text-xs">₹{item.price * item.quantity}</p>
                         </div>
-                      ))}
+                        );
+                      }).filter(Boolean)}
                     </div>
                   </ScrollArea>
                 </div>
 
                 {/* Right: Calculations & Payment */}
-                <div className="md:col-span-7 flex flex-col bg-white overflow-y-auto">
-                  <div className="p-6 space-y-6">
+                <div className="md:col-span-7 flex flex-col bg-white overflow-hidden">
+                  <div className="p-3 space-y-3 overflow-y-auto">
                     
                     {/* Discount & Tax Section */}
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">Tax (GST %)</Label>
                           <div className="relative">
                              <Input 
                                type="number" 
                                value={taxPercent} 
                                onChange={(e) => setTaxPercent(Number(e.target.value))}
-                               className="h-9 pr-8 text-right font-mono"
+                               className="h-7 pr-6 text-right font-mono text-xs"
                              />
-                             <span className="absolute right-3 top-2 text-xs text-muted-foreground">%</span>
+                             <span className="absolute right-2 top-1 text-[10px] text-muted-foreground">%</span>
                           </div>
                         </div>
-                        <div className="space-y-1.5">
+                        <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">Discount</Label>
-                          <div className="flex gap-2">
+                          <div className="flex gap-1">
                              <Select value={discountType} onValueChange={(v: any) => setDiscountType(v)}>
-                               <SelectTrigger className="h-9 w-[70px]">
+                               <SelectTrigger className="h-7 w-[50px] text-xs">
                                  <SelectValue />
                                </SelectTrigger>
                                <SelectContent>
@@ -701,30 +771,30 @@ function BillGenerationTab({ orders, onInvoiceGenerated }: { orders: Order[], on
                                type="number" 
                                value={discountValue} 
                                onChange={(e) => setDiscountValue(Number(e.target.value))}
-                               className="h-9 text-right font-mono flex-1"
+                               className="h-7 text-right font-mono flex-1 text-xs"
                              />
                           </div>
                         </div>
                       </div>
 
                       {/* Innovation #4: Smart Suggestions */}
-                      <div className="space-y-2">
+                      <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground flex items-center gap-1">
                           <Sparkles className="h-3 w-3 text-[#8B5A2B]" /> Smart Suggestions
                         </Label>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-1">
                           <button 
                             onClick={() => handleApplySuggestion('regular')}
-                            className="text-xs bg-orange-50 text-orange-700 px-3 py-1.5 rounded-full border border-orange-100 hover:bg-orange-100 transition-colors flex items-center gap-1"
+                            className="text-xs bg-orange-50 text-orange-700 px-2 py-1 rounded-full border border-orange-100 hover:bg-orange-100 transition-colors flex items-center gap-1"
                           >
-                            <BadgePercent className="h-3 w-3" /> Flat ₹50 (Regular)
+                            <BadgePercent className="h-2 w-2" /> ₹50
                           </button>
                           {totals.subtotal > 2000 && (
                             <button 
                               onClick={() => handleApplySuggestion('high_value')}
-                              className="text-xs bg-purple-50 text-purple-700 px-3 py-1.5 rounded-full border border-purple-100 hover:bg-purple-100 transition-colors flex items-center gap-1"
+                              className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full border border-purple-100 hover:bg-purple-100 transition-colors flex items-center gap-1"
                             >
-                              <TrendingUp className="h-3 w-3" /> 10% Off (High Value)
+                              <TrendingUp className="h-2 w-2" /> 10%
                             </button>
                           )}
                         </div>
@@ -734,7 +804,7 @@ function BillGenerationTab({ orders, onInvoiceGenerated }: { orders: Order[], on
                     <Separator />
 
                     {/* Breakdown */}
-                    <div className="space-y-2 text-sm">
+                    <div className="space-y-1 text-xs">
                       <div className="flex justify-between text-muted-foreground">
                         <span>Subtotal</span>
                         <span>₹{totals.subtotal.toFixed(2)}</span>
@@ -747,16 +817,16 @@ function BillGenerationTab({ orders, onInvoiceGenerated }: { orders: Order[], on
                         <span>Discount</span>
                         <span>- ₹{totals.discount.toFixed(2)}</span>
                       </div>
-                      <Separator className="my-2" />
+                      <Separator className="my-1" />
                       <div className="flex justify-between items-center">
-                        <span className="font-bold text-lg">Total Payable</span>
-                        <span className="font-bold text-2xl text-[#8B5A2B]">₹{totals.total.toFixed(2)}</span>
+                        <span className="font-bold text-sm">Total Payable</span>
+                        <span className="font-bold text-lg text-[#8B5A2B]">₹{totals.total.toFixed(2)}</span>
                       </div>
                     </div>
 
                     {/* Innovation #5: Split Payment Support */}
-                    <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-4">
-                      <div className="flex justify-between items-center mb-2">
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-100 space-y-3">
+                      <div className="flex justify-between items-center mb-1">
                          <Label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Payment Details</Label>
                          <Badge variant={balance > 0.1 ? "destructive" : "default"} className="text-[10px]">
                            Balance: ₹{balance > 0 ? balance.toFixed(2) : '0.00'}
@@ -765,14 +835,14 @@ function BillGenerationTab({ orders, onInvoiceGenerated }: { orders: Order[], on
 
                       {/* Payment Mode Selector */}
                       {balance > 0.1 && (
-                        <div className="space-y-3">
-                           <div className="grid grid-cols-4 gap-2">
+                        <div className="space-y-2">
+                           <div className="grid grid-cols-4 gap-1">
                              {['Cash', 'Card', 'UPI', 'Wallet'].map((mode) => (
                                <button
                                  key={mode}
                                  onClick={() => setCurrentPaymentMode(mode as any)}
                                  className={cn(
-                                   "flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-medium transition-all",
+                                   "flex flex-col items-center justify-center p-1 rounded border text-[10px] font-medium transition-all",
                                    currentPaymentMode === mode 
                                      ? "bg-[#8B5A2B] text-white border-[#8B5A2B]" 
                                      : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
@@ -782,19 +852,19 @@ function BillGenerationTab({ orders, onInvoiceGenerated }: { orders: Order[], on
                                </button>
                              ))}
                            </div>
-                           <div className="flex gap-2">
+                           <div className="flex gap-1">
                              <div className="relative flex-1">
-                               <span className="absolute left-3 top-2.5 text-xs font-bold text-gray-500">₹</span>
+                               <span className="absolute left-2 top-1.5 text-[10px] font-bold text-gray-500">₹</span>
                                <Input 
                                  type="number" 
                                  value={currentPaymentAmount} 
                                  onChange={(e) => setCurrentPaymentAmount(e.target.value)}
-                                 className="pl-6 h-10 bg-white"
+                                 className="pl-5 h-8 bg-white text-xs"
                                  placeholder="Amount"
                                />
                              </div>
-                             <Button onClick={addPayment} size="sm" className="bg-gray-900 text-white hover:bg-gray-800">
-                               <Plus className="h-4 w-4 mr-1" /> Add
+                             <Button onClick={addPayment} size="sm" className="bg-gray-900 text-white hover:bg-gray-800 h-8 px-2 text-xs">
+                               <Plus className="h-3 w-3" /> Add
                              </Button>
                            </div>
                         </div>
@@ -802,16 +872,16 @@ function BillGenerationTab({ orders, onInvoiceGenerated }: { orders: Order[], on
 
                       {/* Added Payments List */}
                       {payments.length > 0 && (
-                        <div className="space-y-2 mt-2 bg-white rounded-lg border divide-y">
+                        <div className="space-y-1 mt-1 bg-white rounded border divide-y">
                           {payments.map((p, idx) => (
-                            <div key={idx} className="flex justify-between items-center p-2 text-sm">
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="text-xs">{p.mode}</Badge>
+                            <div key={idx} className="flex justify-between items-center p-1 text-xs">
+                              <div className="flex items-center gap-1">
+                                <Badge variant="outline" className="text-[10px]">{p.mode}</Badge>
                               </div>
-                              <div className="flex items-center gap-3">
-                                <span className="font-mono">₹{p.amount.toFixed(2)}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-xs">₹{p.amount.toFixed(2)}</span>
                                 <button onClick={() => removePayment(idx)} className="text-red-500 hover:text-red-700">
-                                  <Trash2 className="h-3 w-3" />
+                                  <Trash2 className="h-2 w-2" />
                                 </button>
                               </div>
                             </div>
@@ -821,7 +891,7 @@ function BillGenerationTab({ orders, onInvoiceGenerated }: { orders: Order[], on
                     </div>
 
                     <Button 
-                      className="w-full h-12 text-base shadow-lg shadow-[#8B5A2B]/20 mt-4 bg-[#8B5A2B] hover:bg-[#704822] text-white" 
+                      className="w-full h-8 text-xs shadow-lg shadow-[#8B5A2B]/20 bg-[#8B5A2B] hover:bg-[#704822] text-white" 
                       onClick={handleFinalizeBill}
                       disabled={!isFullyPaid}
                     >
