@@ -562,7 +562,7 @@ function WalkInModal({ open, onClose, tables, onSelectTable }: WalkInModalProps)
                 <p>No tables available matching your criteria</p>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-3 max-h-[300px] overflow-y-auto p-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto p-2">
                 {eligibleTables.map(table => (
                   <Button
                     key={table.id}
@@ -936,46 +936,47 @@ export function TableManagementComprehensive() {
   }
 
   return (
-    <div className="space-y-6" style={{ backgroundColor: '#FDFCFB' }}>
+    <div className="space-y-4 sm:space-y-6" style={{ backgroundColor: '#FDFCFB' }}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Table Management</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Table Management</h1>
           <p className="text-gray-600 mt-1">Monitor and manage restaurant floor</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
           {/* Only admin/manager can add tables */}
           {(user?.role === 'admin' || user?.role === 'manager') && (
             <>
               <Button
                 variant="outline"
-                className="border-red-300 text-red-700 hover:bg-red-50"
+                className="border-red-300 text-red-700 hover:bg-red-50 text-xs sm:text-sm"
                 onClick={handleResetAllTables}
               >
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Reset All Tables
+                <RotateCcw className="w-4 h-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Reset All Tables</span>
+                <span className="sm:hidden">Reset</span>
               </Button>
               <Button
-                className="bg-[#8B5A2B] hover:bg-[#6B4520] text-white"
+                className="bg-[#8B5A2B] hover:bg-[#6B4520] text-white text-xs sm:text-sm"
                 onClick={() => setAddTableDialogOpen(true)}
               >
-                <Plus className="w-4 h-4 mr-2" />
-              Add Table
-            </Button>
+                <Plus className="w-4 h-4 mr-1 sm:mr-2" />
+                Add Table
+              </Button>
             </>
           )}
           <Button
-            className="bg-[#8B5A2B] hover:bg-[#6B4520] text-white"
+            className="bg-[#8B5A2B] hover:bg-[#6B4520] text-white text-xs sm:text-sm"
             onClick={handleWalkIn}
           >
-            <UserPlus className="w-4 h-4 mr-2" />
+            <UserPlus className="w-4 h-4 mr-1 sm:mr-2" />
             Walk-In Entry
           </Button>
         </div>
       </div>
 
       {/* Stats Bar */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Available', count: tables.filter(t => t.status === 'Available').length, color: 'bg-green-500', text: 'text-green-700', bg: 'bg-green-50 border-green-200' },
           { label: 'Occupied', count: tables.filter(t => t.status === 'Occupied' || t.status === 'Eating').length, color: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },

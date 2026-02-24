@@ -363,19 +363,19 @@ useEffect(() => {
         }
       `}</style>
       
-      <div style={{ width: '1200px', minHeight: '720px' }}>
+      <div className="w-full max-w-[1200px] mx-auto min-h-[720px]">
         
         {/* Header Section with Buttons */}
-        <div className="flex justify-between items-start mb-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-6">
           <div>
-            <h1 className="text-4xl font-bold text-[#2D2D2D] tracking-tight" style={{ fontFamily: 'Poppins, sans-serif' }}>
+            <h1 className="text-2xl sm:text-4xl font-bold text-[#2D2D2D] tracking-tight" style={{ fontFamily: 'Poppins, sans-serif' }}>
               Restaurant Menu
             </h1>
             <p className="text-base text-[#6B6B6B] mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
               Manage your menu items and combo deals
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <Button 
               onClick={() => { setEditingItem(null); setSelectedAddons([]); setDialogOpen(true); }}
               className="h-11 px-6 bg-[#8B5A2B] hover:bg-[#6D421E] text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-200"
@@ -561,14 +561,13 @@ useEffect(() => {
 
         {/* Menu Items Grid with Float Effect */}
         {activeTab === "items" && (
-          <div className="flex flex-wrap" style={{ gap: '32px 24px' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
             {filteredItems.map((item) => (
               <div 
                 key={item.id} 
-                className="overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 card-float"
+                className="overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 card-float w-full"
                 style={{ 
-                  width: '260px', 
-                  height: '424px', 
+                  minHeight: '424px',
                   borderRadius: '16px',
                   backgroundColor: '#FFFFFF'
                 }}
@@ -704,20 +703,19 @@ useEffect(() => {
 
         {/* Combo Meals Grid with Float Effect */}
         {activeTab === "combos" && (
-          <div className="flex flex-wrap" style={{ gap: '32px 24px' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
             {filteredCombos.map((combo) => (
               <div 
                 key={combo.id} 
-                className="overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 card-float"
+                className="overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 card-float w-full"
                 style={{ 
-                  width: '260px', 
-                  height: '424px', 
+                  minHeight: '424px',
                   borderRadius: '16px',
                   backgroundColor: '#FFFFFF'
                 }}
               >
                 {/* Image Section */}
-                <div className="relative overflow-hidden" style={{ width: '260px', height: '176px' }}>
+                <div className="relative overflow-hidden" style={{ height: '176px' }}>
                   <img 
                     src={combo.image} 
                     alt={combo.name} 
@@ -833,7 +831,7 @@ useEffect(() => {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUpdateItem} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name" style={{ fontFamily: 'Inter, sans-serif' }}>Item Name</Label>
                 <Input id="name" name="name" defaultValue={editingItem?.name} required />
@@ -854,7 +852,7 @@ useEffect(() => {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="category" style={{ fontFamily: 'Inter, sans-serif' }}>Category</Label>
                 <Select name="category" defaultValue={editingItem?.category}>
@@ -890,7 +888,7 @@ useEffect(() => {
               />
               <p className="text-xs text-gray-500">Enter the URL of the dish image</p>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="calories" style={{ fontFamily: 'Inter, sans-serif' }}>Calories</Label>
                 <Input id="calories" name="calories" type="number" defaultValue={editingItem?.calories} required />
@@ -917,7 +915,7 @@ useEffect(() => {
             <div className="border-t pt-4 mt-4">
               <h3 className="text-sm font-semibold mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>Customization Options</h3>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Spice Level */}
                 <div className="space-y-2">
                   <Label htmlFor="spiceLevel" style={{ fontFamily: 'Inter, sans-serif' }}>Spice Level</Label>
@@ -942,7 +940,7 @@ useEffect(() => {
               {/* Addons as Checkboxes */}
               <div className="space-y-2 mt-4">
                 <Label style={{ fontFamily: 'Inter, sans-serif' }}>Available Addons (Select Multiple)</Label>
-                <div className="grid grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg">
                   {AVAILABLE_ADDONS.map(addon => (
                     <div key={addon} className="flex items-center space-x-2">
                       <Checkbox 
@@ -1008,7 +1006,7 @@ useEffect(() => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="originalPrice" style={{ fontFamily: 'Inter, sans-serif' }}>Original Price (₹)</Label>
                 <Input id="originalPrice" name="originalPrice" type="number" defaultValue={editingCombo?.originalPrice || ''} min="1" required />

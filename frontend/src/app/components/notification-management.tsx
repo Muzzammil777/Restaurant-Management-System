@@ -137,7 +137,7 @@ export function NotificationManagement() {
 
   return (
     <div className="bg-notifications-module min-h-screen space-y-6">
-      <div className="module-container flex items-center justify-between">
+      <div className="module-container flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-white drop-shadow-lg">Notifications</h2>
           <p className="text-sm text-gray-200 mt-1">
@@ -147,7 +147,7 @@ export function NotificationManagement() {
       </div>
 
       {/* SUMMARY CARDS */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
         <Card 
           className="h-32 shadow-md cursor-pointer hover:shadow-lg transition-shadow" 
           onClick={() => setStatusFilter("all")}

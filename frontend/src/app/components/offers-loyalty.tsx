@@ -715,11 +715,11 @@ export function OffersLoyalty() {
   if (loading) return <LoadingOffers />;
 
   return (
-    <div className="bg-offers-module min-h-screen p-6 space-y-6">
+    <div className="bg-offers-module min-h-screen p-3 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="module-container flex items-center justify-between">
+      <div className="module-container flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-white drop-shadow-lg">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white drop-shadow-lg">
             Offers & Loyalty
           </h1>
           <p className="text-gray-200 mt-1">

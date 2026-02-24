@@ -62,9 +62,9 @@ export function StaffManagement() {
   return (
     <div className="bg-staff-module min-h-screen flex flex-col">
       {/* Module Header Bar */}
-      <div className="bg-black/40 backdrop-blur-sm border-b border-gray-700 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-30">
-        <div className="flex items-center gap-3 flex-1">
-          <div className="relative w-full md:w-[300px]">
+      <div className="bg-black/40 backdrop-blur-sm border-b border-gray-700 px-3 sm:px-6 py-3 sm:py-4 flex flex-col md:flex-row md:items-center justify-between gap-3 sticky top-0 z-30">
+        <div className="flex flex-wrap items-center gap-2 flex-1">
+          <div className="relative w-full sm:w-[300px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/60" />
             <Input
               placeholder="Search staff..."
@@ -113,7 +113,7 @@ export function StaffManagement() {
         </div>
       </div>
 
-      <div className="flex-1 container mx-auto px-6 py-4">
+      <div className="flex-1 container mx-auto px-3 sm:px-6 py-4">
         {/* Custom Tab Navigation - matching Inventory style */}
         <div className="w-full overflow-x-auto pb-6">
           <nav className="flex gap-3 min-w-max p-1">

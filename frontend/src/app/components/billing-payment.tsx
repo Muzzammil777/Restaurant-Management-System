@@ -429,22 +429,22 @@ export function BillingPayment() {
   if (loading) return <LoadingBilling />;
 
   return (
-    <div className="bg-billing-module min-h-screen space-y-6 p-6">
-      <div className="module-container flex items-center justify-between">
+    <div className="bg-billing-module min-h-screen space-y-4 sm:space-y-6 p-3 sm:p-6">
+      <div className="module-container flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-white drop-shadow-lg">Billing & Payment</h2>
           <p className="text-sm text-gray-200 mt-1">
             Generate bills, manage payments, and process refunds
           </p>
         </div>
-        <Button onClick={fetchOrders} variant="outline" size="sm">
+        <Button onClick={fetchOrders} variant="outline" size="sm" className="self-start">
           <RefreshCcw className="h-4 w-4 mr-2" />
           Refresh
         </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 lg:w-[500px]">
+        <TabsList className="grid w-full grid-cols-3 sm:w-[500px]">
           <TabsTrigger value="generate">Bill Generation</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="refunds">Refunds</TabsTrigger>
@@ -452,7 +452,7 @@ export function BillingPayment() {
 
         {/* Bill Generation Tab */}
         <TabsContent value="generate" className="space-y-6">
-          <div className="grid lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Order Selection */}
             <Card>
               <CardHeader>
@@ -622,7 +622,7 @@ export function BillingPayment() {
                     <div className="space-y-3">
                       <Label>Payment Mode</Label>
                       <RadioGroup value={paymentMode} onValueChange={setPaymentMode}>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <Label
                             htmlFor="cash"
                             className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${

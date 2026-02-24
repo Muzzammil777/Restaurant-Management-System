@@ -370,7 +370,7 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
                     onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="role">Role</Label>
                     <Select 
@@ -405,7 +405,7 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="department">Department</Label>
                     <Select 
@@ -618,7 +618,7 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="edit-name">Full Name *</Label>
                 <Input

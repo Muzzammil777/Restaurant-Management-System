@@ -582,26 +582,26 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
 
       {/* Header */}
       <div className="bg-white border-b shadow-sm sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="container mx-auto px-3 sm:px-6 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3 sm:gap-4">
               <div 
-                className="p-3 rounded-xl flex items-center justify-center" 
+                className="p-2 sm:p-3 rounded-xl flex items-center justify-center flex-shrink-0" 
                 style={{ backgroundColor: stationColors[station] }}
               >
-                <ChefHat className="h-6 w-6 text-white" />
+                <ChefHat className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-[#2D2D2D]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                <h1 className="text-lg sm:text-2xl font-bold text-[#2D2D2D]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   {station} STATION
                 </h1>
-                <p className="text-sm text-[#6B6B6B]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-xs sm:text-sm text-[#6B6B6B]" style={{ fontFamily: 'Inter, sans-serif' }}>
                   Production Queue • Live Orders
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
               {/* Order Type Filters */}
               <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
                 <Button
@@ -666,7 +666,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
               </Button>
 
               {/* Stats */}
-              <div className="flex items-center gap-6 px-6 py-3 bg-gray-100 rounded-lg">
+              <div className="flex items-center gap-3 sm:gap-6 px-3 sm:px-6 py-2 sm:py-3 bg-gray-100 rounded-lg">
                 <div>
                   <p className="text-xs text-[#6B6B6B] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>NEW</p>
                   <p className="text-2xl font-bold text-blue-600" style={{ fontFamily: 'Poppins, sans-serif' }}>{newOrders.length}</p>
@@ -742,9 +742,9 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
       )}
 
       {/* Main Content */}
-      <div className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8">
         {viewMode === "ORDERS" ? (
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           
           {/* NEW ORDERS */}
           <div>

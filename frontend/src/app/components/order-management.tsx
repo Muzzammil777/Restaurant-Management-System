@@ -697,11 +697,11 @@ export function OrderManagement() {
   }
 
   return (
-    <div className="bg-order-management-module min-h-screen p-6 space-y-6">
+    <div className="bg-order-management-module min-h-screen p-3 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header Section */}
-      <div className="module-container flex justify-between items-start">
+      <div className="module-container flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-white drop-shadow-lg">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white drop-shadow-lg">
             {isWaiter ? `Your Orders` : 'Orders'}
           </h1>
           <p className="text-gray-200">
@@ -712,14 +712,14 @@ export function OrderManagement() {
         </div>
         
         {/* Quick Order Button */}
-        <Button onClick={() => setQuickOrderOpen(true)} size="lg" className="gap-2 shadow-md">
+        <Button onClick={() => setQuickOrderOpen(true)} size="lg" className="gap-2 shadow-md self-start">
           <Zap className="h-5 w-5" />
           Quick Order
         </Button>
       </div>
 
       {/* Mini Order Insights */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Active Orders</CardTitle>
@@ -786,7 +786,7 @@ export function OrderManagement() {
       {/* Smart Filters & Search */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid gap-4 md:grid-cols-6">
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-6">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
@@ -909,7 +909,7 @@ export function OrderManagement() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {sortedOrders.map((order) => {
             const orderItems = Array.isArray(order.items) ? order.items : [];
             const totalItems = orderItems.reduce((sum, item) => sum + item.quantity, 0);

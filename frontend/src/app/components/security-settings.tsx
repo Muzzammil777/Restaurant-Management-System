@@ -110,17 +110,13 @@ export function SecuritySettings() {
   return (
     <div className="bg-settings-module min-h-screen space-y-6">
       {/* Header */}
-      <div className="module-container flex items-center justify-between">
+      <div className="module-container flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-white">Settings</h2>
           <p className="text-sm text-white mt-1">
             Manage system configuration, security, and preferences
           </p>
         </div>
-        <Button>
-          <Settings className="h-4 w-4 mr-2" />
-          Quick Actions
-        </Button>
       </div>
 
       {/* Settings Navigation */}

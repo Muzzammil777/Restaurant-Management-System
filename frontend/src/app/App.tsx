@@ -129,20 +129,20 @@ function AppContent() {
       
       {/* Header */}
       <header className="border-b bg-white shadow-sm sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4">
+        <div className="container mx-auto px-3 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary rounded-xl">
-                <UtensilsCrossed className="h-6 w-6 text-primary-foreground" />
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
+              <div className="p-1.5 sm:p-2 bg-primary rounded-xl flex-shrink-0">
+                <UtensilsCrossed className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
               </div>
-              <div>
-                <h1 className="text-xl font-semibold tracking-tight" style={{ color: '#000000' }}>{config.restaurantName}</h1>
-                <p className="text-xs text-muted-foreground">Powered by Movicloud Labs</p>
+              <div className="min-w-0 overflow-hidden">
+                <h1 className="text-base sm:text-xl font-semibold tracking-tight leading-tight truncate" style={{ color: '#000000' }}>{config.restaurantName}</h1>
+                <p className="text-xs text-muted-foreground hidden sm:block">Powered by Movicloud Labs</p>
               </div>
             </div>
             
             {/* Right side: Notifications, Settings, Profile */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
               {/* Notifications */}
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-5 w-5" style={{ color: '#000000' }} />
@@ -196,7 +196,7 @@ function AppContent() {
               {/* Profile Avatar */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                  <Button variant="ghost" className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full">
                     <Avatar>
                       <AvatarImage src="" alt={user?.name} />
                       <AvatarFallback className="bg-primary text-primary-foreground">
@@ -238,10 +238,10 @@ function AppContent() {
 
       {/* Main Navigation Tabs */}
       <Tabs value={activeTab} onValueChange={(value) => hasPermission(value) && setActiveTab(value)} className="container mx-auto">
-        <div className="sticky top-[73px] z-40">
+        <div className="sticky top-[57px] sm:top-[73px] z-40">
           {/* Stylish Nav Background */}
-          <div className="mx-4 my-3 rounded-2xl bg-gradient-to-r from-[#FDFBF9] via-white to-[#FDFBF9] shadow-lg border border-[#E8E0D8]">
-            <TabsList className="w-full justify-center gap-1 flex-nowrap h-auto p-2 bg-transparent border-0 rounded-none overflow-x-auto">
+          <div className="mx-2 sm:mx-4 my-2 sm:my-3 rounded-xl sm:rounded-2xl bg-gradient-to-r from-[#FDFBF9] via-white to-[#FDFBF9] shadow-lg border border-[#E8E0D8]">
+            <TabsList className="w-full justify-start sm:justify-center gap-0.5 sm:gap-1 flex-nowrap h-auto p-1 sm:p-2 bg-transparent border-0 rounded-none overflow-x-auto scrollbar-hide">
             {hasPermission('dashboard') && (
               <TabsTrigger 
                 value="dashboard" 
@@ -402,7 +402,7 @@ function AppContent() {
           </div>
         </div>
 
-        <div className="py-6">
+        <div className="py-3 sm:py-6">
           <WelcomeBanner />
         </div>
 
@@ -456,8 +456,8 @@ function AppContent() {
       </Tabs>
 
       {/* Footer */}
-      <footer className="border-t mt-12 py-8 bg-white">
-        <div className="container mx-auto px-6 text-center">
+      <footer className="border-t mt-8 sm:mt-12 py-4 sm:py-8 bg-white">
+        <div className="container mx-auto px-3 sm:px-6 text-center">
           <p className="text-sm text-muted-foreground">{config.restaurantName} • Movicloud Labs</p>
           <p className="text-xs text-muted-foreground mt-2"></p>
         </div>

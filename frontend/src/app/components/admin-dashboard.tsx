@@ -86,14 +86,14 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="bg-admin-module min-h-screen p-6 space-y-6">
+    <div className="bg-admin-module min-h-screen p-3 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header with Live Indicator */}
-      <div className="module-container flex justify-between items-start">
+      <div className="module-container flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-white drop-shadow-lg">Admin Dashboard</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white drop-shadow-lg">Admin Dashboard</h1>
           <p className="text-gray-200">Restaurant management overview</p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-sm border">
+        <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-sm border self-start">
           <Radio className="h-4 w-4 text-green-600 animate-pulse" />
           <div className="text-sm">
             <span className="font-medium text-green-600">Live status</span>
@@ -127,7 +127,7 @@ export function AdminDashboard() {
       )}
 
       {/* Stats Cards - Row 1: Financial & Orders */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <Card style={{ backgroundColor: '#FFFFFF' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
@@ -275,8 +275,8 @@ export function AdminDashboard() {
                 </ResponsiveContainer>
 
                 {/* Detailed Table */}
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full">
+                <div className="border rounded-lg overflow-x-auto">
+                  <table className="w-full min-w-[400px]">
                     <thead style={{ backgroundColor: '#F7F3EE' }}>
                       <tr>
                         <th className="text-left p-3 text-sm font-semibold" style={{ color: '#000000' }}>Item Name</th>

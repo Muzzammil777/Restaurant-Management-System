@@ -119,16 +119,16 @@ export function ReportsAnalytics() {
 
   return (
     <div className="bg-analytics-module min-h-screen px-4 md:px-6 py-6 space-y-6">
-      <div className="module-container flex items-center justify-between">
+      <div className="module-container flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-white drop-shadow-lg">Reports & Analytics</h2>
           <p className="text-sm text-gray-200 mt-1">
             Comprehensive insights and performance metrics
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 sm:gap-3 flex-wrap">
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-40 !bg-white !text-gray-700 border border-white/90 hover:!bg-white shadow-sm">
+            <SelectTrigger className="w-36 sm:w-40 !bg-white !text-gray-700 border border-white/90 hover:!bg-white shadow-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -183,7 +183,7 @@ export function ReportsAnalytics() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         {/* Sales Reports Tab */}
         <TabsContent value="sales" className="space-y-4">
-          <div className="grid md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
