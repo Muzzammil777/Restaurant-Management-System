@@ -166,8 +166,8 @@ function TakeOrderSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col">
-        <SheetHeader className="p-6 pb-4 border-b">
+      <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col h-full overflow-hidden">
+        <SheetHeader className="p-6 pb-4 border-b flex-shrink-0">
           <SheetTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5" />
             Take Order — {order.orderNumber || `Table ${order.tableNumber}`}
@@ -178,7 +178,7 @@ function TakeOrderSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
           {/* Search + Category Filters */}
           <div className="p-4 border-b space-y-3">
             <div className="relative">
@@ -270,7 +270,7 @@ function TakeOrderSheet({
 
           {/* Notes */}
           {selectedItems.length > 0 && (
-            <div className="p-4 border-t">
+            <div className="p-4 border-t flex-shrink-0">
               <Label className="text-xs font-medium text-muted-foreground">Special Instructions</Label>
               <Textarea
                 value={notes}
@@ -283,7 +283,7 @@ function TakeOrderSheet({
         </div>
 
         {/* Footer — Cart Summary + Submit */}
-        <SheetFooter className="p-4 border-t bg-gray-50">
+        <SheetFooter className="p-4 border-t bg-gray-50 flex-shrink-0">
           <div className="w-full space-y-3">
             {/* Cart Summary */}
             {selectedItems.length > 0 && (
