@@ -1073,13 +1073,10 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                     ))}
 
                     <div className="pt-2 flex gap-2">
-                      <Button
-                        onClick={() => handleDeliverOrder(order.id)}
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        <Utensils className="h-4 w-4 mr-2" />
-                        Serve Order
-                      </Button>
+                      <div className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm font-medium">
+                        <Utensils className="h-4 w-4" />
+                        Awaiting waiter pickup
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

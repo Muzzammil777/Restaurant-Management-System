@@ -523,10 +523,10 @@ export function BillingPayment() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 sm:w-[500px]">
-          <TabsTrigger value="generate">Bill Generation</TabsTrigger>
-          <TabsTrigger value="invoices">Invoices</TabsTrigger>
-          <TabsTrigger value="refunds">Refunds</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 sm:w-[500px] bg-[#F5EDE5] p-1 rounded-xl">
+          <TabsTrigger value="generate" className="rounded-xl font-medium text-[#6B5B4F] transition-all duration-300 hover:bg-[#F5EDE5] hover:text-[#8B5A2B] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B] data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25">Bill Generation</TabsTrigger>
+          <TabsTrigger value="invoices" className="rounded-xl font-medium text-[#6B5B4F] transition-all duration-300 hover:bg-[#F5EDE5] hover:text-[#8B5A2B] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B] data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25">Invoices</TabsTrigger>
+          <TabsTrigger value="refunds" className="rounded-xl font-medium text-[#6B5B4F] transition-all duration-300 hover:bg-[#F5EDE5] hover:text-[#8B5A2B] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B] data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25">Refunds</TabsTrigger>
         </TabsList>
 
         {/* Bill Generation Tab */}

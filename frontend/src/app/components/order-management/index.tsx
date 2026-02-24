@@ -1060,7 +1060,8 @@ export function OrderManagement() {
 
                     {/* Actions */}
                     <div className="flex flex-col gap-2 pt-2">
-                      {order.status === 'placed' && (
+                      {/* Accept Order: kitchen staff only */}
+                      {order.status === 'placed' && ['chef', 'admin', 'manager'].includes(user?.role ?? '') && (
                         <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                           <Button
                             size="sm"
@@ -1072,7 +1073,8 @@ export function OrderManagement() {
                           </Button>
                         </motion.div>
                       )}
-                      {order.status === 'preparing' && (
+                      {/* Mark as Ready: kitchen staff only */}
+                      {order.status === 'preparing' && ['chef', 'admin', 'manager'].includes(user?.role ?? '') && (
                         <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                           <Button
                             size="sm"
@@ -1084,7 +1086,8 @@ export function OrderManagement() {
                           </Button>
                         </motion.div>
                       )}
-                      {order.status === 'ready' && (
+                      {/* Mark as Served: waiter only (after kitchen marks ready) */}
+                      {order.status === 'ready' && ['waiter', 'admin', 'manager'].includes(user?.role ?? '') && (
                         <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                           <Button
                             size="sm"
