@@ -9,7 +9,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Textarea } from '@/app/components/ui/textarea';
-import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { Clock, Package, CheckCircle, XCircle, Plus, CreditCard, Eye, IndianRupee, UtensilsCrossed, Zap, Minus, Search, Repeat, Flame, AlertCircle, TrendingUp, Activity, ChefHat, Coffee, Timer, Undo2, Gauge, MoveRight, MoveLeft, Ban, Sparkles, Pizza, ShoppingBag, ClipboardList, ArrowUpDown, ArrowDown, ArrowUp, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ordersApi, menuApi, staffApi } from '@/utils/api';
@@ -206,7 +205,7 @@ function TakeOrderSheet({
           </div>
 
           {/* Menu Items Grid */}
-          <ScrollArea className="flex-1 p-4">
+          <div className="flex-1 overflow-y-auto p-4 min-h-0">
             <div className="grid grid-cols-2 gap-3">
               {filteredMenuItems.map((item) => {
                 const selected = selectedItems.find((i) => i.menuItemId === item.id);
@@ -266,7 +265,7 @@ function TakeOrderSheet({
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
 
           {/* Notes */}
           {selectedItems.length > 0 && (
@@ -336,13 +335,13 @@ function TakeOrderSheet({
 
 // Innovation #6: Smart Notes Keywords
 const SMART_NOTE_KEYWORDS = {
-  'no onion': { icon: '🧅', color: 'text-orange-600', bg: 'bg-orange-50' },
-  'no garlic': { icon: '🧄', color: 'text-orange-600', bg: 'bg-orange-50' },
-  'extra spicy': { icon: '🌶', color: 'text-red-600', bg: 'bg-red-50' },
-  'mild': { icon: '😊', color: 'text-green-600', bg: 'bg-green-50' },
-  'urgent': { icon: '⚡', color: 'text-yellow-600', bg: 'bg-yellow-50' },
-  'allergy': { icon: '⚠️', color: 'text-red-600', bg: 'bg-red-50' },
-  'vip': { icon: '👑', color: 'text-purple-600', bg: 'bg-purple-50' },
+  'no onion': { color: 'text-orange-600', bg: 'bg-orange-50' },
+  'no garlic': { color: 'text-orange-600', bg: 'bg-orange-50' },
+  'extra spicy': { color: 'text-red-600', bg: 'bg-red-50' },
+  'mild': { color: 'text-green-600', bg: 'bg-green-50' },
+  'urgent': { color: 'text-yellow-600', bg: 'bg-yellow-50' },
+  'allergy': { color: 'text-red-600', bg: 'bg-red-50' },
+  'vip': { color: 'text-purple-600', bg: 'bg-purple-50' },
 };
 
 export function OrderManagement() {
@@ -617,11 +616,11 @@ export function OrderManagement() {
     const isUrgent = order.notes?.toLowerCase().includes('urgent');
 
     if (hasPriorityTag || isVIP || isUrgent || ageInMinutes > 30) {
-      return { level: 'high', badge: '🔴 Urgent', color: 'bg-red-500 text-white' };
+      return { level: 'high', badge: 'Urgent', color: 'bg-red-500 text-white' };
     } else if (ageInMinutes > 15) {
-      return { level: 'medium', badge: '🟡 Normal', color: 'bg-yellow-500 text-white' };
+      return { level: 'medium', badge: 'Normal', color: 'bg-yellow-500 text-white' };
     }
-    return { level: 'low', badge: '🟢 Low', color: 'bg-green-500 text-white' };
+    return { level: 'low', badge: 'Low', color: 'bg-green-500 text-white' };
   };
 
   // Innovation #6: Parse and highlight smart notes
@@ -1016,7 +1015,7 @@ export function OrderManagement() {
                     <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
                       <div className="flex items-center gap-2 text-red-700">
                         <AlertCircle className="h-4 w-4 animate-pulse" />
-                        <p className="text-xs font-medium">⚠️ Kitchen Bottleneck - Priority Attention Needed!</p>
+                        <p className="text-xs font-medium">Kitchen Bottleneck - Priority Attention Needed!</p>
                       </div>
                     </div>
                   )}
@@ -1031,7 +1030,6 @@ export function OrderManagement() {
                             key={idx} 
                             className={`text-xs ${keyword.bg} ${keyword.color} border-0`}
                           >
-                            <span className="mr-1">{keyword.icon}</span>
                             {note.text}
                           </Badge>
                         );
