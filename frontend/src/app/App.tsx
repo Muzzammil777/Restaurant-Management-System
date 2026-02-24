@@ -275,12 +275,6 @@ function AppContent() {
                     Dashboard
                   </TabsTrigger>
                 )}
-                {hasPermission('menu') && (
-                  <TabsTrigger value="menu" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                    <UtensilsCrossed className="h-4 w-4" />
-                    Menu Management
-                  </TabsTrigger>
-                )}
                 {hasPermission('orders') && (
                   <TabsTrigger value="orders" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
                     <ShoppingCart className="h-4 w-4" />
@@ -299,22 +293,10 @@ function AppContent() {
                     Tables
                   </TabsTrigger>
                 )}
-                {hasPermission('inventory') && (
-                  <TabsTrigger value="inventory" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                    <Package className="h-4 w-4" />
-                    Inventory
-                  </TabsTrigger>
-                )}
-                {hasPermission('staff') && (
-                  <TabsTrigger value="staff" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                    <UserCog className="h-4 w-4" />
-                    Staff
-                  </TabsTrigger>
-                )}
-                {hasPermission('billing') && (
-                  <TabsTrigger value="billing" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                    <CreditCard className="h-4 w-4" />
-                    Billing
+                {hasPermission('menu') && (
+                  <TabsTrigger value="menu" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                    <UtensilsCrossed className="h-4 w-4" />
+                    Menu Management
                   </TabsTrigger>
                 )}
                 {hasPermission('delivery') && (
@@ -323,16 +305,34 @@ function AppContent() {
                     Delivery
                   </TabsTrigger>
                 )}
-                {hasPermission('offers') && (
-                  <TabsTrigger value="offers" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
-                    <Tag className="h-4 w-4" />
-                    Offers & Loyalty
+                {hasPermission('inventory') && (
+                  <TabsTrigger value="inventory" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                    <Package className="h-4 w-4" />
+                    Inventory
+                  </TabsTrigger>
+                )}
+                {hasPermission('billing') && (
+                  <TabsTrigger value="billing" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                    <CreditCard className="h-4 w-4" />
+                    Billing
+                  </TabsTrigger>
+                )}
+                {hasPermission('staff') && (
+                  <TabsTrigger value="staff" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                    <UserCog className="h-4 w-4" />
+                    Staff
                   </TabsTrigger>
                 )}
                 {hasPermission('reports') && (
                   <TabsTrigger value="reports" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
                     <BarChart3 className="h-4 w-4" />
                     Reports
+                  </TabsTrigger>
+                )}
+                {hasPermission('offers') && (
+                  <TabsTrigger value="offers" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                    <Tag className="h-4 w-4" />
+                    Offers & Loyalty
                   </TabsTrigger>
                 )}
                 {hasPermission('notifications') && (
@@ -360,10 +360,6 @@ function AppContent() {
           <AdminDashboard />
         </TabsContent>
 
-        <TabsContent value="menu" className="mt-0">
-          <MenuManagement />
-        </TabsContent>
-
         <TabsContent value="orders" className="mt-0">
           <OrderManagement />
         </TabsContent>
@@ -376,28 +372,32 @@ function AppContent() {
           <TableManagement />
         </TabsContent>
 
-        <TabsContent value="inventory" className="mt-0">
-          <InventoryManagement triggerStockManagement={triggerStockManagement} />
-        </TabsContent>
-
-        <TabsContent value="staff" className="mt-0">
-          <StaffManagement />
-        </TabsContent>
-
-        <TabsContent value="billing" className="mt-0">
-          <BillingPayment />
+        <TabsContent value="menu" className="mt-0">
+          <MenuManagement />
         </TabsContent>
 
         <TabsContent value="delivery" className="mt-0">
           <DeliveryManagement />
         </TabsContent>
 
-        <TabsContent value="offers" className="mt-0">
-          <OffersLoyalty />
+        <TabsContent value="inventory" className="mt-0">
+          <InventoryManagement triggerStockManagement={triggerStockManagement} />
+        </TabsContent>
+
+        <TabsContent value="billing" className="mt-0">
+          <BillingPayment />
+        </TabsContent>
+
+        <TabsContent value="staff" className="mt-0">
+          <StaffManagement />
         </TabsContent>
 
         <TabsContent value="reports" className="mt-0">
           <ReportsAnalytics />
+        </TabsContent>
+
+        <TabsContent value="offers" className="mt-0">
+          <OffersLoyalty />
         </TabsContent>
 
         <TabsContent value="notifications" className="mt-0">
