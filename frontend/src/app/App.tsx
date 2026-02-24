@@ -38,8 +38,6 @@ import {
   Tag,
   BarChart3,
   BellRing,
-  MoreHorizontal,
-  X,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -91,7 +89,6 @@ function AppContent() {
   });
   const [notificationCount, setNotificationCount] = useState(3);
   const [triggerStockManagement, setTriggerStockManagement] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -134,16 +131,13 @@ function AppContent() {
   }
 
   const permittedTabs = ALL_TABS.filter(t => hasPermission(t.value));
-  const primaryTabs = permittedTabs.slice(0, 4);
-  const moreTabs    = permittedTabs.slice(4);
 
   const navigate = (value: string) => {
     setActiveTab(value);
-    setMoreOpen(false);
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden w-full">
       <Toaster position="top-right" />
 
       {/* Header */}
@@ -249,23 +243,19 @@ function AppContent() {
           </div>
         </div>
 
-        {/* Content — extra bottom padding on mobile so it clears bottom nav */}
-        <div className="py-3 sm:py-6 pb-24 sm:pb-6">
-          <WelcomeBanner />
-        </div>
-
-        <TabsContent value="dashboard"     className="mt-0"><AdminDashboard /></TabsContent>
-        <TabsContent value="menu"          className="mt-0"><MenuManagement /></TabsContent>
-        <TabsContent value="orders"        className="mt-0"><OrderManagement /></TabsContent>
-        <TabsContent value="kitchen"       className="mt-0"><MochaKDS /></TabsContent>
-        <TabsContent value="tables"        className="mt-0"><TableManagementComprehensive /></TabsContent>
-        <TabsContent value="inventory"     className="mt-0"><InventoryManagement triggerStockManagement={triggerStockManagement} /></TabsContent>
-        <TabsContent value="staff"         className="mt-0"><StaffManagement /></TabsContent>
-        <TabsContent value="billing"       className="mt-0"><BillingPayment /></TabsContent>
-        <TabsContent value="offers"        className="mt-0"><OffersLoyalty /></TabsContent>
-        <TabsContent value="reports"       className="mt-0"><ReportsAnalytics /></TabsContent>
-        <TabsContent value="notifications" className="mt-0"><NotificationManagement /></TabsContent>
-        <TabsContent value="settings"      className="mt-0"><SecuritySettings /></TabsContent>
+        {/* Content */}
+        <TabsContent value="dashboard"     className="mt-0 pb-24 sm:pb-6"><WelcomeBanner /><AdminDashboard /></TabsContent>
+        <TabsContent value="menu"          className="mt-0 pb-24 sm:pb-6"><MenuManagement /></TabsContent>
+        <TabsContent value="orders"        className="mt-0 pb-24 sm:pb-6"><OrderManagement /></TabsContent>
+        <TabsContent value="kitchen"       className="mt-0 pb-24 sm:pb-6"><MochaKDS /></TabsContent>
+        <TabsContent value="tables"        className="mt-0 pb-24 sm:pb-6"><TableManagementComprehensive /></TabsContent>
+        <TabsContent value="inventory"     className="mt-0 pb-24 sm:pb-6"><InventoryManagement triggerStockManagement={triggerStockManagement} /></TabsContent>
+        <TabsContent value="staff"         className="mt-0 pb-24 sm:pb-6"><StaffManagement /></TabsContent>
+        <TabsContent value="billing"       className="mt-0 pb-24 sm:pb-6"><BillingPayment /></TabsContent>
+        <TabsContent value="offers"        className="mt-0 pb-24 sm:pb-6"><OffersLoyalty /></TabsContent>
+        <TabsContent value="reports"       className="mt-0 pb-24 sm:pb-6"><ReportsAnalytics /></TabsContent>
+        <TabsContent value="notifications" className="mt-0 pb-24 sm:pb-6"><NotificationManagement /></TabsContent>
+        <TabsContent value="settings"      className="mt-0 pb-24 sm:pb-6"><SecuritySettings /></TabsContent>
       </Tabs>
 
       {/* Footer — desktop only */}
@@ -275,80 +265,32 @@ function AppContent() {
         </div>
       </footer>
 
-      {/* Mobile bottom navigation */}
+      {/* Mobile bottom navigation — scrollable, shows all tabs */}
       <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div className="flex items-stretch">
-          {primaryTabs.map(({ value, icon: Icon, label }) => {
+        <div className="flex overflow-x-auto scrollbar-hide">
+          {permittedTabs.map(({ value, icon: Icon, label }) => {
             const isActive = activeTab === value;
             return (
               <button
                 key={value}
                 onClick={() => navigate(value)}
-                style={{ WebkitTapHighlightColor: 'transparent' }}
-                className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition-colors ${
+                style={{ WebkitTapHighlightColor: 'transparent', minWidth: '64px' }}
+                className={`flex-shrink-0 flex flex-col items-center justify-center gap-0.5 px-2 py-2 min-h-[56px] transition-colors ${
                   isActive ? 'text-[#8B5A2B]' : 'text-gray-500'
                 }`}
               >
-                <span className={`flex flex-col items-center justify-center rounded-full px-3 py-1 ${isActive ? 'bg-[#F5EDE5]' : ''}`}>
+                <span className={`flex flex-col items-center justify-center rounded-full px-2 py-1 ${isActive ? 'bg-[#F5EDE5]' : ''}`}>
                   <Icon className={`h-5 w-5 ${isActive ? 'text-[#8B5A2B]' : 'text-gray-500'}`} />
                 </span>
-                <span className={`text-[10px] font-medium leading-none ${isActive ? 'text-[#8B5A2B]' : 'text-gray-500'}`}>
+                <span className={`text-[10px] font-medium leading-none whitespace-nowrap ${isActive ? 'text-[#8B5A2B]' : 'text-gray-500'}`}>
                   {label}
                 </span>
               </button>
             );
           })}
-
-          {moreTabs.length > 0 && (
-            <button
-              onClick={() => setMoreOpen(true)}
-              style={{ WebkitTapHighlightColor: 'transparent' }}
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] text-gray-500"
-            >
-              <span className="flex flex-col items-center justify-center rounded-full px-3 py-1">
-                <MoreHorizontal className="h-5 w-5 text-gray-500" />
-              </span>
-              <span className="text-[10px] font-medium leading-none text-gray-500">More</span>
-            </button>
-          )}
         </div>
       </nav>
-
-      {/* More drawer */}
-      {moreOpen && (
-        <>
-          <div className="sm:hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" onClick={() => setMoreOpen(false)} />
-          <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl"
-               style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}>
-            <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-gray-100">
-              <div className="w-10 h-1 bg-gray-300 rounded-full absolute left-1/2 -translate-x-1/2 top-2" />
-              <span className="text-sm font-semibold text-gray-700">More</span>
-              <button onClick={() => setMoreOpen(false)} className="p-1.5 rounded-full hover:bg-gray-100" style={{ WebkitTapHighlightColor: 'transparent' }}>
-                <X className="h-4 w-4 text-gray-500" />
-              </button>
-            </div>
-            <div className="grid grid-cols-4 gap-1 p-3">
-              {moreTabs.map(({ value, icon: Icon, label }) => {
-                const isActive = activeTab === value;
-                return (
-                  <button
-                    key={value}
-                    onClick={() => navigate(value)}
-                    style={{ WebkitTapHighlightColor: 'transparent' }}
-                    className={`flex flex-col items-center justify-center gap-1 py-3 rounded-xl transition-colors ${
-                      isActive ? 'bg-[#F5EDE5] text-[#8B5A2B]' : 'text-gray-600'
-                    }`}
-                  >
-                    <Icon className={`h-6 w-6 ${isActive ? 'text-[#8B5A2B]' : 'text-gray-500'}`} />
-                    <span className="text-[11px] font-medium leading-tight text-center">{label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </>
-      )}
 
       <AdminChatBox />
     </div>

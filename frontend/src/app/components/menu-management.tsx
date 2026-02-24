@@ -573,7 +573,7 @@ useEffect(() => {
                 }}
               >
                 {/* Image Section */}
-                <div className="relative overflow-hidden" style={{ width: '260px', height: '176px' }}>
+                <div className="relative overflow-hidden w-full" style={{ height: '176px' }}>
                   <img 
                     src={item.image} 
                     alt={item.name} 

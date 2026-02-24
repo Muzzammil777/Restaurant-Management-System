@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { IndianRupee, ShoppingCart, TrendingUp, Users, AlertCircle, Activity, Package, ChefHat, UserCog, Clock, Radio } from 'lucide-react';
 import { API_BASE_URL } from '@/utils/supabase/info';
-import { DataSeeder } from '@/app/components/data-seeder';
 import { Alert, AlertDescription, AlertTitle } from '@/app/components/ui/alert';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -119,11 +118,6 @@ export function AdminDashboard() {
             </Button>
           </AlertDescription>
         </Alert>
-      )}
-
-      {/* Quick Start */}
-      {analytics?.totalOrders === 0 && (
-        <DataSeeder />
       )}
 
       {/* Stats Cards - Row 1: Financial & Orders */}

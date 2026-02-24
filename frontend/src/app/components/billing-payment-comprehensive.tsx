@@ -18,11 +18,11 @@ import { LoadingBilling } from '@/app/components/ui/loading-spinner';
 import {
   DollarSign, CreditCard, Smartphone, Wallet, Receipt,
   CheckCircle, Clock, AlertCircle, Percent, IndianRupee,
-  Printer, Download, Coffee, FileText
+  Printer, Download, Coffee, FileText, Tag, X, Loader2 as LoaderIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { mockApi, type MockOrder, type MockInvoice } from '@/app/services/mock-api';
-import { workflowApi } from '@/utils/api';
+import { workflowApi, offersApi } from '@/utils/api';
 
 // ============================================================================
 // BILL GENERATION CARD COMPONENT
@@ -115,23 +115,42 @@ interface BillCalculatorProps {
 
 function BillCalculator({ open, onClose, order, onComplete }: BillCalculatorProps) {
   const [taxPercent, setTaxPercent] = useState(5);
-  const [discountType, setDiscountType] = useState<'flat' | 'percent'>('flat');
-  const [discountValue, setDiscountValue] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Card' | 'UPI'>('Cash');
+  const [offerCode, setOfferCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; type: string; value: number; discount: number } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState('');
 
   if (!order) return null;
 
   const subtotal = order.totalAmount;
   const taxAmount = (subtotal * taxPercent) / 100;
-  
-  let discountAmount = 0;
-  if (discountType === 'flat') {
-    discountAmount = discountValue;
-  } else {
-    discountAmount = (subtotal * discountValue) / 100;
-  }
-
+  const discountAmount = appliedCoupon?.discount ?? 0;
   const grandTotal = subtotal + taxAmount - discountAmount;
+
+  const handleApplyCoupon = async () => {
+    const code = offerCode.trim().toUpperCase();
+    if (!code) return;
+    setCouponLoading(true);
+    setCouponError('');
+    try {
+      const result = await offersApi.validateCoupon(code, subtotal);
+      setAppliedCoupon(result);
+      toast.success(`Coupon "${result.code}" applied — ₹${result.discount.toFixed(2)} off!`);
+    } catch (err: any) {
+      const msg = err?.message || 'Invalid or expired coupon';
+      setCouponError(msg);
+      setAppliedCoupon(null);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setOfferCode('');
+    setCouponError('');
+  };
 
   const handleGenerateInvoice = () => {
     const invoice: Partial<MockInvoice> = {
@@ -147,9 +166,10 @@ function BillCalculator({ open, onClose, order, onComplete }: BillCalculatorProp
       subtotal,
       taxPercent,
       taxAmount,
-      discountType,
-      discountValue,
+      discountType: appliedCoupon ? appliedCoupon.type as 'flat' | 'percent' : 'flat',
+      discountValue: appliedCoupon ? appliedCoupon.value : 0,
       discountAmount,
+      couponCode: appliedCoupon?.code,
       grandTotal,
       paymentMethod
     };
@@ -210,47 +230,51 @@ function BillCalculator({ open, onClose, order, onComplete }: BillCalculatorProp
             </div>
           </div>
 
-          {/* Discount */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Discount</Label>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="discount-type" className="text-xs text-gray-600">
-                  Type:
-                </Label>
-                <RadioGroup
-                  value={discountType}
-                  onValueChange={(v) => setDiscountType(v as 'flat' | 'percent')}
-                  className="flex gap-3"
+          {/* Offer Code */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium flex items-center gap-1">
+              <Tag className="w-4 h-4" /> Offer Code
+            </Label>
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between bg-green-50 border border-green-300 rounded-lg px-3 py-2">
+                <div className="text-sm">
+                  <span className="font-semibold text-green-700">{appliedCoupon.code}</span>
+                  <span className="text-green-600 ml-2">
+                    ({appliedCoupon.type === 'percentage' ? `${appliedCoupon.value}%` : `₹${appliedCoupon.value}`} off)
+                  </span>
+                  <span className="text-green-700 font-bold ml-2">― ₹{appliedCoupon.discount.toFixed(2)} saved</span>
+                </div>
+                <button
+                  onClick={handleRemoveCoupon}
+                  className="text-gray-400 hover:text-red-500 transition-colors ml-2"
                 >
-                  <div className="flex items-center space-x-1">
-                    <RadioGroupItem value="flat" id="flat" />
-                    <Label htmlFor="flat" className="text-sm cursor-pointer">
-                      Flat (₹)
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <RadioGroupItem value="percent" id="percent" />
-                    <Label htmlFor="percent" className="text-sm cursor-pointer">
-                      Percent (%)
-                    </Label>
-                  </div>
-                </RadioGroup>
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Input
-                type="number"
-                min={0}
-                step={discountType === 'flat' ? 10 : 1}
-                value={discountValue}
-                onChange={(e) => setDiscountValue(Number(e.target.value))}
-                className="w-32"
-              />
-              <span className="text-sm text-gray-600">
-                = ₹{discountAmount.toFixed(2)}
-              </span>
-            </div>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter offer code (e.g. SAVE20)"
+                  value={offerCode}
+                  onChange={(e) => { setOfferCode(e.target.value.toUpperCase()); setCouponError(''); }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
+                  className="uppercase placeholder:normal-case"
+                />
+                <Button
+                  variant="outline"
+                  onClick={handleApplyCoupon}
+                  disabled={couponLoading || !offerCode.trim()}
+                  className="shrink-0"
+                >
+                  {couponLoading ? <LoaderIcon className="w-4 h-4 animate-spin" /> : 'Apply'}
+                </Button>
+              </div>
+            )}
+            {couponError && (
+              <p className="text-xs text-red-500 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {couponError}
+              </p>
+            )}
           </div>
 
           <Separator />
