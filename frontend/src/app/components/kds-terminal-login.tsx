@@ -175,8 +175,8 @@ export function KDSTerminalLogin({ onLogin }: KDSTerminalLoginProps) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
               <div className="p-8 bg-gradient-to-br from-[#FDFCFB] to-[#F5F3F0] border-r">
                 <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-white mb-2">Select Your Station</h2>
-                  <p className="text-sm text-white/70">Choose your kitchen terminal</p>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-2">Select Your Station</h2>
+                  <p className="text-sm text-gray-500">Choose your kitchen terminal</p>
                 </div>
 
                 <div className="space-y-3">
@@ -208,14 +208,14 @@ export function KDSTerminalLogin({ onLogin }: KDSTerminalLoginProps) {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-bold text-base text-white">{station.name}</h3>
+                            <h3 className="font-bold text-base text-gray-800">{station.name}</h3>
                             {station.isHeadChef && (
                               <Badge className="bg-gradient-to-r from-amber-500 to-yellow-600 text-white text-xs">
                                 SENIOR
                               </Badge>
                             )}
                           </div>
-                          <p className="text-xs text-white/70">{station.description}</p>
+                          <p className="text-xs text-gray-500">{station.description}</p>
                         </div>
                       </div>
                     </button>
@@ -225,8 +225,8 @@ export function KDSTerminalLogin({ onLogin }: KDSTerminalLoginProps) {
 
               <div className="p-8 bg-white">
                 <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-white mb-2">Enter Security PIN</h2>
-                  <p className="text-sm text-white/70">Authenticate with your 4-digit terminal code</p>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-2">Enter Security PIN</h2>
+                  <p className="text-sm text-gray-500">Authenticate with your 4-digit terminal code</p>
                 </div>
 
                 <div className="mb-8">
@@ -258,25 +258,25 @@ export function KDSTerminalLogin({ onLogin }: KDSTerminalLoginProps) {
                       key={num}
                       onClick={() => handleNumberClick(num)}
                       disabled={isAuthenticating}
-                      className="h-16 text-2xl font-bold bg-gray-100 hover:bg-gray-200 text-white border-2 border-gray-300 hover:border-[#8B5A2B] rounded-xl"
+                      className="h-16 text-2xl font-bold bg-gray-100 hover:bg-gray-200 text-gray-800 border-2 border-gray-300 hover:border-[#8B5A2B] rounded-xl"
                     >
                       {num}
                     </Button>
                   ))}
 
-                  <Button onClick={handleClear} disabled={isAuthenticating} className="h-16 bg-gray-100 hover:bg-gray-200 text-white/70 border-2 border-gray-300 rounded-xl">
+                  <Button onClick={handleClear} disabled={isAuthenticating} className="h-16 bg-gray-100 hover:bg-gray-200 text-gray-500 border-2 border-gray-300 rounded-xl">
                     <Delete className="h-5 w-5" />
                   </Button>
 
                   <Button
                     onClick={() => handleNumberClick('0')}
                     disabled={isAuthenticating}
-                    className="h-16 text-2xl font-bold bg-gray-100 hover:bg-gray-200 text-white border-2 border-gray-300 hover:border-[#8B5A2B] rounded-xl"
+                    className="h-16 text-2xl font-bold bg-gray-100 hover:bg-gray-200 text-gray-800 border-2 border-gray-300 hover:border-[#8B5A2B] rounded-xl"
                   >
                     0
                   </Button>
 
-                  <Button onClick={handleBackspace} disabled={isAuthenticating} className="h-16 bg-gray-100 hover:bg-gray-200 text-white/70 border-2 border-gray-300 rounded-xl">
+                  <Button onClick={handleBackspace} disabled={isAuthenticating} className="h-16 bg-gray-100 hover:bg-gray-200 text-gray-500 border-2 border-gray-300 rounded-xl">
                     ←
                   </Button>
                 </div>

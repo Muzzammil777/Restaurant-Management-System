@@ -701,7 +701,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
           <div className="bg-white rounded-xl p-6 w-96 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-white">Recall Order</h3>
+              <h3 className="text-xl font-bold text-gray-800">Recall Order</h3>
               <Button variant="ghost" size="sm" onClick={() => { setIsRecallOpen(false); setRecallInput(""); }}>
                 <X className="h-5 w-5" />
               </Button>
@@ -805,7 +805,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-4 mt-2 text-sm text-white/70">
+                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                       <span className="flex items-center gap-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                         <Users className="h-4 w-4" />
                         {order.tableNumber}
@@ -820,7 +820,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                     {order.items.map((item) => (
                       <div key={item.id} className="p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-start justify-between mb-1">
-                          <p className="font-semibold text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                          <p className="font-semibold text-gray-800" style={{ fontFamily: 'Poppins, sans-serif' }}>
                             {item.quantity}x {item.name}
                           </p>
                           <div className="flex items-center gap-2">
@@ -877,7 +877,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
               
               {newOrders.length === 0 && (
                 <Card className="p-8 text-center border-dashed">
-                  <p className="text-white/70" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-gray-400" style={{ fontFamily: 'Inter, sans-serif' }}>
                     No new orders
                   </p>
                 </Card>
@@ -922,7 +922,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-4 mt-2 text-sm text-white/70">
+                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                       <span className="flex items-center gap-1">
                         <Users className="h-4 w-4" />
                         {order.tableNumber}
@@ -942,7 +942,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                         )}
                       >
                         <div className="flex items-start justify-between mb-2">
-                          <p className="font-semibold text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                          <p className="font-semibold text-gray-800" style={{ fontFamily: 'Poppins, sans-serif' }}>
                             {item.status === "COMPLETED" && <Check className="h-4 w-4 inline mr-1 text-green-600" />}
                             {item.quantity}x {item.name}
                           </p>
@@ -1015,7 +1015,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
               
               {cookingOrders.length === 0 && (
                 <Card className="p-8 text-center border-dashed">
-                  <p className="text-white/70" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-gray-400" style={{ fontFamily: 'Inter, sans-serif' }}>
                     No orders in progress
                   </p>
                 </Card>
@@ -1054,7 +1054,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                       <CheckCircle2 className="h-5 w-5 text-green-600" />
                     </div>
                     
-                    <div className="flex items-center gap-4 mt-2 text-sm text-white/70">
+                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                       <span className="flex items-center gap-1">
                         <Users className="h-4 w-4" />
                         {order.tableNumber}
@@ -1065,7 +1065,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                   <CardContent className="space-y-2">
                     {order.items.map((item) => (
                       <div key={item.id} className="p-3 bg-white rounded-lg border border-green-200">
-                        <p className="font-semibold text-white flex items-center gap-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                        <p className="font-semibold text-gray-800 flex items-center gap-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
                           <Check className="h-4 w-4 text-green-600" />
                           {item.quantity}x {item.name}
                         </p>
@@ -1087,7 +1087,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
               
               {readyOrders.length === 0 && (
                 <Card className="p-8 text-center border-dashed">
-                  <p className="text-white/70" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-gray-400" style={{ fontFamily: 'Inter, sans-serif' }}>
                     No ready orders
                   </p>
                 </Card>
@@ -1132,7 +1132,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                         x{batch.total}
                       </Badge>
                     </div>
-                    <p className="text-lg font-bold text-white mt-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                    <p className="text-lg font-bold text-gray-800 mt-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
                       {batch.name}
                     </p>
                   </CardHeader>
@@ -1181,7 +1181,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
               {batchedItems.length === 0 && (
                 <Card className="col-span-full p-12 text-center border-dashed">
                   <ChefHat className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                  <p className="text-xl text-white/70" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-xl text-gray-400" style={{ fontFamily: 'Inter, sans-serif' }}>
                     No items to prepare
                   </p>
                 </Card>
