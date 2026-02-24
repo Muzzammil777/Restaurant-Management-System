@@ -1,5 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
-import { LoadingOrders } from '@/app/components/ui/loading-spinner';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
@@ -30,7 +29,6 @@ interface Order {
   }>;
   total: number;
   status: 'placed' | 'preparing' | 'ready' | 'served' | 'completed' | 'cancelled';
-  paymentStatus?: 'pending_payment' | 'paid' | 'payment_failed' | 'cancelled' | 'expired';
   type: 'dine-in' | 'takeaway' | 'delivery';
   createdAt: string;
   paymentMethod?: 'cash' | 'upi' | 'card';
@@ -140,13 +138,6 @@ function TakeOrderSheet({
       toast.error('Please add at least one item');
       return;
     }
-    
-    if (!order.id) {
-      console.error('Order ID is missing:', order);
-      toast.error('Order ID is missing. Please refresh and try again.');
-      return;
-    }
-    
     setSubmitting(true);
     try {
       await ordersApi.update(order.id, {
@@ -165,8 +156,7 @@ function TakeOrderSheet({
       onOpenChange(false);
     } catch (error) {
       console.error('Error updating order:', error);
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred';
-      toast.error(`Failed to update order: ${errorMsg}`);
+      toast.error('Failed to update order');
     } finally {
       setSubmitting(false);
     }
@@ -176,21 +166,21 @@ function TakeOrderSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col h-full overflow-hidden">
-        <SheetHeader className="p-6 pb-4 border-b flex-shrink-0">
+      <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col">
+        <SheetHeader className="p-6 pb-4 border-b">
           <SheetTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5" />
-            Take Order ÔÇö {order.orderNumber || `Table ${order.tableNumber}`}
+            Take Order — {order.orderNumber || `Table ${order.tableNumber}`}
           </SheetTitle>
           <SheetDescription>
-            {order.waiterName && `Waiter: ${order.waiterName} ┬À `}
+            {order.waiterName && `Waiter: ${order.waiterName} · `}
             {order.type === 'dine-in' && order.tableNumber ? `Table ${order.tableNumber}` : order.type}
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-hidden flex flex-col">
           {/* Search + Category Filters */}
-          <div className="p-4 border-b space-y-3 flex-shrink-0">
+          <div className="p-4 border-b space-y-3">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
@@ -280,7 +270,7 @@ function TakeOrderSheet({
 
           {/* Notes */}
           {selectedItems.length > 0 && (
-            <div className="p-4 border-t flex-shrink-0">
+            <div className="p-4 border-t">
               <Label className="text-xs font-medium text-muted-foreground">Special Instructions</Label>
               <Textarea
                 value={notes}
@@ -292,8 +282,8 @@ function TakeOrderSheet({
           )}
         </div>
 
-        {/* Footer ÔÇö Cart Summary + Submit */}
-        <SheetFooter className="p-4 border-t bg-gray-50 flex-shrink-0">
+        {/* Footer — Cart Summary + Submit */}
+        <SheetFooter className="p-4 border-t bg-gray-50">
           <div className="w-full space-y-3">
             {/* Cart Summary */}
             {selectedItems.length > 0 && (
@@ -346,19 +336,18 @@ function TakeOrderSheet({
 
 // Innovation #6: Smart Notes Keywords
 const SMART_NOTE_KEYWORDS = {
-  'no onion': { icon: '', color: 'text-orange-600', bg: 'bg-orange-50' },
-  'no garlic': { icon: '', color: 'text-orange-600', bg: 'bg-orange-50' },
-  'extra spicy': { icon: '', color: 'text-red-600', bg: 'bg-red-50' },
-  'mild': { icon: '', color: 'text-green-600', bg: 'bg-green-50' },
-  'urgent': { icon: '', color: 'text-yellow-600', bg: 'bg-yellow-50' },
-  'allergy': { icon: '', color: 'text-red-600', bg: 'bg-red-50' },
-  'vip': { icon: '', color: 'text-purple-600', bg: 'bg-purple-50' },
+  'no onion': { icon: '🧅', color: 'text-orange-600', bg: 'bg-orange-50' },
+  'no garlic': { icon: '🧄', color: 'text-orange-600', bg: 'bg-orange-50' },
+  'extra spicy': { icon: '🌶', color: 'text-red-600', bg: 'bg-red-50' },
+  'mild': { icon: '😊', color: 'text-green-600', bg: 'bg-green-50' },
+  'urgent': { icon: '⚡', color: 'text-yellow-600', bg: 'bg-yellow-50' },
+  'allergy': { icon: '⚠️', color: 'text-red-600', bg: 'bg-red-50' },
+  'vip': { icon: '👑', color: 'text-purple-600', bg: 'bg-purple-50' },
 };
 
 export function OrderManagement() {
   const { user } = useAuth();
   const isWaiter = user?.role === 'waiter';
-  const isChef = user?.role === 'chef';
   const isAdminOrManager = user?.role === 'admin' || user?.role === 'manager';
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -372,6 +361,7 @@ export function OrderManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
   
   // Quick Order Panel State
   const [quickOrderOpen, setQuickOrderOpen] = useState(false);
@@ -411,14 +401,9 @@ export function OrderManagement() {
     const calculatedTotal = normalizedItems.reduce((sum: number, item: { name: string; quantity: number; price: number }) => sum + (item.price * item.quantity), 0);
     const finalTotal = rawTotal > 0 ? rawTotal : calculatedTotal;
     
-    const orderId = rawOrder?._id || rawOrder?.id;
-    if (!orderId) {
-      console.warn('Order without ID detected:', rawOrder);
-    }
-    
     return {
       ...rawOrder,
-      id: orderId || '',
+      id: rawOrder?._id || rawOrder?.id || '',
       orderNumber: rawOrder?.orderNumber || rawOrder?.order_number,
       items: normalizedItems,
       total: finalTotal,
@@ -484,6 +469,33 @@ export function OrderManagement() {
       setMenuItems(Array.isArray(items) ? items.filter((item: MenuItem) => item.available !== false) : []);
     } catch (error) {
       console.error('Error fetching menu items:', error);
+    }
+  };
+
+  const deleteOrder = async (orderId: string, orderDisplayId: string) => {
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      `Are you sure you want to delete order ${orderDisplayId}?` +
+      '\n\n• Active orders will be marked as cancelled' +
+      '\n• Cancelled orders will be permanently deleted'
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      // Don't modify the ID - use it as is since it's already a MongoDB ObjectId
+      await ordersApi.delete(orderId);
+      toast.success('Order deleted successfully!');
+      fetchOrders();
+    } catch (error: any) {
+      console.error('Error deleting order:', error);
+      if (error.message?.includes('404') || error.message?.includes('not found')) {
+        toast.error('Order not found. It may have been already deleted.');
+        // Refresh orders to show current state
+        fetchOrders();
+      } else {
+        toast.error('Failed to delete order');
+      }
     }
   };
 
@@ -605,11 +617,11 @@ export function OrderManagement() {
     const isUrgent = order.notes?.toLowerCase().includes('urgent');
 
     if (hasPriorityTag || isVIP || isUrgent || ageInMinutes > 30) {
-      return { level: 'high', badge: 'Urgent', color: 'bg-red-500 text-white' };
+      return { level: 'high', badge: '🔴 Urgent', color: 'bg-red-500 text-white' };
     } else if (ageInMinutes > 15) {
-      return { level: 'medium', badge: 'Normal', color: 'bg-yellow-500 text-white' };
+      return { level: 'medium', badge: '🟡 Normal', color: 'bg-yellow-500 text-white' };
     }
-    return { level: 'low', badge: 'Low', color: 'bg-green-500 text-white' };
+    return { level: 'low', badge: '🟢 Low', color: 'bg-green-500 text-white' };
   };
 
   // Innovation #6: Parse and highlight smart notes
@@ -630,7 +642,7 @@ export function OrderManagement() {
 
   // Filter and search orders
   const filteredOrders = orders.filter(order => {
-    // Waiters only see their own orders (strictly ÔÇö even unassigned orders are hidden)
+    // Waiters only see their own orders (strictly — even unassigned orders are hidden)
     if (isWaiter && order.waiterId !== user?.id) return false;
     if (filterStatus !== 'all' && order.status !== filterStatus) return false;
     if (filterType !== 'all' && order.type !== filterType) return false;
@@ -640,7 +652,7 @@ export function OrderManagement() {
     return true;
   });
 
-  // Sort orders: bottleneck orders first, then by age
+  // Sort orders: bottleneck orders first, then by age, then by user preference
   const sortedOrders = [...filteredOrders].sort((a, b) => {
     const aAge = getOrderAge(a);
     const bAge = getOrderAge(b);
@@ -659,8 +671,14 @@ export function OrderManagement() {
     if (aDelay === 'warning' && bDelay !== 'warning') return -1;
     if (bDelay === 'warning' && aDelay !== 'warning') return 1;
 
-    // Most recent first for same priority (higher timestamp = newer)
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    // Extract order ID numbers for sorting
+    const aOrderId = generateOrderDisplayId(a.id, a.orderNumber);
+    const bOrderId = generateOrderDisplayId(b.id, b.orderNumber);
+    const aOrderNum = parseInt(aOrderId.replace(/[^0-9]/g, '')) || 0;
+    const bOrderNum = parseInt(bOrderId.replace(/[^0-9]/g, '')) || 0;
+
+    // Sort by user preference (newest/oldest) based on order ID number
+    return sortBy === 'newest' ? bOrderNum - aOrderNum : aOrderNum - bOrderNum;
   });
 
   // Calculate statistics
@@ -694,15 +712,15 @@ export function OrderManagement() {
   const tableNumbers = Array.from(new Set(orders.map(o => o.tableNumber).filter(Boolean)));
 
   if (loading) {
-    return <LoadingOrders />;
+    return <div className="flex items-center justify-center h-full">Loading orders...</div>;
   }
 
   return (
-    <div className="bg-order-management-module min-h-screen p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-full overflow-x-hidden">
+    <div className="bg-order-management-module min-h-screen p-6 space-y-6">
       {/* Header Section */}
-      <div className="module-container flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+      <div className="module-container flex justify-between items-start">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white drop-shadow-lg">
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">
             {isWaiter ? `Your Orders` : 'Orders'}
           </h1>
           <p className="text-gray-200">
@@ -713,14 +731,14 @@ export function OrderManagement() {
         </div>
         
         {/* Quick Order Button */}
-        <Button onClick={() => setQuickOrderOpen(true)} size="lg" className="gap-2 shadow-md self-start">
+        <Button onClick={() => setQuickOrderOpen(true)} size="lg" className="gap-2 shadow-md">
           <Zap className="h-5 w-5" />
           Quick Order
         </Button>
       </div>
 
       {/* Mini Order Insights */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Active Orders</CardTitle>
@@ -787,7 +805,7 @@ export function OrderManagement() {
       {/* Smart Filters & Search */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-6">
+          <div className="grid gap-4 md:grid-cols-6">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
@@ -867,6 +885,31 @@ export function OrderManagement() {
             >
               Clear Filters
             </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <ArrowUpDown className="h-4 w-4" />
+                  Sort
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem 
+                  onClick={() => setSortBy('newest')}
+                  className={sortBy === 'newest' ? 'bg-accent' : ''}
+                >
+                  <ArrowDown className="h-4 w-4 mr-2" />
+                  New to Old
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setSortBy('oldest')}
+                  className={sortBy === 'oldest' ? 'bg-accent' : ''}
+                >
+                  <ArrowUp className="h-4 w-4 mr-2" />
+                  Old to New
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </CardContent>
       </Card>
@@ -910,7 +953,7 @@ export function OrderManagement() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {sortedOrders.map((order) => {
             const orderItems = Array.isArray(order.items) ? order.items : [];
             const totalItems = orderItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -928,8 +971,18 @@ export function OrderManagement() {
                   delayLevel === 'warning' ? 'border-yellow-400 border-2' : ''
                 }`}
               >
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start mb-2">
+                <CardHeader className="pb-3 relative">
+                  {/* Delete Button - Top Right Corner */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteOrder(order.id, generateOrderDisplayId(order.id, order.orderNumber))}
+                    className="absolute top-2 right-2 h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                  
+                  <div className="flex justify-between items-start mb-2 pr-10">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <CardTitle className="text-lg font-semibold">
@@ -963,7 +1016,7 @@ export function OrderManagement() {
                     <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
                       <div className="flex items-center gap-2 text-red-700">
                         <AlertCircle className="h-4 w-4 animate-pulse" />
-                        <p className="text-xs font-medium">Kitchen Bottleneck - Priority Attention Needed!</p>
+                        <p className="text-xs font-medium">⚠️ Kitchen Bottleneck - Priority Attention Needed!</p>
                       </div>
                     </div>
                   )}
@@ -1020,7 +1073,7 @@ export function OrderManagement() {
                       'bg-blue-50 text-blue-700'
                     }`}>
                       <Timer className={`h-4 w-4 ${delayLevel ? 'animate-pulse' : ''}`} />
-                      <span>ÔÅ▒ Waiting {ageInMinutes} min{ageInMinutes !== 1 ? 's' : ''}</span>
+                      <span>⏱ Waiting {ageInMinutes} min{ageInMinutes !== 1 ? 's' : ''}</span>
                       {delayLevel && (
                         <AlertCircle className="h-4 w-4 ml-auto animate-pulse" />
                       )}
@@ -1081,11 +1134,12 @@ export function OrderManagement() {
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {new Date(order.createdAt).toLocaleTimeString('en-US', {
+                        {new Date(order.createdAt).toLocaleTimeString('en-IN', {
                           hour: '2-digit',
                           minute: '2-digit',
-                          hour12: true
-                        })}
+                          hour12: true,
+                          timeZone: 'Asia/Kolkata'
+                        })} IST
                       </span>
                       {order.paymentMethod && (
                         <span className="flex items-center gap-1">
@@ -1114,7 +1168,7 @@ export function OrderManagement() {
 
                   {/* Context-Aware Action Buttons */}
                   <div className="flex flex-col gap-2 pt-2">
-                    {/* Take Order ÔÇö for placed orders with no items */}
+                    {/* Take Order — for placed orders with no items */}
                     {order.status === 'placed' && (!order.items || order.items.length === 0 || order.items.every(i => !i.name || i.name === 'Unknown Item')) && (
                       <Button
                         size="sm"
@@ -1129,8 +1183,8 @@ export function OrderManagement() {
                       </Button>
                     )}
 
-                    {/* Primary Action — Accept (only when items exist, not for waiters) */}
-                    {order.status === 'placed' && order.items && order.items.length > 0 && !order.items.every(i => !i.name || i.name === 'Unknown Item') && !isWaiter && (isChef || isAdminOrManager) && (
+                    {/* Primary Action — Accept (only when items exist) */}
+                    {order.status === 'placed' && order.items && order.items.length > 0 && !order.items.every(i => !i.name || i.name === 'Unknown Item') && (
                       <Button
                         size="sm"
                         onClick={() => updateOrderStatus(order.id, 'preparing')}
@@ -1140,7 +1194,7 @@ export function OrderManagement() {
                         Accept Order
                       </Button>
                     )}
-                    {order.status === 'preparing' && !isWaiter && (isChef || isAdminOrManager) && (
+                    {order.status === 'preparing' && (
                       <Button
                         size="sm"
                         onClick={() => updateOrderStatus(order.id, 'ready')}
@@ -1150,7 +1204,7 @@ export function OrderManagement() {
                         Mark as Ready
                       </Button>
                     )}
-                    {order.status === 'ready' && (isWaiter || isAdminOrManager) && (
+                    {order.status === 'ready' && (
                       <Button
                         size="sm"
                         onClick={() => updateOrderStatus(order.id, 'served')}
