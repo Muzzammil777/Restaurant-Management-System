@@ -330,7 +330,7 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
            </div>
            
            <div className="flex items-center gap-3">
-             <Button variant="outline" onClick={fetchData} disabled={loading} className="text-white border-white/30 hover:text-white">
+             <Button variant="outline" onClick={fetchData} disabled={loading} className="bg-white/10 hover:bg-white/20 text-white border-white/30 hover:text-white backdrop-blur-sm">
                {loading ? (
                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                ) : (

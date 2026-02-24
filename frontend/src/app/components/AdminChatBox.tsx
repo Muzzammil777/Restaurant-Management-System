@@ -182,12 +182,12 @@ export function AdminChatBox() {
   };
 
   return (
-    <div
-      className="fixed z-50 flex flex-col items-end"
-      style={{ right: pos.right, bottom: pos.bottom }}
-    >
+    <>
       {isOpen && (
-        <div className="mb-4 w-80 sm:w-96 h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div
+          className="fixed z-50 w-80 sm:w-96 h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300"
+          style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+        >
           {/* Header */}
           <div className="p-4 border-b bg-white flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -343,25 +343,28 @@ export function AdminChatBox() {
         </div>
       )}
 
-      <button
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        className={cn(
-          "h-14 w-14 rounded-full flex items-center justify-center shadow-2xl transition-transform duration-200 select-none touch-none",
-          isDragging ? "cursor-grabbing scale-110" : "cursor-grab hover:scale-105 active:scale-95",
-          isOpen ? "bg-red-500 rotate-90" : "bg-primary"
-        )}
-      >
-        {isOpen ? (
-          <X className="h-6 w-6 text-white" />
-        ) : (
-          <div className="relative">
-            <MessageSquare className="h-6 w-6 text-white" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
-          </div>
-        )}
-      </button>
-    </div>
+      {/* Draggable FAB button — separate from the chat panel */}
+      <div className="fixed z-50" style={{ right: pos.right, bottom: pos.bottom }}>
+        <button
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          className={cn(
+            "h-14 w-14 rounded-full flex items-center justify-center shadow-2xl transition-transform duration-200 select-none touch-none",
+            isDragging ? "cursor-grabbing scale-110" : "cursor-grab hover:scale-105 active:scale-95",
+            isOpen ? "bg-red-500 rotate-90" : "bg-primary"
+          )}
+        >
+          {isOpen ? (
+            <X className="h-6 w-6 text-white" />
+          ) : (
+            <div className="relative">
+              <MessageSquare className="h-6 w-6 text-white" />
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
+            </div>
+          )}
+        </button>
+      </div>
+    </>
   );
 }

@@ -220,9 +220,9 @@ export function AdminDashboard() {
       </div>
 
       {/* Enhanced Popular Menu Items & Order Statistics */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 w-full min-w-0">
         {/* Enhanced Popular Menu Items */}
-        <Card style={{ backgroundColor: '#FFFFFF' }} className="col-span-1 md:col-span-2">
+        <Card style={{ backgroundColor: '#FFFFFF' }} className="col-span-1 md:col-span-2 overflow-hidden">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -238,7 +238,7 @@ export function AdminDashboard() {
             {analytics?.popularItems && analytics.popularItems.length > 0 ? (
               <div className="space-y-6">
                 {/* Bar Chart */}
-                <ResponsiveContainer width="100%" height={250}>
+                <ResponsiveContainer width="99%" height={250}>
                   <BarChart data={analytics.popularItems}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis 
