@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import { AdminDashboard } from '@/app/components/admin-dashboard';
 import { MenuManagement } from '@/app/components/menu-management';
-import { OrderManagement } from '@/app/components/order-management';
+import { OrderManagement } from '@/app/components/order-management.tsx';
 import { MochaKDS } from '@/app/components/mocha-kds';
 import { TableManagementComprehensive } from '@/app/components/table-management-comprehensive';
 import { InventoryManagement } from '@/app/components/inventory-management';
