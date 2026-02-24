@@ -792,6 +792,16 @@ export function TableManagementComprehensive() {
       if (newStatus === 'Cleaning') {
         updateData.cleaningEndTime = Date.now() + 10 * 60 * 1000; // 10-minute timer
       } else if (newStatus === 'Available') {
+        // If table has an active order, queue it for billing before freeing the table
+        const table = tables.find(t => t.id === tableId);
+        if (table?.currentOrderId) {
+          try {
+            await ordersApi.updateStatus(table.currentOrderId, 'bill_requested');
+            toast.info(`Bill queued for Table ${table.displayNumber} — check the Billing page.`, { duration: 5000 });
+          } catch (e) {
+            console.warn('Could not set order to bill_requested:', e);
+          }
+        }
         // Clear assignment and guest info when freeing the table
         updateData.cleaningEndTime = null;
         updateData.waiterId = null;

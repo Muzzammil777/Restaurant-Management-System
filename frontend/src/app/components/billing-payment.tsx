@@ -37,6 +37,7 @@ import {
 import { toast } from 'sonner';
 import { API_BASE_URL } from '@/utils/supabase/info';
 import { mockApi } from '@/app/services/mock-api';
+import { ordersApi } from '@/utils/api';
 
 interface Order {
   id: string;
@@ -90,6 +91,8 @@ export function BillingPayment() {
 
   useEffect(() => {
     Promise.all([fetchOrders(), fetchInvoices()]).finally(() => setLoading(false));
+    const interval = setInterval(fetchOrders, 10000); // auto-refresh every 10s
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -99,15 +102,67 @@ export function BillingPayment() {
 
   const fetchOrders = async () => {
     try {
-      // Use mock API
-      const result = await mockApi.getOrders();
-      if (result.success) {
-        // Filter for completed orders only
-        const completedOrders = result.data.filter((order: any) => 
-          order.status === 'completed' || order.status === 'ready'
-        );
-        setOrders(completedOrders as any);
+      const allOrders: Order[] = [];
+
+      // Fetch bill_requested orders from the real API
+      try {
+        const realResult = await ordersApi.list({ status: 'bill_requested' });
+        const realOrders: any[] = Array.isArray(realResult)
+          ? realResult
+          : (realResult as any)?.data || [];
+        const normalizedReal: Order[] = realOrders.map((o: any) => ({
+          id: o._id || o.id,
+          table_number: o.tableNumber || o.table_number || o.name || 0,
+          customer_name: o.customerName || o.customer_name || 'Guest',
+          items: (o.items || []).map((item: any) => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+          total: o.total || o.totalAmount || 0,
+          status: o.status,
+        }));
+        allOrders.push(...normalizedReal);
+      } catch (e) {
+        console.warn('Could not fetch real bill_requested orders:', e);
       }
+
+      // Also fetch from mock API (bill_requested, completed, ready)
+      const mockResult = await mockApi.getOrders();
+      if (mockResult.success) {
+        const mockOrders = mockResult.data
+          .filter((order: any) =>
+            order.status === 'bill_requested' ||
+            order.status === 'completed' ||
+            order.status === 'ready'
+          )
+          .map((o: any) => ({
+            id: o.id,
+            table_number: o.tableNumber || o.table_number || 0,
+            customer_name: o.customerName || o.customer_name || 'Guest',
+            items: (o.items || []).map((item: any) => ({
+              name: item.name,
+              quantity: item.quantity,
+              price: item.price,
+            })),
+            total: o.totalAmount || o.total || 0,
+            status: o.status,
+          }));
+        // Deduplicate by id
+        const existingIds = new Set(allOrders.map(o => o.id));
+        mockOrders.forEach((o: Order) => {
+          if (!existingIds.has(o.id)) allOrders.push(o);
+        });
+      }
+
+      // Sort: bill_requested first, then by id descending
+      allOrders.sort((a, b) => {
+        if (a.status === 'bill_requested' && b.status !== 'bill_requested') return -1;
+        if (a.status !== 'bill_requested' && b.status === 'bill_requested') return 1;
+        return 0;
+      });
+
+      setOrders(allOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
     }
@@ -456,8 +511,15 @@ export function BillingPayment() {
             {/* Order Selection */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Select Order</CardTitle>
-                <CardDescription>Choose a completed order</CardDescription>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  Select Order
+                  {orders.filter(o => o.status === 'bill_requested').length > 0 && (
+                    <Badge className="bg-amber-500 text-white text-xs">
+                      {orders.filter(o => o.status === 'bill_requested').length} Pending
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CardDescription>Bill-requested orders appear first</CardDescription>
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-[500px] pr-4">
@@ -466,14 +528,23 @@ export function BillingPayment() {
                       <Card
                         key={order.id}
                         className={`cursor-pointer transition-all hover:shadow-md ${
-                          selectedOrder?.id === order.id ? 'border-primary bg-primary/5' : ''
+                          selectedOrder?.id === order.id
+                            ? 'border-primary bg-primary/5'
+                            : order.status === 'bill_requested'
+                            ? 'border-amber-400 bg-amber-50'
+                            : ''
                         }`}
                         onClick={() => loadOrderIntoBill(order)}
                       >
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between mb-2">
                             <span className="font-medium">Table {order.table_number}</span>
-                            <Badge variant="outline">{order.status}</Badge>
+                            <Badge
+                              variant={order.status === 'bill_requested' ? 'default' : 'outline'}
+                              className={order.status === 'bill_requested' ? 'bg-amber-500 text-white' : ''}
+                            >
+                              {order.status === 'bill_requested' ? '⚑ Bill Requested' : order.status}
+                            </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground mb-2">{order.customer_name}</p>
                           <p className="text-sm font-medium">
@@ -486,7 +557,8 @@ export function BillingPayment() {
                     {orders.length === 0 && (
                       <div className="text-center py-8 text-muted-foreground">
                         <Receipt className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                        <p className="text-sm">No completed orders</p>
+                        <p className="text-sm">No pending bills</p>
+                        <p className="text-xs mt-1">Bills appear here when a waiter marks a table as Available</p>
                       </div>
                     )}
                   </div>
