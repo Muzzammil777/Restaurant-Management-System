@@ -226,10 +226,6 @@ export function BillingPayment() {
       if (result.success) {
         // Remove order from local state
         setOrders(prev => prev.filter(o => o.id !== orderId));
-        // Clear selected order if it was the deleted one
-        if (selectedOrder?.id === orderId) {
-          setSelectedOrder(null);
-        }
         toast.success(`Order ${orderNumber} deleted successfully`);
       } else {
         toast.error('Failed to delete order');
@@ -685,6 +681,21 @@ function BillGenerationTab({ orders, onInvoiceGenerated }: { orders: Order[], on
                {filteredOrders.length === 0 && (
                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-2">
+                     <Receipt className="h-6 w-6 text-gray-400" />
+                   </div>
+                   <p className="text-sm">No served orders</p>
+                 </div>
+               )}
+             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Right Panel: Bill Generation */}
+      <div className="lg:col-span-8 flex flex-col">
+        <Card className="flex-1 flex flex-col border shadow-sm overflow-hidden bg-white">
+          {selectedOrder ? (
+            <>
               <CardHeader className="border-b pb-2 bg-white">
                 <div className="flex justify-between items-center">
                    <div>
