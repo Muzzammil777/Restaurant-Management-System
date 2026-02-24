@@ -50,13 +50,16 @@ export function LoginPage() {
         <Card className="shadow-xl border-0">
           <CardHeader className="space-y-4 pb-6 text-center">
             <div className="flex justify-center">
-              <div className="p-4 bg-primary rounded-2xl">
-                <UtensilsCrossed className="h-10 w-10 text-primary-foreground" />
+              <div className="p-3 sm:p-4 bg-primary rounded-2xl">
+                <UtensilsCrossed className="h-8 w-8 sm:h-10 sm:w-10 text-primary-foreground" />
               </div>
             </div>
             <div>
-              <CardTitle className="text-2xl">Restaurant Management</CardTitle>
-              <CardDescription className="mt-2">Sign in with your staff credentials</CardDescription>
+              {/* Mobile: short brand name */}
+              <CardTitle className="text-3xl font-bold tracking-tight sm:hidden">RMS</CardTitle>
+              {/* Desktop: full name */}
+              <CardTitle className="hidden sm:block text-2xl">Restaurant Management</CardTitle>
+              <CardDescription className="mt-1.5">Sign in with your staff credentials</CardDescription>
             </div>
           </CardHeader>
           <CardContent>
@@ -106,7 +109,7 @@ export function LoginPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full h-11" disabled={loading}>
+              <Button type="submit" className="w-full h-12 text-base" disabled={loading}>
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />

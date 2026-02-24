@@ -367,7 +367,15 @@ export function AccountAuthentication() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {user.lastLogin}
+                    {user.lastLogin && user.lastLogin !== 'Never'
+                      ? (() => {
+                          try {
+                            return new Date(user.lastLogin).toLocaleString();
+                          } catch {
+                            return user.lastLogin;
+                          }
+                        })()
+                      : 'Never'}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

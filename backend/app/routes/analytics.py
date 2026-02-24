@@ -72,6 +72,14 @@ def normalize_status(value) -> str:
     return str(value or "").strip().lower()
 
 
+def _safe_int(value, default: int = 0) -> int:
+    """Safely convert a value to int"""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def normalize_order_type(order: dict) -> str:
     raw = str(order.get("type") or order.get("orderType") or order.get("order_type") or "unknown").strip().lower()
     if raw in {"dinein", "dine-in", "dine_in"}:
