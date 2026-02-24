@@ -22,6 +22,7 @@ import { API_BASE_URL } from '@/utils/supabase/info';
 import { tablesApi } from '@/utils/api';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/app/components/ui/dialog';
 import { restaurantState } from '@/app/services/restaurant-state';
+import { useAuth } from '@/utils/auth-context';
 import { Switch } from '@/app/components/ui/switch';
 import { Progress } from '@/app/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -153,6 +154,8 @@ const playSound = (type: 'add' | 'remove' | 'complete' | 'error', soundEnabled: 
 // ==================== MAIN COMPONENT ====================
 
 export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrderPOSProps) {
+  const { user } = useAuth();
+
   // ========== STATE MANAGEMENT ==========
   
   // Order Info State
@@ -226,13 +229,20 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
   // ========== EFFECTS ==========
 
-  // Check current role on open
+  // Check current role on open — prefer auth user role, fall back to restaurantState
   useEffect(() => {
     if (open) {
-      const role = restaurantState.getRole();
-      setCurrentRole(role);
+      const authRole = user?.role;
+      if (authRole === 'waiter') {
+        setCurrentRole('waiter');
+      } else if (authRole === 'admin' || authRole === 'manager' || authRole === 'cashier') {
+        setCurrentRole('admin');
+      } else {
+        const role = restaurantState.getRole();
+        setCurrentRole(role);
+      }
     }
-  }, [open]);
+  }, [open, user?.role]);
 
   // Fetch menu items and combos from Menu Management
   useEffect(() => {
@@ -824,11 +834,11 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
   // Create order
   const handleCreateOrder = async () => {
-    // Role check: Only waiters and admins can create orders
-    const currentRole = restaurantState.getRole();
-    if (currentRole !== 'waiter' && currentRole !== 'admin') {
-      toast.error('Only waiters and admins can create and send orders to kitchen', {
-        description: 'Please switch to waiter or admin mode to create orders',
+    // Role check: waiters, admins, managers, and cashiers can create orders
+    const authRole = user?.role ?? restaurantState.getRole();
+    if (!['waiter', 'admin', 'manager', 'cashier'].includes(authRole)) {
+      toast.error('You do not have permission to create orders', {
+        description: 'Only waiters, admins, managers, and cashiers can place orders',
         duration: 4000,
       });
       playSound('error', soundEnabled);
