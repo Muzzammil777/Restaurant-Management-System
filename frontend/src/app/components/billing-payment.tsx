@@ -508,7 +508,7 @@ export function BillingPayment() {
   if (loading) return <LoadingBilling />;
 
   return (
-    <div className="bg-billing-module min-h-screen space-y-4 sm:space-y-6 p-3 sm:p-6">
+    <div className="bg-billing-module min-h-screen space-y-4 sm:space-y-6 p-3 sm:p-6 max-w-full overflow-x-hidden">
       <div className="module-container flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-white drop-shadow-lg">Billing & Payment</h2>

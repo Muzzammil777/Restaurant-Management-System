@@ -136,7 +136,7 @@ export function NotificationManagement() {
   }
 
   return (
-    <div className="bg-notifications-module min-h-screen space-y-6">
+    <div className="bg-notifications-module min-h-screen space-y-6 max-w-full overflow-x-hidden">
       <div className="module-container flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-white drop-shadow-lg">Notifications</h2>

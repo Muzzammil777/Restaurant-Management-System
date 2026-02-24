@@ -158,7 +158,7 @@ export function KDSTerminalLogin({ onLogin }: KDSTerminalLoginProps) {
   };
 
   return (
-    <div className="bg-kitchen-display-module min-h-screen flex items-center justify-center p-8">
+    <div className="bg-kitchen-display-module min-h-screen flex items-center justify-center p-8 max-w-full overflow-x-hidden">
       <div className="w-full max-w-6xl">
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center p-4 bg-[#8B5A2B] rounded-2xl mb-4 shadow-2xl">

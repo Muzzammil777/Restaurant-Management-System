@@ -60,7 +60,7 @@ export function StaffManagement() {
   if (loading) return <LoadingStaff />;
 
   return (
-    <div className="bg-staff-module min-h-screen flex flex-col">
+    <div className="bg-staff-module min-h-screen flex flex-col max-w-full overflow-x-hidden">
       {/* Module Header Bar */}
       <div className="bg-black/40 backdrop-blur-sm border-b border-gray-700 px-3 sm:px-6 py-3 sm:py-4 flex flex-col md:flex-row md:items-center justify-between gap-3 sticky top-0 z-30">
         <div className="flex flex-wrap items-center gap-2 flex-1">

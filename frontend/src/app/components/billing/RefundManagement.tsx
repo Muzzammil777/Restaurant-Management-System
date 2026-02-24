@@ -162,7 +162,7 @@ export function RefundManagement() {
   };
 
   return (
-    <div className="bg-billing-module min-h-screen space-y-6 p-6">
+    <div className="bg-billing-module min-h-screen space-y-6 p-6 max-w-full overflow-x-hidden">
       <div className="module-container flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-white drop-shadow-lg">Refund Management</h2>

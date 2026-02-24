@@ -477,7 +477,7 @@ export function KitchenDisplayComprehensive() {
   const activeTerminalMeta = TERMINAL_STATIONS.find((s) => s.id === activeTerminal);
 
   return (
-    <div className="bg-kitchen-display-module min-h-screen p-6 space-y-6">
+    <div className="bg-kitchen-display-module min-h-screen p-6 space-y-6 max-w-full overflow-x-hidden">
       {/* Header */}
       <div className="module-container bg-black/40 backdrop-blur-sm border border-gray-600 p-6 rounded-xl shadow-sm sticky top-0 z-10">
         <div className="flex items-center justify-between">

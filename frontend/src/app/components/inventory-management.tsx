@@ -317,7 +317,7 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
   if (loading) return <LoadingInventory />;
 
   return (
-    <div className="bg-inventory-module min-h-screen pb-20">
+    <div className="bg-inventory-module min-h-screen pb-20 max-w-full overflow-x-hidden">
       <div className="max-w-[1800px] mx-auto p-6 space-y-8">
         
         {/* Header */}

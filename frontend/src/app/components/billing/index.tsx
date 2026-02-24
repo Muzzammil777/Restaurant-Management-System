@@ -14,7 +14,7 @@ export function BillingModule() {
   const [activeModule, setActiveModule] = useState('booking');
 
   return (
-    <div className="bg-billing-module min-h-screen pb-20">
+    <div className="bg-billing-module min-h-screen pb-20 max-w-full overflow-x-hidden">
       {/* Module Navigation Header */}
       <div className="bg-white border-b sticky top-0 z-40 shadow-sm">
         <div className="max-w-[1600px] mx-auto px-6">

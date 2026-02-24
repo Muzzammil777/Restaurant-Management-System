@@ -119,7 +119,7 @@ export function KitchenDisplay() {
   }
 
   return (
-    <div className="bg-kitchen-display-module min-h-screen p-6 space-y-6">
+    <div className="bg-kitchen-display-module min-h-screen p-6 space-y-6 max-w-full overflow-x-hidden">
       <div className="module-container flex items-center justify-between">
         <div className="flex items-center gap-3">
           <ChefHat className="h-8 w-8 text-white drop-shadow-lg" />

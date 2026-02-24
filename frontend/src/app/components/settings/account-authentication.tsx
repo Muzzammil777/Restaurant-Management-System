@@ -170,7 +170,7 @@ export function AccountAuthentication() {
   }
 
   return (
-    <div className="bg-settings-module min-h-screen space-y-6 p-6">
+    <div className="bg-settings-module min-h-screen space-y-6 p-6 max-w-full overflow-x-hidden">
       {/* Change Password Section */}
       <Card>
         <CardHeader>

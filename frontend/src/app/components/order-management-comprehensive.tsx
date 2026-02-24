@@ -437,7 +437,7 @@ export function OrderManagementComprehensive() {
   }
 
   return (
-    <div className="bg-order-management-module min-h-screen space-y-6">
+    <div className="bg-order-management-module min-h-screen space-y-6 max-w-full overflow-x-hidden">
       {/* Header */}
       <div className="module-container flex items-center justify-between">
         <div>

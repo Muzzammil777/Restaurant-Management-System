@@ -108,7 +108,7 @@ export function SecuritySettings() {
   if (loading) return <LoadingSettings />;
 
   return (
-    <div className="bg-settings-module min-h-screen space-y-6">
+    <div className="bg-settings-module min-h-screen space-y-6 max-w-full overflow-x-hidden">
       {/* Header */}
       <div className="module-container flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>

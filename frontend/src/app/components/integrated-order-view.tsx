@@ -118,7 +118,7 @@ export function IntegratedOrderView() {
   };
 
   return (
-    <div className="bg-order-management-module space-y-6 p-6 min-h-screen">
+    <div className="bg-order-management-module space-y-6 p-6 min-h-screen max-w-full overflow-x-hidden">
       {/* Header */}
       <div className="module-container flex items-center justify-between">
         <div>

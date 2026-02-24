@@ -943,7 +943,7 @@ export function TableManagementEnhanced() {
   };
 
   return (
-    <div className="bg-table-management-module p-8 space-y-8 min-h-screen">
+    <div className="bg-table-management-module p-8 space-y-8 min-h-screen max-w-full overflow-x-hidden">
       {/* Header */}
       <div className="module-container flex justify-between items-start">
         <div>

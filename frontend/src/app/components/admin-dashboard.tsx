@@ -85,7 +85,7 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="bg-admin-module min-h-screen p-3 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="bg-admin-module min-h-screen p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-full overflow-x-hidden">
       {/* Header with Live Indicator */}
       <div className="module-container flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
         <div>

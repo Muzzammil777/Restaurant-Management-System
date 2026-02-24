@@ -118,7 +118,7 @@ export function ReportsAnalytics() {
   }
 
   return (
-    <div className="bg-analytics-module min-h-screen px-4 md:px-6 py-6 space-y-6">
+    <div className="bg-analytics-module min-h-screen px-4 md:px-6 py-6 space-y-6 max-w-full overflow-x-hidden">
       <div className="module-container flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-white drop-shadow-lg">Reports & Analytics</h2>

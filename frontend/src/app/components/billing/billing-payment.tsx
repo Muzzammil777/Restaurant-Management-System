@@ -328,7 +328,7 @@ export function BillingPayment() {
   };
 
   return (
-    <div className="bg-billing-module min-h-screen pb-20">
+    <div className="bg-billing-module min-h-screen pb-20 max-w-full overflow-x-hidden">
       <div className="max-w-[1600px] mx-auto p-6 space-y-6">
         
         {/* Header */}

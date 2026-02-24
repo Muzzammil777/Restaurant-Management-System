@@ -1111,7 +1111,7 @@ export function TableManagement() {
   // ============================================================================
 
   return (
-    <div className="bg-table-management-module min-h-screen pb-8">
+    <div className="bg-table-management-module min-h-screen pb-8 max-w-full overflow-x-hidden">
       {/* Header */}
       <div className="sticky top-0 z-40 bg-black/40 backdrop-blur-sm border-b border-gray-600 px-6 py-4">
         <div className="max-w-7xl mx-auto">
