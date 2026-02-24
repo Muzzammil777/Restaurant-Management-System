@@ -249,23 +249,25 @@ function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout, onRequ
               </Button>
             ) : (
               // Admin / Manager: dropdown
-              <Select
-                onValueChange={(value) => {
-                  const [waiterId, waiterName] = value.split('|');
-                  onAssignWaiter(table.id, waiterId, waiterName);
-                }}
-              >
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="Assign Waiter" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableWaiters.map((waiter) => (
-                    <SelectItem key={waiter.id} value={`${waiter.id}|${waiter.name}`}>
-                      {waiter.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div onClick={(e) => e.stopPropagation()}>
+                <Select
+                  onValueChange={(value) => {
+                    const [waiterId, waiterName] = value.split('|');
+                    onAssignWaiter(table.id, waiterId, waiterName);
+                  }}
+                >
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="Assign Waiter" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableWaiters.map((waiter) => (
+                      <SelectItem key={waiter.id} value={`${waiter.id}|${waiter.name}`}>
+                        {waiter.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )
           )}
 
