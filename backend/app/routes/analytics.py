@@ -80,12 +80,31 @@ def extract_items(order: dict):
             quantity = int(to_number(raw.get("quantity") or 1, 1))
             name = raw.get("name") or "Item"
             price = to_number(raw.get("price"), 0)
+            category = raw.get("category") or ""
             items.append({
                 "name": name,
                 "quantity": quantity,
-                "price": price
+                "price": price,
+                "category": category,
             })
     return items
+
+
+def get_order_datetime(order: dict):
+    """Extract datetime from an order document"""
+    for field in ("createdAt", "created_at", "date", "orderDate"):
+        val = order.get(field)
+        if val:
+            return parse_datetime(val)
+    return None
+
+
+def get_order_total(order: dict) -> float:
+    """Calculate total value of an order"""
+    total = to_number(order.get("total") or order.get("totalAmount") or order.get("amount"), None)
+    if total is not None:
+        return total
+    return sum(item["price"] * item["quantity"] for item in extract_items(order))
 
 
 # -------------------------
@@ -108,19 +127,6 @@ async def get_analytics():
         if normalize_status(order.get("status")) == "completed"
     )
 
-<<<<<<< HEAD
-    avg_order_value = round(total_revenue / completed_orders, 2) if completed_orders else 0
-=======
-    # Completed orders
-    completed_orders = sum(1 for order in all_orders if normalize_status(order.get("status")) in completed_statuses)
-
-    # Active orders (in progress)
-    active_orders = sum(1 for order in all_orders if normalize_status(order.get("status")) in active_statuses)
-
-    # Total revenue from completed orders
-    total_revenue = sum(get_order_total(order) for order in all_orders if normalize_status(order.get("status")) in completed_statuses)
-
-    # Average order value
     avg_order_value = round(total_revenue / completed_orders, 2) if completed_orders > 0 else 0.0
 
     # Popular items with revenue
@@ -140,17 +146,17 @@ async def get_analytics():
     occupied_tables = _safe_int(await db.tables.count_documents({"status": "occupied"}))
     table_occupancy = round((occupied_tables / total_tables * 100), 1) if total_tables > 0 else 0.0
 
-    # Order type breakdown — field is "type" on orders
+    # Order type breakdown
     order_types = {}
     for order in all_orders:
         order_type = normalize_order_type(order)
         order_types[order_type] = order_types.get(order_type, 0) + 1
 
-    # Category distribution — category is stored directly on order items
+    # Category distribution
     category_map = {}
     for order in all_orders:
         for item in extract_items(order):
-            category = item["category"] or "Other"
+            category = item.get("category") or "Other"
             category_map[category] = category_map.get(category, 0) + item["quantity"]
     categories = [{"name": name, "value": count} for name, count in sorted(category_map.items(), key=lambda row: row[1], reverse=True)]
 
@@ -172,7 +178,6 @@ async def get_analytics():
     total_staff = await db.staff.count_documents({"active": True})
     on_duty_staff = await db.staff.count_documents({"active": True, "status": "on-duty"})
     on_leave_staff = await db.staff.count_documents({"active": True, "status": "on-leave"})
->>>>>>> 3789df7ba77936489afea51b97006d855458fabd
 
     return {
         "success": True,
@@ -182,10 +187,15 @@ async def get_analytics():
             "activeOrders": active_orders,
             "totalRevenue": round(total_revenue, 2),
             "avgOrderValue": avg_order_value,
+            "popularItems": popular_items,
+            "tableOccupancy": table_occupancy,
+            "totalCustomers": total_customers,
+            "orderTypes": order_types,
+            "categoryDistribution": categories,
+            "totalStaff": total_staff,
+            "onDutyStaff": on_duty_staff,
+            "onLeaveStaff": on_leave_staff,
         }
-<<<<<<< HEAD
-    }
-=======
     }
 
 
@@ -394,4 +404,3 @@ async def get_staff_performance():
 
     results.sort(key=lambda x: x["orders_handled"], reverse=True)
     return results
->>>>>>> 3789df7ba77936489afea51b97006d855458fabd
