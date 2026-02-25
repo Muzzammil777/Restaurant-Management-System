@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { LoadingOrders } from '@/app/components/ui/loading-spinner';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
@@ -364,10 +365,7 @@ export function OrderManagement() {
   
   // Quick Order Panel State
   const [quickOrderOpen, setQuickOrderOpen] = useState(false);
-
-  // Take Order Sheet State
-  const [takeOrderOpen, setTakeOrderOpen] = useState(false);
-  const [takeOrderTarget, setTakeOrderTarget] = useState<Order | null>(null);
+  const [quickOrderInitialTable, setQuickOrderInitialTable] = useState('');
 
   // Innovation #9: Undo Last Action State
   const [lastAction, setLastAction] = useState<{
@@ -481,17 +479,17 @@ export function OrderManagement() {
     
     if (!confirmed) return;
     
+    // Optimistically remove the card immediately
+    setOrders(prev => prev.filter(o => o.id !== orderId));
     try {
-      // Don't modify the ID - use it as is since it's already a MongoDB ObjectId
       await ordersApi.delete(orderId);
       toast.success('Order deleted successfully!');
-      fetchOrders();
     } catch (error: any) {
       console.error('Error deleting order:', error);
+      // Restore by re-fetching on failure
+      fetchOrders();
       if (error.message?.includes('404') || error.message?.includes('not found')) {
-        toast.error('Order not found. It may have been already deleted.');
-        // Refresh orders to show current state
-        fetchOrders();
+        toast.error('Order not found. It may have already been deleted.');
       } else {
         toast.error('Failed to delete order');
       }
@@ -711,7 +709,7 @@ export function OrderManagement() {
   const tableNumbers = Array.from(new Set(orders.map(o => o.tableNumber).filter(Boolean)));
 
   if (loading) {
-    return <div className="flex items-center justify-center h-full">Loading orders...</div>;
+    return <LoadingOrders />;
   }
 
   return (
@@ -1166,13 +1164,13 @@ export function OrderManagement() {
 
                   {/* Context-Aware Action Buttons */}
                   <div className="flex flex-col gap-2 pt-2">
-                    {/* Take Order — for placed orders with no items */}
+                    {/* Take Order — opens Quick Order POS with table pre-filled */}
                     {order.status === 'placed' && (!order.items || order.items.length === 0 || order.items.every(i => !i.name || i.name === 'Unknown Item')) && (
                       <Button
                         size="sm"
                         onClick={() => {
-                          setTakeOrderTarget(order);
-                          setTakeOrderOpen(true);
+                          setQuickOrderInitialTable(order.tableNumber ? String(order.tableNumber) : '');
+                          setQuickOrderOpen(true);
                         }}
                         className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700"
                       >
@@ -1318,20 +1316,13 @@ export function OrderManagement() {
           })}</div>
       )}
 
-      {/* Take Order Sheet */}
-      <TakeOrderSheet
-        open={takeOrderOpen}
-        onOpenChange={setTakeOrderOpen}
-        order={takeOrderTarget}
-        menuItems={menuItems}
-        onOrderUpdated={fetchOrders}
-      />
-
-      {/* Redesigned Quick Order (POS Mode) */}
+      {/* Quick Order POS — also used for Take Order with pre-filled table */}
       <QuickOrderPOS
         open={quickOrderOpen}
-        onOpenChange={setQuickOrderOpen}
+        onOpenChange={(o) => { setQuickOrderOpen(o); if (!o) setQuickOrderInitialTable(''); }}
         onOrderCreated={fetchOrders}
+        initialTableNumber={quickOrderInitialTable}
+        initialOrderType="dine-in"
       />
 
       {selectedOrder && (

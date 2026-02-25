@@ -13,6 +13,16 @@ class StaffRole(str, Enum):
     cashier = "cashier"
 
 
+class KitchenStation(str, Enum):
+    FRY = "FRY"
+    CURRY = "CURRY"
+    RICE = "RICE"
+    PREP = "PREP"
+    GRILL = "GRILL"
+    DESSERT = "DESSERT"
+    HEAD_CHEF = "HEAD_CHEF"
+
+
 class ShiftType(str, Enum):
     morning = "morning"
     afternoon = "afternoon"
@@ -77,6 +87,8 @@ class StaffIn(BaseModel):
     salary: Optional[float] = None
     hireDate: Optional[date] = None
     active: Optional[bool] = True
+    kitchenStation: Optional[KitchenStation] = None  # only for chefs
+    kitchenPin: Optional[str] = None  # 4-digit PIN for KDS terminal login
 
 
 class StaffUpdate(BaseModel):
@@ -88,6 +100,8 @@ class StaffUpdate(BaseModel):
     salary: Optional[float] = None
     active: Optional[bool] = None
     password: Optional[str] = None
+    kitchenStation: Optional[KitchenStation] = None
+    kitchenPin: Optional[str] = None
 
 
 class StaffOut(BaseModel):
@@ -101,6 +115,8 @@ class StaffOut(BaseModel):
     active: bool = True
     hireDate: Optional[date] = None
     createdAt: Optional[datetime] = None
+    kitchenStation: Optional[str] = None
+    kitchenPin: Optional[str] = None
 
 
 # ============ SHIFT & ATTENDANCE ============
@@ -268,6 +284,12 @@ class MenuCustomization(BaseModel):
     price: float
 
 
+class IngredientEntry(BaseModel):
+    name: str
+    quantity: float
+    unit: str  # e.g. grams, ml, pcs, tbsp
+
+
 class MenuOffer(BaseModel):
     discount: float
     label: Optional[str] = None
@@ -289,6 +311,7 @@ class MenuItemIn(BaseModel):
 
     customizations: Optional[List[MenuCustomization]] = []
     offer: Optional[MenuOffer] = None
+    ingredients: Optional[List[IngredientEntry]] = []
 
 
 class MenuItemUpdate(BaseModel):
@@ -306,6 +329,7 @@ class MenuItemUpdate(BaseModel):
     dietType: Optional[DietType] = None
     customizations: Optional[List[MenuCustomization]] = None
     offer: Optional[MenuOffer] = None
+    ingredients: Optional[List[IngredientEntry]] = None
 
 
 class MenuItemOut(BaseModel):
@@ -324,6 +348,7 @@ class MenuItemOut(BaseModel):
     dietType: Optional[str] = None
     customizations: Optional[List[MenuCustomization]] = []
     offer: Optional[MenuOffer] = None
+    ingredients: Optional[List[IngredientEntry]] = []
 
     createdAt: Optional[datetime] = None
     updatedAt: Optional[datetime] = None

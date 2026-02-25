@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request, Query
+from pydantic import BaseModel
 from ..db import get_db
 from ..schemas import (
     StaffIn, StaffUpdate, ShiftAssignment, AttendanceIn, 
@@ -198,6 +199,8 @@ async def create_staff(payload: StaffIn, request: Request):
         'salary': payload.salary,
         'hireDate': payload.hireDate.isoformat() if payload.hireDate else None,
         'active': payload.active if payload.active is not None else True,
+        'kitchenStation': payload.kitchenStation.value if payload.kitchenStation else None,
+        'kitchenPin': payload.kitchenPin if payload.kitchenPin else None,
         'createdAt': datetime.utcnow().isoformat()
     }
     res = await coll.insert_one(doc)
@@ -239,6 +242,10 @@ async def update_staff(id: str, payload: StaffUpdate, request: Request):
         update['active'] = payload.active
     if payload.password is not None:
         update['password_hash'] = hash_password(payload.password)
+    if payload.kitchenStation is not None:
+        update['kitchenStation'] = payload.kitchenStation.value
+    if payload.kitchenPin is not None:
+        update['kitchenPin'] = payload.kitchenPin
     
     if not update:
         raise HTTPException(status_code=400, detail='No update fields provided')
@@ -325,6 +332,48 @@ async def deactivate_staff(id: str, request: Request):
         ip=request.client.host if request.client else None
     )
     return {'success': True, 'message': 'Staff deactivated successfully'}
+
+
+# ============ KDS KITCHEN TERMINAL ============
+@router.get('/chefs', tags=['kitchen'])
+async def list_chefs():
+    """Return active chef staff with their kitchen station assignments (used by KDS terminal)."""
+    db = get_db()
+    coll = db.get_collection('staff')
+    docs = await coll.find(
+        {'role': 'chef', 'active': True},
+        {'password_hash': 0}  # never expose password hashes
+    ).to_list(200)
+    return serialize_doc(docs)
+
+
+class KDSAuthRequest(BaseModel):
+    station: str
+    pin: str
+
+
+@router.post('/kds-auth', tags=['kitchen'])
+async def kds_authenticate(payload: KDSAuthRequest):
+    """Authenticate a kitchen terminal login using station + 4-digit PIN stored on a chef record."""
+    db = get_db()
+    coll = db.get_collection('staff')
+
+    # Find an active chef assigned to this station with matching PIN
+    chef = await coll.find_one({
+        'role': 'chef',
+        'active': True,
+        'kitchenStation': payload.station,
+        'kitchenPin': payload.pin,
+    })
+
+    if not chef:
+        raise HTTPException(status_code=401, detail='Invalid station PIN')
+
+    return {
+        'success': True,
+        'name': chef.get('name', ''),
+        'station': chef.get('kitchenStation', payload.station),
+    }
 
 
 # ============ SHIFT MANAGEMENT ============

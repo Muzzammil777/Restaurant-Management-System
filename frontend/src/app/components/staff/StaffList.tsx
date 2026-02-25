@@ -55,6 +55,8 @@ interface StaffMember {
   salary?: number;
   active: boolean;
   hireDate?: string;
+  kitchenStation?: string;
+  kitchenPin?: string;
 }
 
 interface NewStaffForm {
@@ -66,6 +68,8 @@ interface NewStaffForm {
   department: string;
   salary: string;
   password: string;
+  kitchenStation: string;
+  kitchenPin: string;
 }
 
 interface StaffListProps {
@@ -96,7 +100,9 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
     shift: 'morning',
     department: 'service',
     salary: '',
-    password: ''
+    password: '',
+    kitchenStation: '',
+    kitchenPin: '',
   });
   const [editStaff, setEditStaff] = useState<NewStaffForm>({
     name: '',
@@ -106,7 +112,9 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
     shift: 'morning',
     department: 'service',
     salary: '',
-    password: ''
+    password: '',
+    kitchenStation: '',
+    kitchenPin: '',
   });
 
   useEffect(() => {
@@ -153,7 +161,9 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
         shift: newStaff.shift,
         department: newStaff.department,
         salary: newStaff.salary ? parseFloat(newStaff.salary) : undefined,
-        active: true
+        active: true,
+        ...(newStaff.role === 'chef' && newStaff.kitchenStation ? { kitchenStation: newStaff.kitchenStation } : {}),
+        ...(newStaff.role === 'chef' && newStaff.kitchenPin ? { kitchenPin: newStaff.kitchenPin } : {}),
       });
       
       toast.success('Staff member added successfully!');
@@ -166,7 +176,9 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
         shift: 'morning',
         department: 'service',
         salary: '',
-        password: ''
+        password: '',
+        kitchenStation: '',
+        kitchenPin: '',
       });
       fetchStaff();
     } catch (err) {
@@ -187,7 +199,9 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
       shift: member.shift,
       department: member.department || 'service',
       salary: member.salary?.toString() || '',
-      password: ''
+      password: '',
+      kitchenStation: member.kitchenStation || '',
+      kitchenPin: member.kitchenPin || '',
     });
     setEditDialogOpen(true);
   };
@@ -208,6 +222,8 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
         department: editStaff.department,
         salary: editStaff.salary ? parseFloat(editStaff.salary) : undefined,
         ...(editStaff.password ? { password: editStaff.password } : {}),
+        ...(editStaff.role === 'chef' ? { kitchenStation: editStaff.kitchenStation || null } : { kitchenStation: null }),
+        ...(editStaff.role === 'chef' && editStaff.kitchenPin ? { kitchenPin: editStaff.kitchenPin } : {}),
       });
       
       toast.success('Staff member updated successfully!');
@@ -435,6 +451,42 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
                     />
                   </div>
                 </div>
+                {newStaff.role === 'chef' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-3 mt-1">
+                    <div className="grid gap-2">
+                      <Label htmlFor="kitchenStation">Kitchen Station</Label>
+                      <Select
+                        value={newStaff.kitchenStation}
+                        onValueChange={(value) => setNewStaff({ ...newStaff, kitchenStation: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select station" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="FRY">🔥 Fry Station</SelectItem>
+                          <SelectItem value="CURRY">🍛 Curry Station</SelectItem>
+                          <SelectItem value="RICE">🍚 Rice Station</SelectItem>
+                          <SelectItem value="PREP">🥗 Prep Station</SelectItem>
+                          <SelectItem value="GRILL">🍖 Grill Station</SelectItem>
+                          <SelectItem value="DESSERT">🍰 Dessert Station</SelectItem>
+                          <SelectItem value="HEAD_CHEF">👑 Head Chef</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="kitchenPin">KDS Terminal PIN (4 digits)</Label>
+                      <Input
+                        id="kitchenPin"
+                        type="password"
+                        maxLength={4}
+                        placeholder="e.g. 1234"
+                        value={newStaff.kitchenPin}
+                        onChange={(e) => setNewStaff({ ...newStaff, kitchenPin: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                      />
+                      <p className="text-xs text-muted-foreground">Used to log in to the kitchen display terminal</p>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex justify-end gap-3">
                 <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
@@ -549,9 +601,16 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <Badge variant="outline" className="bg-gray-100 text-gray-700 border-none font-bold text-[10px] py-1 px-3">
-                          {member.role?.toUpperCase()}
-                        </Badge>
+                        <div className="flex flex-col gap-1">
+                          <Badge variant="outline" className="bg-gray-100 text-gray-700 border-none font-bold text-[10px] py-1 px-3">
+                            {member.role?.toUpperCase()}
+                          </Badge>
+                          {member.role === 'chef' && member.kitchenStation && (
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[9px] py-0.5 px-2">
+                              {member.kitchenStation === 'HEAD_CHEF' ? '👑 Head Chef' : member.kitchenStation.replace('_', ' ')}
+                            </Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-gray-700">{getShiftLabel(member.shift)}</td>
                       <td className="px-6 py-4">
@@ -710,6 +769,42 @@ export function StaffList({ globalSearch = '', globalRoleFilter = 'all', globalS
                 onChange={(e) => setEditStaff({ ...editStaff, password: e.target.value })}
               />
             </div>
+            {editStaff.role === 'chef' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-kitchenStation">Kitchen Station</Label>
+                  <Select
+                    value={editStaff.kitchenStation}
+                    onValueChange={(value) => setEditStaff({ ...editStaff, kitchenStation: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select station" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="FRY">🔥 Fry Station</SelectItem>
+                      <SelectItem value="CURRY">🍛 Curry Station</SelectItem>
+                      <SelectItem value="RICE">🍚 Rice Station</SelectItem>
+                      <SelectItem value="PREP">🥗 Prep Station</SelectItem>
+                      <SelectItem value="GRILL">🍖 Grill Station</SelectItem>
+                      <SelectItem value="DESSERT">🎂 Dessert Station</SelectItem>
+                      <SelectItem value="HEAD_CHEF">👑 Head Chef</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-kitchenPin">KDS Terminal PIN (4 digits)</Label>
+                  <Input
+                    id="edit-kitchenPin"
+                    type="password"
+                    maxLength={4}
+                    placeholder="e.g. 1234"
+                    value={editStaff.kitchenPin}
+                    onChange={(e) => setEditStaff({ ...editStaff, kitchenPin: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                  />
+                  <p className="text-xs text-muted-foreground">Used to log in to the kitchen display terminal</p>
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>

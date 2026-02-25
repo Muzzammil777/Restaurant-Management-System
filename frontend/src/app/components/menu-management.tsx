@@ -57,6 +57,7 @@ interface MenuItem {
   offerLabel?: string;
   offerDiscount?: string;
   badges?: string[];
+  ingredients: { name: string; quantity: number; unit: string }[];
 }
 
 interface ComboMeal {
@@ -94,6 +95,13 @@ const normalizeMenuItems = (items: any[]): MenuItem[] =>
     offerLabel: item.offerLabel,
     offerDiscount: item.offerDiscount,
     badges: Array.isArray(item.badges) ? item.badges : [],
+    ingredients: Array.isArray(item.ingredients)
+      ? item.ingredients.map((ing: any) => ({
+          name: ing.name ?? "",
+          quantity: String(ing.quantity ?? ""),
+          unit: ing.unit ?? "grams",
+        }))
+      : [],
   }));
 
 const normalizeComboMeals = (items: any[]): ComboMeal[] =>
@@ -126,6 +134,7 @@ export function MenuManagement() {
   const [editingCombo, setEditingCombo] = useState<ComboMeal | null>(null);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [selectedComboItems, setSelectedComboItems] = useState<string[]>([]);
+  const [ingredientRows, setIngredientRows] = useState<{ name: string; quantity: string; unit: string }[]>([]);
 
   // DATA: Menu Items
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -182,6 +191,9 @@ useEffect(() => {
 
     const dietType = (fd.get("diet") as "veg" | "non-veg") ?? "veg";
     const baseBadges = editingItem?.badges ?? (dietType === "veg" ? ["VEG"] : ["NON-VEG"]);
+    const validIngredients = ingredientRows
+      .filter(r => r.name.trim() !== "")
+      .map(r => ({ name: r.name.trim(), quantity: parseFloat(r.quantity) || 0, unit: r.unit }));
     const payload = {
       name: fd.get("name") as string,
       cuisine: fd.get("cuisine") as CuisineType,
@@ -198,13 +210,14 @@ useEffect(() => {
       image: (fd.get("image") as string) || editingItem?.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800",
       available: editingItem?.available ?? true,
       badges: baseBadges,
+      ingredients: validIngredients,
     };
 
     try {
       if (editingItem) {
         await menuApi.update(editingItem.id, payload);
 
-        const updated: MenuItem = { ...editingItem, ...payload };
+        const updated: MenuItem = { ...editingItem, ...payload, ingredients: editingItem.ingredients };
         setMenuItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
         toast.success("Item Updated Successfully!");
       } else {
@@ -219,6 +232,7 @@ useEffect(() => {
       setDialogOpen(false);
       setEditingItem(null);
       setSelectedAddons([]);
+      setIngredientRows([]);
     } catch (error) {
       console.error("Failed to save menu item:", error);
       toast.error("Failed to save menu item");
@@ -377,7 +391,7 @@ useEffect(() => {
           </div>
           <div className="flex gap-3 flex-wrap">
             <Button 
-              onClick={() => { setEditingItem(null); setSelectedAddons([]); setDialogOpen(true); }}
+              onClick={() => { setEditingItem(null); setSelectedAddons([]); setIngredientRows([]); setDialogOpen(true); }}
               className="h-11 px-6 bg-[#8B5A2B] hover:bg-[#6D421E] text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-200"
               style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}
             >
@@ -677,7 +691,8 @@ useEffect(() => {
                         className="h-8 w-8 text-white hover:bg-white/10"
                         onClick={() => { 
                           setEditingItem(item); 
-                          setSelectedAddons(item.addons); 
+                          setSelectedAddons(item.addons);
+                          setIngredientRows(item.ingredients?.length ? item.ingredients.map(ing => ({ ...ing, quantity: String(ing.quantity) })) : []);
                           setDialogOpen(true); 
                         }}
                       >
@@ -960,12 +975,73 @@ useEffect(() => {
                 </div>
               </div>
             </div>
+
+            {/* Ingredients Section */}
+            <div className="border-t pt-4 mt-2">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold" style={{ fontFamily: 'Inter, sans-serif' }}>Ingredients</h3>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIngredientRows(prev => [...prev, { name: '', quantity: '', unit: 'grams' }])}
+                  className="h-7 px-2 text-xs gap-1"
+                >
+                  <Plus className="h-3 w-3" /> Add Ingredient
+                </Button>
+              </div>
+              {ingredientRows.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-3 bg-gray-50 rounded-lg">
+                  No ingredients added. Click "Add Ingredient" to map ingredients for inventory tracking.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {ingredientRows.map((row, idx) => (
+                    <div key={idx} className="flex gap-2 items-center">
+                      <Input
+                        placeholder="Ingredient name"
+                        value={row.name}
+                        onChange={e => setIngredientRows(prev => prev.map((r, i) => i === idx ? { ...r, name: e.target.value } : r))}
+                        className="flex-1 h-8 text-sm"
+                      />
+                      <Input
+                        placeholder="Qty"
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={row.quantity}
+                        onChange={e => setIngredientRows(prev => prev.map((r, i) => i === idx ? { ...r, quantity: e.target.value } : r))}
+                        className="w-20 h-8 text-sm"
+                      />
+                      <select
+                        value={row.unit}
+                        onChange={e => setIngredientRows(prev => prev.map((r, i) => i === idx ? { ...r, unit: e.target.value } : r))}
+                        className="h-8 text-sm border rounded-md px-2 bg-white"
+                      >
+                        {['grams', 'kg', 'ml', 'liters', 'pcs', 'tbsp', 'tsp', 'cups'].map(u => (
+                          <option key={u} value={u}>{u}</option>
+                        ))}
+                      </select>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => setIngredientRows(prev => prev.filter((_, i) => i !== idx))}
+                        className="h-8 w-8 text-destructive hover:bg-destructive/10 flex-shrink-0"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             
             <div className="flex gap-3 pt-4">
               <Button type="submit" className="flex-1 bg-[#8B5A2B] hover:bg-[#6D421E]">
                 {editingItem ? "Update Item" : "Add Item"}
               </Button>
-              <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); setEditingItem(null); setSelectedAddons([]); }}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); setEditingItem(null); setSelectedAddons([]); setIngredientRows([]); }}>Cancel</Button>
             </div>
           </form>
         </DialogContent>

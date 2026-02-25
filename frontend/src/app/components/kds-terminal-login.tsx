@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
@@ -15,8 +15,11 @@ import {
   Delete,
   LogIn,
   AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://restaurant-management-system-24c2.onrender.com/api';
 
 export type KitchenTerminalStation =
   | 'FRY'
@@ -26,7 +29,7 @@ export type KitchenTerminalStation =
   | 'GRILL'
   | 'DESSERT'
   | 'HEAD_CHEF';
-// Note: In a real application, PINs would be securely stored and verified on the backend
+
 interface StationCard {
   id: KitchenTerminalStation;
   name: string;
@@ -34,6 +37,13 @@ interface StationCard {
   color: string;
   description: string;
   isHeadChef?: boolean;
+}
+
+interface ChefRecord {
+  _id: string;
+  name: string;
+  kitchenStation?: string;
+  shift?: string;
 }
 
 export const TERMINAL_STATIONS: StationCard[] = [
@@ -89,16 +99,6 @@ export const TERMINAL_STATIONS: StationCard[] = [
   },
 ];
 
-const MOCK_PINS: Record<KitchenTerminalStation, string> = {
-  FRY: '1234',
-  CURRY: '2345',
-  RICE: '3456',
-  PREP: '4567',
-  GRILL: '5678',
-  DESSERT: '6789',
-  HEAD_CHEF: '9999',
-};
-
 interface KDSTerminalLoginProps {
   onLogin: (station: KitchenTerminalStation) => void;
 }
@@ -108,6 +108,35 @@ export function KDSTerminalLogin({ onLogin }: KDSTerminalLoginProps) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [chefs, setChefs] = useState<ChefRecord[]>([]);
+  const [loadingChefs, setLoadingChefs] = useState(true);
+
+  useEffect(() => {
+    const fetchChefs = async () => {
+      try {
+        const resp = await fetch(`${API_BASE_URL}/staff/chefs`);
+        if (resp.ok) {
+          const data = await resp.json();
+          setChefs(data);
+        }
+      } catch {
+        // Silently fail — stations will still be visible but without chef names
+      } finally {
+        setLoadingChefs(false);
+      }
+    };
+    fetchChefs();
+  }, []);
+
+  // Show only stations that have an assigned active chef, plus HEAD_CHEF always
+  const visibleStations = TERMINAL_STATIONS.filter((station) => {
+    if (station.isHeadChef) return true;
+    if (loadingChefs) return true; // Show all while loading
+    return chefs.some((c) => c.kitchenStation === station.id);
+  });
+
+  const getChefsForStation = (stationId: string): ChefRecord[] =>
+    chefs.filter((c) => c.kitchenStation === stationId);
 
   const handleNumberClick = (num: string) => {
     if (pin.length < 4) {
@@ -126,7 +155,7 @@ export function KDSTerminalLogin({ onLogin }: KDSTerminalLoginProps) {
     setError('');
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!selectedStation) {
       setError('Please select a station');
       return;
@@ -138,12 +167,18 @@ export function KDSTerminalLogin({ onLogin }: KDSTerminalLoginProps) {
     }
 
     setIsAuthenticating(true);
+    try {
+      const resp = await fetch(`${API_BASE_URL}/staff/kds-auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ station: selectedStation, pin }),
+      });
 
-    setTimeout(() => {
-      if (pin === MOCK_PINS[selectedStation]) {
+      if (resp.ok) {
+        const data = await resp.json();
         const station = TERMINAL_STATIONS.find((s) => s.id === selectedStation);
         toast.success(`Logged in to ${station?.name}`, {
-          description: 'Welcome, Chef! Your terminal is ready.',
+          description: `Welcome, ${data.name}! Your terminal is ready.`,
         });
         onLogin(selectedStation);
       } else {
@@ -153,8 +188,13 @@ export function KDSTerminalLogin({ onLogin }: KDSTerminalLoginProps) {
           description: 'Incorrect PIN entered.',
         });
       }
+    } catch {
+      setError('Connection error. Please try again.');
+      setPin('');
+      toast.error('Connection Error', { description: 'Unable to reach authentication server.' });
+    } finally {
       setIsAuthenticating(false);
-    }, 800);
+    }
   };
 
   return (
@@ -175,51 +215,69 @@ export function KDSTerminalLogin({ onLogin }: KDSTerminalLoginProps) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
               <div className="p-8 bg-gradient-to-br from-[#FDFCFB] to-[#F5F3F0] border-r">
                 <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-2">Select Your Station</h2>
-                  <p className="text-sm text-gray-500">Choose your kitchen terminal</p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-800 mb-2">Select Your Station</h2>
+                      <p className="text-sm text-gray-500">Choose your kitchen terminal</p>
+                    </div>
+                    {loadingChefs && (
+                      <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-3">
-                  {TERMINAL_STATIONS.map((station) => (
-                    <button
-                      key={station.id}
-                      onClick={() => {
-                        setSelectedStation(station.id);
-                        setPin('');
-                        setError('');
-                      }}
-                      className={cn(
-                        'w-full p-4 rounded-xl border-2 transition-all duration-200 text-left',
-                        selectedStation === station.id
-                          ? 'border-[#8B5A2B] bg-white shadow-lg'
-                          : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md'
-                      )}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className="p-3 rounded-lg flex-shrink-0"
-                          style={{
-                            backgroundColor:
-                              selectedStation === station.id ? station.color : `${station.color}20`,
-                            color: selectedStation === station.id ? 'white' : station.color,
-                          }}
-                        >
-                          {station.icon}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-bold text-base text-gray-800">{station.name}</h3>
-                            {station.isHeadChef && (
-                              <Badge className="bg-gradient-to-r from-amber-500 to-yellow-600 text-white text-xs">
-                                SENIOR
-                              </Badge>
+                  {visibleStations.map((station) => {
+                    const assignedChefs = getChefsForStation(station.id);
+                    return (
+                      <button
+                        key={station.id}
+                        onClick={() => {
+                          setSelectedStation(station.id);
+                          setPin('');
+                          setError('');
+                        }}
+                        className={cn(
+                          'w-full p-4 rounded-xl border-2 transition-all duration-200 text-left',
+                          selectedStation === station.id
+                            ? 'border-[#8B5A2B] bg-white shadow-lg'
+                            : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md'
+                        )}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div
+                            className="p-3 rounded-lg flex-shrink-0"
+                            style={{
+                              backgroundColor:
+                                selectedStation === station.id ? station.color : `${station.color}20`,
+                              color: selectedStation === station.id ? 'white' : station.color,
+                            }}
+                          >
+                            {station.icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-bold text-base text-gray-800">{station.name}</h3>
+                              {station.isHeadChef && (
+                                <Badge className="bg-gradient-to-r from-amber-500 to-yellow-600 text-white text-xs">
+                                  SENIOR
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500">{station.description}</p>
+                            {!station.isHeadChef && assignedChefs.length > 0 && (
+                              <p className="text-xs text-emerald-600 font-medium mt-1">
+                                👨‍🍳 {assignedChefs.map((c) => c.name).join(', ')}
+                              </p>
+                            )}
+                            {!station.isHeadChef && !loadingChefs && assignedChefs.length === 0 && (
+                              <p className="text-xs text-gray-400 mt-1 italic">No chef assigned</p>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500">{station.description}</p>
                         </div>
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -306,3 +364,4 @@ export function KDSTerminalLogin({ onLogin }: KDSTerminalLoginProps) {
     </div>
   );
 }
+

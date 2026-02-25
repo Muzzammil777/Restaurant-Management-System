@@ -99,6 +99,8 @@ interface QuickOrderPOSProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onOrderCreated: () => void;
+  initialTableNumber?: string;
+  initialOrderType?: 'dine-in' | 'takeaway';
 }
 
 // ==================== CONSTANTS ====================
@@ -153,7 +155,7 @@ const playSound = (type: 'add' | 'remove' | 'complete' | 'error', soundEnabled: 
 
 // ==================== MAIN COMPONENT ====================
 
-export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrderPOSProps) {
+export function QuickOrderPOS({ open, onOpenChange, onOrderCreated, initialTableNumber, initialOrderType }: QuickOrderPOSProps) {
   const { user } = useAuth();
 
   // ========== STATE MANAGEMENT ==========
@@ -228,6 +230,14 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
   const orderCardRef = useRef<HTMLDivElement>(null);
 
   // ========== EFFECTS ==========
+
+  // Pre-fill table number when opened from Take Order button
+  useEffect(() => {
+    if (open && initialTableNumber) {
+      setOrderType(initialOrderType ?? 'dine-in');
+      setTableNumber(initialTableNumber);
+    }
+  }, [open, initialTableNumber, initialOrderType]);
 
   // Check current role on open — prefer auth user role, fall back to restaurantState
   useEffect(() => {
