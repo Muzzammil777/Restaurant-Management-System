@@ -876,6 +876,9 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated, initialTable
         status: 'placed',
         tags: tags.length > 0 ? tags : undefined,
         notes: notes || undefined,
+        // Always attach the creating user so the waiter's orders page can filter by them
+        waiterId: user?.id || undefined,
+        waiterName: user?.name || undefined,
       };
 
       const response = await fetch(

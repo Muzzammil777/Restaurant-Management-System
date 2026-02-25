@@ -269,7 +269,8 @@ export function KDSTerminalLogin({ onLogin }: KDSTerminalLoginProps) {
                               )}
                             </div>
                             <p className="text-xs text-gray-500">{station.description}</p>
-                            {!station.isHeadChef && assignedChefs.length > 0 && (
+                            {/* Named chefs assigned to this station */}
+                            {assignedChefs.length > 0 && (
                               <p className="text-xs text-emerald-600 font-medium mt-1">
                                 👨‍🍳 {assignedChefs.map((c) => c.name).join(', ')}
                               </p>
@@ -277,22 +278,11 @@ export function KDSTerminalLogin({ onLogin }: KDSTerminalLoginProps) {
                             {!station.isHeadChef && !loadingChefs && assignedChefs.length === 0 && (
                               <p className="text-xs text-gray-400 mt-1 italic">No chef assigned</p>
                             )}
-                            {station.isHeadChef && assignedChefs.length > 0 && (
-                              <p className="text-xs text-emerald-600 font-medium mt-1">
-                                👨‍🍳 {assignedChefs.map((c) => c.name).join(', ')}
+                            {/* Legacy fallback hint — shown only on HEAD_CHEF when unassigned chefs exist */}
+                            {station.isHeadChef && !loadingChefs && hasLegacyChefs && (
+                              <p className="text-[10px] text-amber-500 italic mt-1">
+                                {legacyChefs.length} chef(s) without a station — use PIN: <strong>0000</strong>
                               </p>
-                            )}
-                            {station.isHeadChef && hasLegacyChefs && (
-                              <div className="mt-1 space-y-0.5">
-                                {legacyChefs.map((c) => (
-                                  <p key={c._id} className="text-xs text-amber-600 font-medium">
-                                    👨‍🍳 {c.name}
-                                  </p>
-                                ))}
-                                <p className="text-[10px] text-amber-500 italic">
-                                  No station set — default PIN: <strong>0000</strong>
-                                </p>
-                              </div>
                             )}
                           </div>
                         </div>
