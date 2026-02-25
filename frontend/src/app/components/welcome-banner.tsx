@@ -23,10 +23,10 @@ export function WelcomeBanner() {
   return (
     <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
       <CardHeader>
-        <div className="flex justify-between items-start">
-          <div className="flex items-center gap-2">
-            <Info className="h-5 w-5 text-blue-600" />
-            <CardTitle className="text-blue-900">Welcome to Restaurant Management System</CardTitle>
+        <div className="flex justify-between items-start gap-2">
+          <div className="flex items-start gap-2 min-w-0">
+            <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <CardTitle className="text-blue-900 text-base sm:text-xl leading-snug">Restaurant Management System</CardTitle>
           </div>
           <Button variant="ghost" size="sm" onClick={handleDismiss}>
             <X className="h-4 w-4" />

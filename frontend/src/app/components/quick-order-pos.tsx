@@ -22,6 +22,7 @@ import { API_BASE_URL } from '@/utils/supabase/info';
 import { tablesApi } from '@/utils/api';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/app/components/ui/dialog';
 import { restaurantState } from '@/app/services/restaurant-state';
+import { useAuth } from '@/utils/auth-context';
 import { Switch } from '@/app/components/ui/switch';
 import { Progress } from '@/app/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -185,6 +186,8 @@ const getComboItemCount = (combo: any): number => {
 // ==================== MAIN COMPONENT ====================
 
 export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrderPOSProps) {
+  const { user } = useAuth();
+
   // ========== STATE MANAGEMENT ==========
   
   // Order Info State
@@ -258,13 +261,20 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
   // ========== EFFECTS ==========
 
-  // Check current role on open
+  // Check current role on open — prefer auth user role, fall back to restaurantState
   useEffect(() => {
     if (open) {
-      const role = restaurantState.getRole();
-      setCurrentRole(role);
+      const authRole = user?.role;
+      if (authRole === 'waiter') {
+        setCurrentRole('waiter');
+      } else if (authRole === 'admin' || authRole === 'manager' || authRole === 'cashier') {
+        setCurrentRole('admin');
+      } else {
+        const role = restaurantState.getRole();
+        setCurrentRole(role);
+      }
     }
-  }, [open]);
+  }, [open, user?.role]);
 
   // Fetch menu items and combos from Menu Management
   useEffect(() => {
@@ -564,8 +574,12 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
     try {
       const result = await tablesApi.list();
       const tables: TableData[] = result.data || [];
-      // Filter out occupied, reserved, and cleaning tables - only show available (case-insensitive)
-      const available = tables.filter(t => t.status?.toLowerCase() === 'available');
+      // Show both available tables AND occupied tables (for waiters taking orders on their assigned tables)
+      // Filter to only show available and occupied tables (not reserved or cleaning)
+      const available = tables.filter(t => {
+        const status = t.status?.toLowerCase();
+        return status === 'available' || status === 'occupied';
+      });
       // Sort by location and name
       available.sort((a, b) => {
         if (a.location !== b.location) return a.location.localeCompare(b.location);
@@ -852,11 +866,11 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
   // Create order
   const handleCreateOrder = async () => {
-    // Role check: Only waiters and admins can create orders
-    const currentRole = restaurantState.getRole();
-    if (currentRole !== 'waiter' && currentRole !== 'admin') {
-      toast.error('Only waiters and admins can create and send orders to kitchen', {
-        description: 'Please switch to waiter or admin mode to create orders',
+    // Role check: waiters, admins, managers, and cashiers can create orders
+    const authRole = user?.role ?? restaurantState.getRole();
+    if (!['waiter', 'admin', 'manager', 'cashier'].includes(authRole)) {
+      toast.error('You do not have permission to create orders', {
+        description: 'Only waiters, admins, managers, and cashiers can place orders',
         duration: 4000,
       });
       playSound('error', soundEnabled);
@@ -1091,8 +1105,13 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                                         <span className="flex items-center gap-2">
                                           <span className="font-bold">{table.displayNumber || table.name}</span>
                                           <span className="text-muted-foreground text-xs">
-                                            ({table.capacity} seats)
+                                            ({table.capacity} seats{table.status?.toLowerCase() === 'occupied' ? ', Occupied' : ''})
                                           </span>
+                                          {table.status?.toLowerCase() === 'occupied' && table.waiterName && (
+                                            <span className="text-xs text-emerald-600">
+                                              • {table.waiterName}
+                                            </span>
+                                          )}
                                         </span>
                                       </SelectItem>
                                     ))}
@@ -1342,87 +1361,28 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                                             exit={{ height: 0, opacity: 0 }}
                                             className="overflow-hidden"
                                           >
-                                            <div className="border rounded p-3 space-y-2 text-xs bg-gray-50">
-                                              {/* Show combo description */}
-                                              {combo.description && (
-                                                <div className="text-muted-foreground italic">
-                                                  {combo.description}
-                                                </div>
-                                              )}
-                                              
-                                              {/* Show customizations if available */}
-                                              {combo.customizations && Array.isArray(combo.customizations) && combo.customizations.length > 0 && (
-                                                <div>
-                                                  <div className="font-medium text-xs mb-1">Customizations:</div>
-                                                  {combo.customizations.map((custom: string, idx: number) => (
-                                                    <div key={idx} className="flex items-center gap-1">
-                                                      <span className="text-green-600">•</span>
-                                                      <span>{custom}</span>
+                                            <div className="border rounded p-2 space-y-1 text-xs bg-gray-50">
+                                              {(combo.items || []).length === 0 ? (
+                                                <p className="text-muted-foreground text-center py-1">
+                                                  No items linked. Edit combo in Menu Management to add items.
+                                                </p>
+                                              ) : (
+                                                (combo.items || []).map(itemId => {
+                                                  const item = menuItems.find(mi => mi.id === itemId);
+                                                  return item ? (
+                                                    <div key={itemId} className="flex justify-between">
+                                                      <span>• {item.name}</span>
+                                                      <span className="text-muted-foreground flex items-center">
+                                                        <IndianRupee className="h-3 w-3" />
+                                                        {item.price}
+                                                      </span>
                                                     </div>
-                                                  ))}
-                                                </div>
-                                              )}
-                                              
-                                              {/* Show addons if available */}
-                                              {combo.addons && Array.isArray(combo.addons) && combo.addons.length > 0 && (
-                                                <div>
-                                                  <div className="font-medium text-xs mb-1">Add-ons:</div>
-                                                  {combo.addons.map((addon: string, idx: number) => (
-                                                    <div key={idx} className="flex items-center gap-1">
-                                                      <span className="text-blue-600">•</span>
-                                                      <span>{addon}</span>
+                                                  ) : (
+                                                    <div key={itemId} className="text-muted-foreground">
+                                                      • Item not found (ID: {itemId.slice(0, 8)}...)
                                                     </div>
-                                                  ))}
-                                                </div>
-                                              )}
-                                              
-                                              {/* Show badges if available */}
-                                              {combo.badges && Array.isArray(combo.badges) && combo.badges.length > 0 && (
-                                                <div>
-                                                  <div className="font-medium text-xs mb-1">Special:</div>
-                                                  <div className="flex flex-wrap gap-1">
-                                                    {combo.badges.map((badge: string, idx: number) => (
-                                                      <Badge key={idx} variant="secondary" className="text-xs">
-                                                        {badge}
-                                                      </Badge>
-                                                    ))}
-                                                  </div>
-                                                </div>
-                                              )}
-                                              
-                                              {/* Show other details */}
-                                              <div className="grid grid-cols-2 gap-2 text-xs">
-                                                {combo.calories && (
-                                                  <div className="flex items-center gap-1">
-                                                    <Flame className="h-3 w-3 text-orange-500" />
-                                                    <span>{combo.calories} cal</span>
-                                                  </div>
-                                                )}
-                                                {combo.cuisine && (
-                                                  <div className="flex items-center gap-1">
-                                                    <Package className="h-3 w-3 text-blue-500" />
-                                                    <span>{combo.cuisine}</span>
-                                                  </div>
-                                                )}
-                                                {combo.spiceLevel && (
-                                                  <div className="flex items-center gap-1">
-                                                    <AlertTriangle className="h-3 w-3 text-red-500" />
-                                                    <span>{combo.spiceLevel}</span>
-                                                  </div>
-                                                )}
-                                                {combo.prepTime && (
-                                                  <div className="flex items-center gap-1">
-                                                    <Clock className="h-3 w-3 text-green-500" />
-                                                    <span>{combo.prepTime}</span>
-                                                  </div>
-                                                )}
-                                              </div>
-                                              
-                                              {/* If no details available */}
-                                              {(!combo.customizations?.length && !combo.addons?.length && !combo.badges?.length && !combo.calories && !combo.cuisine) && (
-                                                <div className="text-muted-foreground text-center py-2">
-                                                  Combo details not available
-                                                </div>
+                                                  );
+                                                })
                                               )}
                                             </div>
                                           </motion.div>

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Button } from "@/app/components/ui/button";
+import { LoadingMenu } from '@/app/components/ui/loading-spinner';
 import {
   Card,
   CardContent,
 } from "@/app/components/ui/card";
+import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import {
@@ -69,6 +70,7 @@ interface ComboMeal {
   available: boolean;
   calories: number;
   prepTime: string;
+  items?: string[]; // Array of menu item IDs included in this combo
 }
 
 const SPICE_LEVELS = ["None", "Mild", "Medium", "Hot", "Extra Hot"];
@@ -106,6 +108,7 @@ const normalizeComboMeals = (items: any[]): ComboMeal[] =>
     available: combo.available ?? true,
     calories: Number(combo.calories ?? 0),
     prepTime: combo.prepTime ?? "",
+    items: Array.isArray(combo.items) ? combo.items : [],
   }));
 
 export function MenuManagement() {
@@ -122,10 +125,12 @@ export function MenuManagement() {
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [editingCombo, setEditingCombo] = useState<ComboMeal | null>(null);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+  const [selectedComboItems, setSelectedComboItems] = useState<string[]>([]);
 
   // DATA: Menu Items
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [comboMeals, setComboMeals] = useState<ComboMeal[]>([]);
+  const [loading, setLoading] = useState(true);
 
 useEffect(() => {
   const loadMenuData = async () => {
@@ -144,6 +149,8 @@ useEffect(() => {
     } catch (error) {
       console.error("Failed to load menu data:", error);
       toast.error("Failed to load menu data from server");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -188,7 +195,7 @@ useEffect(() => {
       offerDiscount: (fd.get("offerDiscount") as string) || undefined,
       offerLabel: (fd.get("offerLabel") as string) || undefined,
       addons: selectedAddons,
-      image: editingItem?.image ?? "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800",
+      image: (fd.get("image") as string) || editingItem?.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800",
       available: editingItem?.available ?? true,
       badges: baseBadges,
     };
@@ -241,6 +248,7 @@ useEffect(() => {
       originalPrice: originalPrice,
       image: editingCombo?.image ?? "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800",
       available: editingCombo?.available ?? true,
+      items: selectedComboItems, // Include selected menu item IDs
     };
 
     try {
@@ -261,6 +269,7 @@ useEffect(() => {
 
       setComboDialogOpen(false);
       setEditingCombo(null);
+      setSelectedComboItems([]); // Reset selected items
     } catch (error) {
       console.error("Failed to save combo:", error);
       toast.error("Failed to save combo");
@@ -325,6 +334,8 @@ useEffect(() => {
     return searchMatch && cuisineMatch;
   });
 
+  if (loading) return <LoadingMenu />;
+
   return (
     <div className="min-h-screen bg-[#FDFCFB] flex justify-center" style={{ padding: '32px' }}>
       <style>{`
@@ -352,19 +363,19 @@ useEffect(() => {
         }
       `}</style>
       
-      <div style={{ width: '1200px', minHeight: '720px' }}>
+      <div className="w-full max-w-[1200px] mx-auto min-h-[720px]">
         
         {/* Header Section with Buttons */}
-        <div className="flex justify-between items-start mb-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-6">
           <div>
-            <h1 className="text-4xl font-bold text-[#2D2D2D] tracking-tight" style={{ fontFamily: 'Poppins, sans-serif' }}>
+            <h1 className="text-2xl sm:text-4xl font-bold text-[#2D2D2D] tracking-tight" style={{ fontFamily: 'Poppins, sans-serif' }}>
               Restaurant Menu
             </h1>
             <p className="text-base text-[#6B6B6B] mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
               Manage your menu items and combo deals
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <Button 
               onClick={() => { setEditingItem(null); setSelectedAddons([]); setDialogOpen(true); }}
               className="h-11 px-6 bg-[#8B5A2B] hover:bg-[#6D421E] text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-200"
@@ -373,7 +384,7 @@ useEffect(() => {
               <Plus className="mr-2 h-4 w-4" /> Add Item
             </Button>
             <Button 
-              onClick={() => { setEditingCombo(null); setComboDialogOpen(true); }}
+              onClick={() => { setEditingCombo(null); setSelectedComboItems([]); setComboDialogOpen(true); }}
               className="h-11 px-6 bg-white hover:bg-gray-50 text-[#8B5A2B] border-2 border-[#8B5A2B] rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-200"
               style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}
             >
@@ -550,20 +561,19 @@ useEffect(() => {
 
         {/* Menu Items Grid with Float Effect */}
         {activeTab === "items" && (
-          <div className="flex flex-wrap" style={{ gap: '32px 24px' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
             {filteredItems.map((item) => (
               <div 
                 key={item.id} 
-                className="overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 card-float"
+                className="overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 card-float w-full"
                 style={{ 
-                  width: '260px', 
-                  height: '424px', 
+                  minHeight: '424px',
                   borderRadius: '16px',
                   backgroundColor: '#FFFFFF'
                 }}
               >
                 {/* Image Section */}
-                <div className="relative overflow-hidden" style={{ width: '260px', height: '176px' }}>
+                <div className="relative overflow-hidden w-full" style={{ height: '176px' }}>
                   <img 
                     src={item.image} 
                     alt={item.name} 
@@ -693,20 +703,19 @@ useEffect(() => {
 
         {/* Combo Meals Grid with Float Effect */}
         {activeTab === "combos" && (
-          <div className="flex flex-wrap" style={{ gap: '32px 24px' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
             {filteredCombos.map((combo) => (
               <div 
                 key={combo.id} 
-                className="overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 card-float"
+                className="overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 card-float w-full"
                 style={{ 
-                  width: '260px', 
-                  height: '424px', 
+                  minHeight: '424px',
                   borderRadius: '16px',
                   backgroundColor: '#FFFFFF'
                 }}
               >
                 {/* Image Section */}
-                <div className="relative overflow-hidden" style={{ width: '260px', height: '176px' }}>
+                <div className="relative overflow-hidden" style={{ height: '176px' }}>
                   <img 
                     src={combo.image} 
                     alt={combo.name} 
@@ -784,6 +793,7 @@ useEffect(() => {
                         className="h-8 w-8 text-white hover:bg-white/10"
                         onClick={() => { 
                           setEditingCombo(combo); 
+                          setSelectedComboItems(combo.items || []);
                           setComboDialogOpen(true); 
                         }}
                       >
@@ -821,7 +831,7 @@ useEffect(() => {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUpdateItem} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name" style={{ fontFamily: 'Inter, sans-serif' }}>Item Name</Label>
                 <Input id="name" name="name" defaultValue={editingItem?.name} required />
@@ -842,7 +852,7 @@ useEffect(() => {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="category" style={{ fontFamily: 'Inter, sans-serif' }}>Category</Label>
                 <Select name="category" defaultValue={editingItem?.category}>
@@ -867,7 +877,18 @@ useEffect(() => {
               <Label htmlFor="description" style={{ fontFamily: 'Inter, sans-serif' }}>Description</Label>
               <Input id="description" name="description" defaultValue={editingItem?.description} required />
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="image" style={{ fontFamily: 'Inter, sans-serif' }}>Image URL</Label>
+              <Input 
+                id="image" 
+                name="image" 
+                type="url" 
+                defaultValue={editingItem?.image} 
+                placeholder="https://example.com/image.jpg" 
+              />
+              <p className="text-xs text-gray-500">Enter the URL of the dish image</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="calories" style={{ fontFamily: 'Inter, sans-serif' }}>Calories</Label>
                 <Input id="calories" name="calories" type="number" defaultValue={editingItem?.calories} required />
@@ -894,7 +915,7 @@ useEffect(() => {
             <div className="border-t pt-4 mt-4">
               <h3 className="text-sm font-semibold mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>Customization Options</h3>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Spice Level */}
                 <div className="space-y-2">
                   <Label htmlFor="spiceLevel" style={{ fontFamily: 'Inter, sans-serif' }}>Spice Level</Label>
@@ -919,7 +940,7 @@ useEffect(() => {
               {/* Addons as Checkboxes */}
               <div className="space-y-2 mt-4">
                 <Label style={{ fontFamily: 'Inter, sans-serif' }}>Available Addons (Select Multiple)</Label>
-                <div className="grid grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg">
                   {AVAILABLE_ADDONS.map(addon => (
                     <div key={addon} className="flex items-center space-x-2">
                       <Checkbox 
@@ -985,7 +1006,7 @@ useEffect(() => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="originalPrice" style={{ fontFamily: 'Inter, sans-serif' }}>Original Price (₹)</Label>
                 <Input id="originalPrice" name="originalPrice" type="number" defaultValue={editingCombo?.originalPrice || ''} min="1" required />
@@ -1003,11 +1024,55 @@ useEffect(() => {
               <Label htmlFor="comboPrepTime" style={{ fontFamily: 'Inter, sans-serif' }}>Prep Time</Label>
               <Input id="comboPrepTime" name="prepTime" defaultValue={editingCombo?.prepTime} placeholder="e.g., 25mins" required />
             </div>
+            {/* Menu Items Selection */}
+            <div className="space-y-2">
+              <Label style={{ fontFamily: 'Inter, sans-serif' }}>Included Items ({selectedComboItems.length} selected)</Label>
+              <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2 bg-gray-50">
+                {menuItems.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No menu items available</p>
+                ) : (
+                  menuItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`flex items-center justify-between p-2 rounded cursor-pointer transition-colors ${
+                        selectedComboItems.includes(item.id) 
+                          ? 'bg-[#8B5A2B]/10 border border-[#8B5A2B]' 
+                          : 'bg-white hover:bg-gray-100 border border-transparent'
+                      }`}
+                      onClick={() => {
+                        setSelectedComboItems(prev => 
+                          prev.includes(item.id) 
+                            ? prev.filter(id => id !== item.id)
+                            : [...prev, item.id]
+                        );
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${
+                          selectedComboItems.includes(item.id) 
+                            ? 'bg-[#8B5A2B] border-[#8B5A2B]' 
+                            : 'border-gray-300'
+                        }`}>
+                          {selectedComboItems.includes(item.id) && (
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                        <span className="text-sm font-medium">{item.name}</span>
+                        <Badge variant="outline" className="text-xs">{item.category}</Badge>
+                      </div>
+                      <span className="text-sm text-muted-foreground">₹{item.price}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
             <div className="flex gap-3 pt-4">
               <Button type="submit" className="flex-1 bg-[#8B5A2B] hover:bg-[#6D421E]">
                 {editingCombo ? "Update Combo" : "Add Combo"}
               </Button>
-              <Button type="button" variant="outline" onClick={() => { setComboDialogOpen(false); setEditingCombo(null); }}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => { setComboDialogOpen(false); setEditingCombo(null); setSelectedComboItems([]); }}>Cancel</Button>
             </div>
           </form>
         </DialogContent>

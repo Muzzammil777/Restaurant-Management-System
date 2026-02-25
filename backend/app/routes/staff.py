@@ -24,6 +24,9 @@ def serialize_doc(doc):
         for key, value in doc.items():
             if isinstance(value, ObjectId):
                 result[key] = str(value)
+            elif isinstance(value, datetime):
+                # Always emit UTC datetimes with 'Z' suffix so JS parses them correctly
+                result[key] = value.isoformat() + 'Z'
             elif isinstance(value, dict):
                 result[key] = serialize_doc(value)
             elif isinstance(value, list):
@@ -61,7 +64,13 @@ async def login(payload: LoginIn, request: Request):
     # Verify password
     if not verify_password(payload.password, user.get('password_hash', '')):
         raise HTTPException(status_code=401, detail='Invalid email or password')
-    
+
+    # Record last login timestamp
+    await coll.update_one(
+        {'_id': user['_id']},
+        {'$set': {'last_login': datetime.utcnow()}}
+    )
+
     # Log the login
     await log_audit(
         action='login',
@@ -82,6 +91,7 @@ async def login(payload: LoginIn, request: Request):
         'phone': user.get('phone'),
         'shift': user.get('shift'),
         'department': user.get('department'),
+        'last_login': datetime.utcnow().isoformat() + 'Z',
     }
     
     return {'success': True, 'user': user_data}
@@ -133,6 +143,20 @@ async def get_staff_stats():
         'inactive': inactive_count,
         'total': total
     }
+
+
+@router.get('/online', tags=['staff'])
+async def get_online_staff(minutes: int = 30):
+    """Return staff members who logged in within the last N minutes (default 30)."""
+    from datetime import timedelta
+    db = get_db()
+    coll = db.get_collection('staff')
+    cutoff = datetime.utcnow() - timedelta(minutes=minutes)
+    docs = await coll.find(
+        {'last_login': {'$gte': cutoff}},
+        {'password_hash': 0}
+    ).sort('last_login', -1).to_list(200)
+    return serialize_doc(docs)
 
 
 @router.get('/{id}', tags=['staff'])

@@ -293,3 +293,71 @@ async def toggle_availability(item_id: str, available: Optional[bool] = None):
         raise HTTPException(status_code=404, detail="Menu item not found")
 
     return {"success": True, "available": available}
+
+
+@router.post("/combos/auto-link-items")
+async def auto_link_combo_items():
+    """
+    Auto-links combos to menu items by matching item names found in
+    combo descriptions/names against the menu_items collection.
+    """
+    import re
+
+    db = get_db()
+    combos = await db.combo_meals.find().to_list(500)
+    menu_items = await db.menu_items.find({}, {"_id": 1, "name": 1}).to_list(1000)
+
+    def normalize(text: str) -> str:
+        return re.sub(r'[^a-z0-9 ]', '', text.lower()).strip()
+
+    def tokenize(text: str):
+        return set(normalize(text).split())
+
+    # Build sorted list of menu items by name length (longer names first for better matching)
+    menu_items_sorted = sorted(menu_items, key=lambda x: len(x.get("name", "")), reverse=True)
+
+    results = {"updated": 0, "skipped": 0, "details": []}
+
+    for combo in combos:
+        combo_id = combo["_id"]
+        combo_name = combo.get("name", "")
+        combo_desc = combo.get("description", "")
+        search_text = normalize(combo_name + " " + combo_desc)
+        search_tokens = set(search_text.split())
+
+        matched_ids = []
+
+        for item in menu_items_sorted:
+            item_name = item.get("name", "")
+            item_name_norm = normalize(item_name)
+            item_tokens = tokenize(item_name)
+
+            # Skip very short or generic words
+            if len(item_name_norm) < 4:
+                continue
+
+            # Check if the full item name appears as a substring in the search text
+            if item_name_norm in search_text:
+                matched_ids.append(str(item["_id"]))
+                continue
+
+            # Multi-word items: check if all significant tokens appear in search_text
+            significant_tokens = {t for t in item_tokens if len(t) >= 4}
+            if len(significant_tokens) >= 2 and significant_tokens.issubset(search_tokens):
+                matched_ids.append(str(item["_id"]))
+
+        if matched_ids:
+            await db.combo_meals.update_one(
+                {"_id": combo_id},
+                {"$set": {"items": matched_ids, "updatedAt": datetime.utcnow()}}
+            )
+            results["updated"] += 1
+            results["details"].append({
+                "combo": combo_name,
+                "matched_items": len(matched_ids),
+                "item_ids": matched_ids
+            })
+        else:
+            results["skipped"] += 1
+
+    return results

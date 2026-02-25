@@ -137,16 +137,49 @@ async def create_payment(data: dict):
     result = await db.payments.insert_one(data)
     created = await db.payments.find_one({"_id": result.inserted_id})
     
-    # Update order payment status if linked
+    # Handle payment status
     if data.get("orderId"):
-        await db.orders.update_one(
-            {"_id": ObjectId(data["orderId"])},
-            {"$set": {
-                "paymentStatus": "paid",
-                "paymentMethod": data.get("method"),
-                "paidAt": datetime.utcnow()
-            }}
-        )
+        if data["status"] == "completed":
+            # Update order payment status if successful
+            await db.orders.update_one(
+                {"_id": ObjectId(data["orderId"])},
+                {"$set": {
+                    "paymentStatus": "paid",
+                    "paymentMethod": data.get("method"),
+                    "paidAt": datetime.utcnow()
+                }}
+            )
+        elif data["status"] == "failed":
+            # Reserve order for 15 minutes and notify customer
+            reservation_expires = datetime.utcnow() + timedelta(minutes=15)
+            order = await db.orders.find_one({"_id": ObjectId(data["orderId"])})
+            
+            await db.orders.update_one(
+                {"_id": ObjectId(data["orderId"])},
+                {"$set": {
+                    "paymentStatus": "pending_retry",
+                    "reservedUntil": reservation_expires,
+                    "paymentAttempts": order.get("paymentAttempts", 0) + 1
+                }}
+            )
+            
+            # Create notification for customer
+            order_number = order.get("orderNumber", "N/A")
+            customer_name = order.get("customerName", "Customer")
+            total = order.get("total", 0)
+            
+            await db.notifications.insert_one({
+                "type": "payment-failed",
+                "title": f"Payment Failed - Order {order_number}",
+                "message": f"{customer_name}, your payment of ₹{total:.2f} failed. Order reserved for 15 minutes. Please retry.",
+                "recipient": customer_name,
+                "channel": "system",
+                "status": "unread",
+                "orderId": data["orderId"],
+                "paymentId": str(result.inserted_id),
+                "expiresAt": reservation_expires,
+                "created_at": datetime.utcnow(),
+            })
     
     await log_audit("create", "payment", str(result.inserted_id), {
         "amount": data.get("amount"),
@@ -176,6 +209,54 @@ async def update_payment_status(payment_id: str, status: str):
     await log_audit("status_update", "payment", payment_id, {"status": status})
     
     return {"success": True, "status": status}
+
+
+@router.post("/{payment_id}/retry")
+async def retry_payment(payment_id: str, method: Optional[str] = None):
+    """Retry a failed payment"""
+    db = get_db()
+    
+    payment = await db.payments.find_one({"_id": ObjectId(payment_id)})
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    
+    if payment.get("status") != "failed":
+        raise HTTPException(status_code=400, detail="Can only retry failed payments")
+    
+    order_id = payment.get("orderId")
+    if order_id:
+        order = await db.orders.find_one({"_id": ObjectId(order_id)})
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        
+        # Check if reservation expired
+        reserved_until = order.get("reservedUntil")
+        if reserved_until and datetime.utcnow() > reserved_until:
+            # Cancel the order
+            await db.orders.update_one(
+                {"_id": ObjectId(order_id)},
+                {"$set": {"status": "cancelled", "cancelledAt": datetime.utcnow(), "cancelReason": "Payment timeout"}}
+            )
+            raise HTTPException(status_code=400, detail="Order reservation expired. Order has been cancelled.")
+    
+    # Create new payment attempt
+    count = await db.payments.count_documents({})
+    new_payment = {
+        "transactionId": f"TXN-{datetime.utcnow().strftime('%Y%m%d')}-{count + 1001}",
+        "orderId": order_id,
+        "amount": payment.get("amount"),
+        "method": method or payment.get("method"),
+        "status": "pending",
+        "retryOf": payment_id,
+        "createdAt": datetime.utcnow()
+    }
+    
+    result = await db.payments.insert_one(new_payment)
+    created = await db.payments.find_one({"_id": result.inserted_id})
+    
+    await log_audit("retry", "payment", str(result.inserted_id), {"originalPaymentId": payment_id})
+    
+    return serialize_doc(created)
 
 
 @router.post("/{payment_id}/refund")

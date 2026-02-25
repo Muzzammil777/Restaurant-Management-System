@@ -131,24 +131,29 @@ async def create_order(data: dict):
     try:
         db = get_db()
         
-        # Remove id and _id fields to let MongoDB generate them
-        # This prevents duplicate key errors when frontend sends id: null
+        # Remove any incoming id/_id fields from the client
         data.pop("id", None)
         data.pop("_id", None)
-        
+
+        # Pre-generate ObjectId so _id and id are set atomically in one insert,
+        # eliminating the race window that caused E11000 dup key: { id: null }
+        new_id = ObjectId()
+        data["_id"] = new_id
+        data["id"] = str(new_id)
+
         # Generate order number
         count = await db.orders.count_documents({})
         data["orderNumber"] = f"#ORD-{count + 1001}"
         data["createdAt"] = datetime.utcnow().isoformat() + 'Z'
         data["status"] = data.get("status", "placed")
         data["statusUpdatedAt"] = datetime.utcnow().isoformat() + 'Z'
-        
-        result = await db.orders.insert_one(data)
-        created = await db.orders.find_one({"_id": result.inserted_id})
+
+        await db.orders.insert_one(data)
+        created = await db.orders.find_one({"_id": new_id})
         
         # Try to log audit but don't fail if it doesn't work
         try:
-            await log_audit("create", "order", str(result.inserted_id), {
+            await log_audit("create", "order", str(new_id), {
                 "orderNumber": data["orderNumber"],
                 "total": data.get("total")
             })
@@ -285,15 +290,6 @@ async def delete_order(order_id: str):
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
-    # If order is already cancelled, do hard delete
-    if order.get("status") == "cancelled":
-        result = await db.orders.delete_one({"_id": ObjectId(order_id)})
-        if result.deleted_count == 0:
-            raise HTTPException(status_code=404, detail="Order not found")
-        await log_audit("hard_delete", "order", order_id)
-        return {"success": True, "deleted": True}
-    
-    # For other statuses, do soft delete (mark as cancelled)
     result = await db.orders.update_one(
         {"_id": ObjectId(order_id)},
         {"$set": {"status": "cancelled", "cancelledAt": datetime.utcnow().isoformat() + 'Z'}}
@@ -303,6 +299,22 @@ async def delete_order(order_id: str):
         raise HTTPException(status_code=404, detail="Order not found")
     
     await log_audit("soft_delete", "order", order_id)
+    # Create notification for cancelled order
+    order_number = order.get("orderNumber", "N/A")
+    table_number = order.get("tableNumber", "N/A")
+    total = order.get("total", 0)
+    
+    await db.notifications.insert_one({
+        "type": "order-cancelled",
+        "title": f"Order {order_number} Cancelled",
+        "message": f"Table {table_number} - Order cancelled (₹{total:.2f})",
+        "recipient": "Admin",
+        "channel": "system",
+        "status": "unread",
+        "created_at": datetime.utcnow(),
+    })
+    
+    await log_audit("cancel", "order", order_id)
     
     return {"success": True, "deleted": False}
 

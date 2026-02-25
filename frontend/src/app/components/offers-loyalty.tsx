@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { offersApi } from "@/utils/api";
+import { LoadingOffers } from '@/app/components/ui/loading-spinner';
 import {
   Card,
   CardContent,
@@ -102,7 +103,7 @@ interface Coupon {
 interface MembershipPlan {
   id: string;
   name: string;
-  tier: "silver" | "gold" | "platinum";
+  tier: MembershipTier;
   icon: React.ReactNode;
   color: string;
   bgColor: string;
@@ -110,13 +111,60 @@ interface MembershipPlan {
   monthlyPrice: number;
   billingCycle: string;
   status: "active" | "inactive";
-  benefits: {
-    loyaltyBonus: number; // percentage
-    exclusiveCoupons: boolean;
-    freeDelivery: boolean;
-    prioritySupport: boolean;
-  };
+  benefits: PlanBenefits;
 }
+
+type MembershipTier = "silver" | "gold" | "platinum";
+
+interface PlanBenefits {
+  loyaltyBonus: number;
+  exclusiveCoupons: boolean;
+  freeDelivery: boolean;
+  prioritySupport: boolean;
+}
+
+const MEMBERSHIP_TIER_ORDER: MembershipTier[] = ["silver", "gold", "platinum"];
+
+const MEMBERSHIP_TIER_DISPLAY: Record<MembershipTier, string> = {
+  silver: "Silver",
+  gold: "Gold",
+  platinum: "Platinum",
+};
+
+const MEMBERSHIP_TIER_BENEFITS: Record<MembershipTier, PlanBenefits> = {
+  silver: {
+    loyaltyBonus: 20,
+    exclusiveCoupons: true,
+    freeDelivery: false,
+    prioritySupport: false,
+  },
+  gold: {
+    loyaltyBonus: 50,
+    exclusiveCoupons: true,
+    freeDelivery: true,
+    prioritySupport: false,
+  },
+  platinum: {
+    loyaltyBonus: 80,
+    exclusiveCoupons: true,
+    freeDelivery: true,
+    prioritySupport: true,
+  },
+};
+
+const normalizeTier = (value: unknown): MembershipTier => {
+  const tier = String(value || "").trim().toLowerCase();
+  if (tier === "gold" || tier === "platinum") {
+    return tier;
+  }
+  return "silver";
+};
+
+const getTierDisplayName = (tier: MembershipTier): string => MEMBERSHIP_TIER_DISPLAY[tier];
+
+const getTierBenefits = (tier: MembershipTier): PlanBenefits => ({
+  ...MEMBERSHIP_TIER_BENEFITS[tier],
+});
 
 interface LoyaltyConfig {
   pointsPerHundred: number;
@@ -164,13 +212,13 @@ export function OffersLoyalty() {
 
   // Membership Plan Form Data
   const [planFormData, setPlanFormData] = useState({
-    name: "",
-    tier: "silver" as "silver" | "gold" | "platinum",
+    name: getTierDisplayName("silver"),
+    tier: "silver" as MembershipTier,
     monthlyPrice: "",
-    loyaltyBonus: "",
-    exclusiveCoupons: false,
-    freeDelivery: false,
-    prioritySupport: false,
+    loyaltyBonus: MEMBERSHIP_TIER_BENEFITS.silver.loyaltyBonus.toString(),
+    exclusiveCoupons: MEMBERSHIP_TIER_BENEFITS.silver.exclusiveCoupons,
+    freeDelivery: MEMBERSHIP_TIER_BENEFITS.silver.freeDelivery,
+    prioritySupport: MEMBERSHIP_TIER_BENEFITS.silver.prioritySupport,
   });
 
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -236,20 +284,40 @@ export function OffersLoyalty() {
   const fetchMemberships = async () => {
     try {
       const data = await offersApi.listMemberships();
-      const mapped = data.map((m: any) => ({
-        id: m._id || m.id,
-        name: m.name,
-        tier: m.tier,
-        icon: m.tier === "platinum" ? <Trophy className="h-6 w-6" /> : m.tier === "gold" ? <Crown className="h-6 w-6" /> : <Star className="h-6 w-6" />,
-        color: m.tier === "platinum" ? "text-purple-600" : m.tier === "gold" ? "text-yellow-600" : "text-gray-600",
-        bgColor: m.tier === "platinum" ? "bg-purple-50" : m.tier === "gold" ? "bg-yellow-50" : "bg-gray-50",
-        borderColor: m.tier === "platinum" ? "border-purple-300" : m.tier === "gold" ? "border-yellow-300" : "border-gray-300",
-        monthlyPrice: m.monthlyPrice,
-        billingCycle: "/monthly",
-        status: m.status || "active",
-        benefits: m.benefits || { loyaltyBonus: 0, exclusiveCoupons: false, freeDelivery: false, prioritySupport: false },
-      }));
-      setMembershipPlans(mapped);
+      const mapped: MembershipPlan[] = data.map((m: any) => {
+        const tier = normalizeTier(m.tier);
+        return {
+          id: m._id || m.id,
+          name: getTierDisplayName(tier),
+          tier,
+          icon: tier === "platinum" ? <Trophy className="h-6 w-6" /> : tier === "gold" ? <Crown className="h-6 w-6" /> : <Star className="h-6 w-6" />,
+          color: tier === "platinum" ? "text-purple-600" : tier === "gold" ? "text-yellow-600" : "text-gray-600",
+          bgColor: tier === "platinum" ? "bg-purple-50" : tier === "gold" ? "bg-yellow-50" : "bg-gray-50",
+          borderColor: tier === "platinum" ? "border-purple-300" : tier === "gold" ? "border-yellow-300" : "border-gray-300",
+          monthlyPrice: Number(m.monthlyPrice) || 0,
+          billingCycle: "/monthly",
+          status: m.status === "inactive" ? "inactive" : "active",
+          benefits: getTierBenefits(tier),
+        };
+      });
+
+      const dedupedByTier = new Map<MembershipTier, MembershipPlan>();
+      mapped.forEach((plan) => {
+        const current = dedupedByTier.get(plan.tier);
+        if (!current) {
+          dedupedByTier.set(plan.tier, plan);
+          return;
+        }
+        if (plan.status === "active" && current.status !== "active") {
+          dedupedByTier.set(plan.tier, plan);
+        }
+      });
+
+      const ordered = MEMBERSHIP_TIER_ORDER
+        .map((tier) => dedupedByTier.get(tier))
+        .filter((plan): plan is MembershipPlan => Boolean(plan));
+
+      setMembershipPlans(ordered);
     } catch (err) {
       console.error("Failed to fetch memberships:", err);
     }
@@ -378,14 +446,15 @@ export function OffersLoyalty() {
   };
 
   const resetPlanForm = () => {
+    const defaultBenefits = getTierBenefits("silver");
     setPlanFormData({
-      name: "",
+      name: getTierDisplayName("silver"),
       tier: "silver",
       monthlyPrice: "",
-      loyaltyBonus: "",
-      exclusiveCoupons: false,
-      freeDelivery: false,
-      prioritySupport: false,
+      loyaltyBonus: defaultBenefits.loyaltyBonus.toString(),
+      exclusiveCoupons: defaultBenefits.exclusiveCoupons,
+      freeDelivery: defaultBenefits.freeDelivery,
+      prioritySupport: defaultBenefits.prioritySupport,
     });
     setEditingPlan(null);
   };
@@ -494,15 +563,16 @@ export function OffersLoyalty() {
 
   // Membership Plan Functions
   const handleEditPlan = (plan: MembershipPlan) => {
+    const tierBenefits = getTierBenefits(plan.tier);
     setEditingPlan(plan);
     setPlanFormData({
-      name: plan.name,
+      name: getTierDisplayName(plan.tier),
       tier: plan.tier,
       monthlyPrice: plan.monthlyPrice.toString(),
-      loyaltyBonus: plan.benefits.loyaltyBonus.toString(),
-      exclusiveCoupons: plan.benefits.exclusiveCoupons,
-      freeDelivery: plan.benefits.freeDelivery,
-      prioritySupport: plan.benefits.prioritySupport,
+      loyaltyBonus: tierBenefits.loyaltyBonus.toString(),
+      exclusiveCoupons: tierBenefits.exclusiveCoupons,
+      freeDelivery: tierBenefits.freeDelivery,
+      prioritySupport: tierBenefits.prioritySupport,
     });
     setPlanDialogOpen(true);
   };
@@ -511,19 +581,15 @@ export function OffersLoyalty() {
     if (!editingPlan) return;
 
     try {
+      const tierBenefits = getTierBenefits(planFormData.tier);
       const payload = {
-        name: planFormData.name,
+        name: getTierDisplayName(planFormData.tier),
         tier: planFormData.tier,
         monthlyPrice: Number(planFormData.monthlyPrice),
-        benefits: {
-          loyaltyBonus: Number(planFormData.loyaltyBonus),
-          exclusiveCoupons: planFormData.exclusiveCoupons,
-          freeDelivery: planFormData.freeDelivery,
-          prioritySupport: planFormData.prioritySupport,
-        },
+        benefits: tierBenefits,
       };
       await offersApi.updateMembership(editingPlan.id, payload);
-      toast.success(`${planFormData.name} updated successfully!`);
+      toast.success(`${payload.name} updated successfully!`);
       setPlanDialogOpen(false);
       resetPlanForm();
       await fetchMemberships();
@@ -539,19 +605,15 @@ export function OffersLoyalty() {
     }
 
     try {
+      const tierBenefits = getTierBenefits(planFormData.tier);
       const payload = {
-        name: planFormData.name,
+        name: getTierDisplayName(planFormData.tier),
         tier: planFormData.tier,
         monthlyPrice: Number(planFormData.monthlyPrice),
-        benefits: {
-          loyaltyBonus: Number(planFormData.loyaltyBonus) || 0,
-          exclusiveCoupons: planFormData.exclusiveCoupons,
-          freeDelivery: planFormData.freeDelivery,
-          prioritySupport: planFormData.prioritySupport,
-        },
+        benefits: tierBenefits,
       };
       await offersApi.createMembership(payload);
-      toast.success(`${planFormData.name} created successfully!`);
+      toast.success(`${payload.name} created successfully!`);
       setPlanDialogOpen(false);
       resetPlanForm();
       await fetchMemberships();
@@ -650,12 +712,14 @@ export function OffersLoyalty() {
     (plan) => plan.status === "active",
   ).length;
 
+  if (loading) return <LoadingOffers />;
+
   return (
-    <div className="bg-offers-module min-h-screen p-6 space-y-6">
+    <div className="bg-offers-module min-h-screen p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-full overflow-x-hidden">
       {/* Header */}
-      <div className="module-container flex items-center justify-between">
+      <div className="module-container flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-white drop-shadow-lg">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white drop-shadow-lg">
             Offers & Loyalty
           </h1>
           <p className="text-gray-200 mt-1">
@@ -1421,14 +1485,9 @@ export function OffersLoyalty() {
                   <div className="space-y-2">
                     <Label>Plan Name *</Label>
                     <Input
-                      placeholder="e.g., Gold Plan"
+                      placeholder="Auto-generated from tier"
                       value={planFormData.name}
-                      onChange={(e) =>
-                        setPlanFormData({
-                          ...planFormData,
-                          name: e.target.value,
-                        })
-                      }
+                      readOnly
                       className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                     />
                   </div>
@@ -1437,12 +1496,18 @@ export function OffersLoyalty() {
                     <Label>Plan Tier *</Label>
                     <Select
                       value={planFormData.tier}
-                      onValueChange={(value: "silver" | "gold" | "platinum") =>
+                      onValueChange={(value: MembershipTier) => {
+                        const tierBenefits = getTierBenefits(value);
                         setPlanFormData({
                           ...planFormData,
                           tier: value,
-                        })
-                      }
+                          name: getTierDisplayName(value),
+                          loyaltyBonus: tierBenefits.loyaltyBonus.toString(),
+                          exclusiveCoupons: tierBenefits.exclusiveCoupons,
+                          freeDelivery: tierBenefits.freeDelivery,
+                          prioritySupport: tierBenefits.prioritySupport,
+                        });
+                      }}
                       disabled={!!editingPlan}
                     >
                       <SelectTrigger className="bg-input-background text-foreground border-input dark:bg-input-background">
@@ -1495,12 +1560,7 @@ export function OffersLoyalty() {
                       type="number"
                       placeholder="e.g., 25"
                       value={planFormData.loyaltyBonus}
-                      onChange={(e) =>
-                        setPlanFormData({
-                          ...planFormData,
-                          loyaltyBonus: e.target.value,
-                        })
-                      }
+                      readOnly
                       className="bg-input-background text-foreground placeholder:text-muted-foreground border-input dark:bg-input-background"
                     />
                   </div>
@@ -1520,12 +1580,7 @@ export function OffersLoyalty() {
                     </div>
                     <Switch
                       checked={planFormData.exclusiveCoupons}
-                      onCheckedChange={(checked) =>
-                        setPlanFormData({
-                          ...planFormData,
-                          exclusiveCoupons: checked,
-                        })
-                      }
+                      disabled
                     />
                   </div>
 
@@ -1538,12 +1593,7 @@ export function OffersLoyalty() {
                     </div>
                     <Switch
                       checked={planFormData.freeDelivery}
-                      onCheckedChange={(checked) =>
-                        setPlanFormData({
-                          ...planFormData,
-                          freeDelivery: checked,
-                        })
-                      }
+                      disabled
                     />
                   </div>
 
@@ -1556,12 +1606,7 @@ export function OffersLoyalty() {
                     </div>
                     <Switch
                       checked={planFormData.prioritySupport}
-                      onCheckedChange={(checked) =>
-                        setPlanFormData({
-                          ...planFormData,
-                          prioritySupport: checked,
-                        })
-                      }
+                      disabled
                     />
                   </div>
                 </div>

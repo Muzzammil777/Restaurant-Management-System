@@ -12,12 +12,13 @@ import { LoadingTables } from '@/app/components/ui/loading-spinner';
 import {
   Users, Clock, Utensils, Sparkles, CheckCircle, UserPlus,
   AlertCircle, ChefHat, Timer, MapPin, Calendar, X, Coffee, DollarSign,
-  Plus, ChevronsRight, Minus
+  Plus, ChevronsRight, Minus, RotateCcw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { tablesApi } from '@/utils/api';
 import { staffApi } from '@/utils/api';
 import { ordersApi } from '@/utils/api';
+import { workflowApi } from '@/utils/api';
 import { useAuth } from '@/utils/auth-context';
 
 // ============================================================================
@@ -97,9 +98,16 @@ interface TableCardProps {
   onCheckout: (tableId: string) => void;
   onRequestOrder: (tableId: string) => void;
   onSeatGuests: (tableId: string, guestCount: number) => void;
+  onUpdateStatus?: (tableId: string, status: 'Cleaning' | 'Available') => void;
+  currentUser?: any;
 }
 
-function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout, onRequestOrder, onSeatGuests }: TableCardProps) {
+function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout, onRequestOrder, onSeatGuests, onUpdateStatus, currentUser }: TableCardProps) {
+  const isWaiter = currentUser?.role === 'waiter';
+  const isAdminOrManager = currentUser?.role === 'admin' || currentUser?.role === 'manager';
+  const isMyTable = isWaiter && table.waiterId === currentUser?.id;
+  // Waiter can interact with their own table or unassigned occupied tables
+  const canInteract = isAdminOrManager || !isWaiter || isMyTable || !table.waiterId;
   const [cleaningTimeLeft, setCleaningTimeLeft] = useState<number>(0);
   const [isPulsing, setIsPulsing] = useState(false);
   const [seatCount, setSeatCount] = useState(2);
@@ -228,23 +236,39 @@ function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout, onRequ
 
           {/* Waiter Assignment */}
           {table.status === 'Occupied' && !table.waiterName && (
-            <Select
-              onValueChange={(value) => {
-                const [waiterId, waiterName] = value.split('|');
-                onAssignWaiter(table.id, waiterId, waiterName);
-              }}
-            >
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue placeholder="Assign Waiter" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableWaiters.map((waiter) => (
-                  <SelectItem key={waiter.id} value={`${waiter.id}|${waiter.name}`}>
-                    {waiter.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            isWaiter ? (
+              // Waiter: one-click claim
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full border-green-500 text-green-700 hover:bg-green-50"
+                onClick={(e) => { e.stopPropagation(); onAssignWaiter(table.id, currentUser.id, currentUser.name); }}
+              >
+                <UserPlus className="w-3 h-3 mr-1" />
+                Claim This Table
+              </Button>
+            ) : (
+              // Admin / Manager: dropdown
+              <div onClick={(e) => e.stopPropagation()}>
+                <Select
+                  onValueChange={(value) => {
+                    const [waiterId, waiterName] = value.split('|');
+                    onAssignWaiter(table.id, waiterId, waiterName);
+                  }}
+                >
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="Assign Waiter" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableWaiters.map((waiter) => (
+                      <SelectItem key={waiter.id} value={`${waiter.id}|${waiter.name}`}>
+                        {waiter.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )
           )}
 
           {table.waiterName && (
@@ -298,8 +322,8 @@ function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout, onRequ
             </div>
           )}
 
-          {/* Request Order Button */}
-          {(table.status === 'Occupied' || table.status === 'Eating') && !table.currentOrderId && (
+          {/* Request Order Button — shown only to admin/manager or the assigned waiter */}
+          {(table.status === 'Occupied' || table.status === 'Eating') && !table.currentOrderId && canInteract && (
             <Button
               size="sm"
               className="w-full bg-stone-800 hover:bg-stone-900 text-white"
@@ -310,8 +334,8 @@ function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout, onRequ
             </Button>
           )}
 
-          {/* Checkout Button */}
-          {table.status === 'Eating' && table.currentOrderId && (
+          {/* Checkout Button — shown only to admin/manager or the assigned waiter */}
+          {table.status === 'Eating' && table.currentOrderId && canInteract && (
             <Button
               size="sm"
               className="w-full bg-[#8B5A2B] hover:bg-[#6B4520] text-white"
@@ -323,6 +347,29 @@ function TableCard({ table, onClick, waiters, onAssignWaiter, onCheckout, onRequ
               <DollarSign className="w-4 h-4 mr-1" />
               Checkout
             </Button>
+          )}
+
+          {/* Waiter: Mark table as Under Cleaning or Available */}
+          {isMyTable && (table.status === 'Eating' || table.status === 'Occupied') && (
+            <div className="space-y-1.5" onClick={(e) => e.stopPropagation()}>
+              <Button
+                size="sm"
+                className="w-full bg-gray-600 hover:bg-gray-700 text-white"
+                onClick={(e) => { e.stopPropagation(); onUpdateStatus?.(table.id, 'Cleaning'); }}
+              >
+                <Sparkles className="w-3 h-3 mr-1" />
+                Under Cleaning
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full border-green-500 text-green-700 hover:bg-green-50"
+                onClick={(e) => { e.stopPropagation(); onUpdateStatus?.(table.id, 'Available'); }}
+              >
+                <CheckCircle className="w-3 h-3 mr-1" />
+                Mark Available
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -406,11 +453,12 @@ interface WalkInModalProps {
   open: boolean;
   onClose: () => void;
   tables: any[];
-  onSelectTable: (tableId: string, guestCount: number) => void;
+  onSelectTable: (tableId: string, guestCount: number, customerName: string) => void;
 }
 
 function WalkInModal({ open, onClose, tables, onSelectTable }: WalkInModalProps) {
   const [guestCount, setGuestCount] = useState(2);
+  const [customerName, setCustomerName] = useState('');
   const [location, setLocation] = useState<Location | 'All'>('All');
   const [segment, setSegment] = useState<Segment | 'All'>('All');
   const [timeSlot, setTimeSlot] = useState(TIME_SLOTS[0]);
@@ -451,6 +499,17 @@ function WalkInModal({ open, onClose, tables, onSelectTable }: WalkInModalProps)
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
+          </div>
+
+          {/* Customer Name */}
+          <div className="space-y-2">
+            <Label>Customer Name</Label>
+            <Input
+              placeholder="Enter customer/guest name"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              className="text-base"
+            />
           </div>
 
           {/* Location Filter */}
@@ -503,13 +562,21 @@ function WalkInModal({ open, onClose, tables, onSelectTable }: WalkInModalProps)
                 <p>No tables available matching your criteria</p>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-3 max-h-[300px] overflow-y-auto p-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto p-2">
                 {eligibleTables.map(table => (
                   <Button
                     key={table.id}
                     variant="outline"
                     className="h-auto py-4 flex flex-col items-center gap-2 hover:bg-emerald-50 hover:border-emerald-500"
-                    onClick={() => { onSelectTable(table.id, guestCount); onClose(); }}
+                    onClick={() => { 
+                      if (!customerName.trim()) {
+                        toast.error('Please enter customer name');
+                        return;
+                      }
+                      onSelectTable(table.id, guestCount, customerName);
+                      onClose();
+                      setCustomerName('');
+                    }}
                   >
                     <TableIllustration capacity={table.capacity} />
                     <div className="font-bold text-gray-900">{table.displayNumber}</div>
@@ -546,6 +613,7 @@ export function TableManagementComprehensive() {
   const [newTableLocation, setNewTableLocation] = useState<Location>('Main Hall');
   const [newTableSegment, setNewTableSegment] = useState('Front');
   const [creatingTable, setCreatingTable] = useState(false);
+  const [statusDialogTable, setStatusDialogTable] = useState<any>(null);
 
   useEffect(() => {
     fetchData();
@@ -609,6 +677,14 @@ export function TableManagementComprehensive() {
   const handleAssignWaiter = async (tableId: string, waiterId: string, waiterName: string) => {
     try {
       await tablesApi.assignWaiter(tableId, waiterId, waiterName);
+      
+      // Call workflow endpoint to register waiter assignment
+      try {
+        await workflowApi.waiterAssigned(tableId, waiterId, waiterName);
+      } catch (e) {
+        console.warn('Could not notify workflow of waiter assignment:', e);
+      }
+      
       // Also update existing order for this table with the waiter info
       const table = tables.find(t => t.id === tableId);
       if (table?.currentOrderId) {
@@ -646,13 +722,15 @@ export function TableManagementComprehensive() {
     setWalkInModalOpen(true);
   };
 
-  const handleSelectTableForWalkIn = async (tableId: string, guestCount: number) => {
+  const handleSelectTableForWalkIn = async (tableId: string, guestCount: number, customerName: string) => {
     try {
-      await tablesApi.updateStatus(tableId, 'occupied', guestCount);
-      toast.success('Table marked as Occupied');
+      // Call workflow API to block table for 15 minutes
+      await workflowApi.walkInBooking(tableId, guestCount, customerName);
+      toast.success(`${customerName}'s table blocked for 15 minutes`);
       fetchData();
     } catch (error) {
-      toast.error('Failed to assign table');
+      console.error('Walk-in booking failed:', error);
+      toast.error('Failed to book walk-in table');
     }
   };
 
@@ -669,10 +747,75 @@ export function TableManagementComprehensive() {
   const handleSeatGuests = async (tableId: string, guestCount: number) => {
     try {
       await tablesApi.updateStatus(tableId, 'occupied', guestCount);
+
+      // If a waiter is logged in, auto-assign them to this table
+      if (user?.role === 'waiter') {
+        try {
+          await tablesApi.assignWaiter(tableId, user.id, user.name);
+        } catch (e) {
+          console.warn('Could not auto-assign waiter on seat:', e);
+        }
+      }
+      
+      // Call workflow endpoint to notify guest arrival
+      try {
+        await workflowApi.guestArrived(tableId);
+      } catch (e) {
+        console.warn('Could not notify workflow of guest arrival:', e);
+      }
+      
       toast.success(`Table seated with ${guestCount} guest${guestCount !== 1 ? 's' : ''}`);
       fetchData();
     } catch (error) {
       toast.error('Failed to seat guests');
+    }
+  };
+
+  const handleUpdateTableStatus = async (tableId: string, status: 'Cleaning' | 'Available') => {
+    await handleTableStatusChange(tableId, status);
+  };
+
+  const handleResetAllTables = async () => {
+    if (!confirm('Reset ALL tables to Available? This will clear all waiter assignments, guest counts, and active orders.')) return;
+    try {
+      const result = await tablesApi.resetAll();
+      toast.success(`Reset ${result.modified} tables to Available`);
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to reset tables');
+    }
+  };
+
+  const handleTableStatusChange = async (tableId: string, newStatus: TableStatus) => {
+    try {
+      const updateData: any = { status: newStatus.toLowerCase() };
+      if (newStatus === 'Cleaning') {
+        updateData.cleaningEndTime = Date.now() + 10 * 60 * 1000; // 10-minute timer
+      } else if (newStatus === 'Available') {
+        // If table has an active order, queue it for billing before freeing the table
+        const table = tables.find(t => t.id === tableId);
+        if (table?.currentOrderId) {
+          try {
+            await ordersApi.updateStatus(table.currentOrderId, 'bill_requested');
+            toast.info(`Bill queued for Table ${table.displayNumber} — check the Billing page.`, { duration: 5000 });
+          } catch (e) {
+            console.warn('Could not set order to bill_requested:', e);
+          }
+        }
+        // Clear assignment and guest info when freeing the table
+        updateData.cleaningEndTime = null;
+        updateData.waiterId = null;
+        updateData.waiterName = null;
+        updateData.guestCount = 0;
+        updateData.currentOrderId = null;
+        updateData.kitchenStatus = null;
+      }
+      await tablesApi.update(tableId, updateData);
+      toast.success(`Table marked as ${newStatus}`);
+      setStatusDialogTable(null);
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to update table status');
     }
   };
 
@@ -701,7 +844,7 @@ export function TableManagementComprehensive() {
     }
 
     try {
-      const order = await ordersApi.create({
+      const orderData = {
         tableId,
         tableNumber: table.displayNumber,
         waiterId,
@@ -711,12 +854,33 @@ export function TableManagementComprehensive() {
         items: [],
         total: 0,
         notes: '',
-      });
-      await tablesApi.update(tableId, { currentOrderId: order._id || order.id, status: 'occupied' });
+      };
+      
+      const orderResponse = await ordersApi.create(orderData);
+      
+      // Ensure response has proper ID
+      const orderId = orderResponse?._id || orderResponse?.id;
+      if (!orderId) {
+        console.error('Order created but no ID returned:', orderResponse);
+        throw new Error('Order creation failed: No ID returned from server');
+      }
+      
+      await tablesApi.update(tableId, { currentOrderId: orderId, status: 'occupied' });
+      
+      // Call workflow endpoint to register order creation
+      try {
+        const orderNumber = `#ORD-${Date.now().toString().slice(-4)}`;
+        await workflowApi.orderCreated(tableId, orderId, orderNumber);
+      } catch (e) {
+        console.warn('Could not notify workflow of order creation:', e);
+      }
+      
       toast.success(`Order created for table ${table.displayNumber}`);
       fetchData();
     } catch (error) {
-      toast.error('Failed to create order request');
+      console.error('Failed to create order request:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to create order: ${errorMsg}`);
     }
   };
 
@@ -758,9 +922,11 @@ export function TableManagementComprehensive() {
     }
   };
 
-  const filteredTables = selectedLocation === 'All'
+  const isWaiterUser = user?.role === 'waiter';
+  const filteredTables = (selectedLocation === 'All'
     ? tables
-    : tables.filter(t => t.location === selectedLocation);
+    : tables.filter(t => t.location === selectedLocation)
+  ).filter(t => !isWaiterUser || t.waiterId === user?.id);
 
   const reservationTables = tables.filter(
     t => t.reservationStatus && !['Cancelled', 'Expired'].includes(t.reservationStatus)
@@ -780,33 +946,47 @@ export function TableManagementComprehensive() {
   }
 
   return (
-    <div className="space-y-6" style={{ backgroundColor: '#FDFCFB' }}>
+    <div className="space-y-4 sm:space-y-6" style={{ backgroundColor: '#FDFCFB' }}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Table Management</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Table Management</h1>
           <p className="text-gray-600 mt-1">Monitor and manage restaurant floor</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
+          {/* Only admin/manager can add tables */}
+          {(user?.role === 'admin' || user?.role === 'manager') && (
+            <>
+              <Button
+                variant="outline"
+                className="border-red-300 text-red-700 hover:bg-red-50 text-xs sm:text-sm"
+                onClick={handleResetAllTables}
+              >
+                <RotateCcw className="w-4 h-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Reset All Tables</span>
+                <span className="sm:hidden">Reset</span>
+              </Button>
+              <Button
+                className="bg-[#8B5A2B] hover:bg-[#6B4520] text-white text-xs sm:text-sm"
+                onClick={() => setAddTableDialogOpen(true)}
+              >
+                <Plus className="w-4 h-4 mr-1 sm:mr-2" />
+                Add Table
+              </Button>
+            </>
+          )}
           <Button
-            className="bg-[#8B5A2B] hover:bg-[#6B4520] text-white"
-            onClick={() => setAddTableDialogOpen(true)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Table
-          </Button>
-          <Button
-            className="bg-[#8B5A2B] hover:bg-[#6B4520] text-white"
+            className="bg-[#8B5A2B] hover:bg-[#6B4520] text-white text-xs sm:text-sm"
             onClick={handleWalkIn}
           >
-            <UserPlus className="w-4 h-4 mr-2" />
+            <UserPlus className="w-4 h-4 mr-1 sm:mr-2" />
             Walk-In Entry
           </Button>
         </div>
       </div>
 
       {/* Stats Bar */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Available', count: tables.filter(t => t.status === 'Available').length, color: 'bg-green-500', text: 'text-green-700', bg: 'bg-green-50 border-green-200' },
           { label: 'Occupied', count: tables.filter(t => t.status === 'Occupied' || t.status === 'Eating').length, color: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
@@ -891,12 +1071,14 @@ export function TableManagementComprehensive() {
                       <TableCard
                         key={table.id}
                         table={table}
-                        onClick={() => {}}
+                        onClick={() => setStatusDialogTable(table)}
                         waiters={waiters}
                         onAssignWaiter={handleAssignWaiter}
                         onCheckout={handleCheckout}
                         onRequestOrder={handleRequestOrder}
                         onSeatGuests={handleSeatGuests}
+                        onUpdateStatus={handleUpdateTableStatus}
+                        currentUser={user}
                       />
                     ))}
                   </AnimatePresence>
@@ -941,6 +1123,48 @@ export function TableManagementComprehensive() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Table Status Dialog */}
+      <Dialog open={!!statusDialogTable} onOpenChange={(open) => { if (!open) setStatusDialogTable(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              Table {statusDialogTable?.displayNumber}
+              <span className={cn(
+                'text-xs font-medium px-2 py-1 rounded-full border ml-1',
+                statusDialogTable?.status === 'Available' && 'bg-green-50 text-green-700 border-green-200',
+                statusDialogTable?.status === 'Occupied' && 'bg-blue-50 text-blue-700 border-blue-200',
+                statusDialogTable?.status === 'Eating' && 'bg-purple-50 text-purple-700 border-purple-200',
+                statusDialogTable?.status === 'Reserved' && 'bg-amber-50 text-amber-700 border-amber-200',
+                statusDialogTable?.status === 'Cleaning' && 'bg-gray-50 text-gray-700 border-gray-200',
+              )}>
+                {statusDialogTable?.status}
+              </span>
+            </DialogTitle>
+            <DialogDescription>Change the status of this table</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-2 py-2">
+            {([
+              { status: 'Available' as TableStatus, icon: <CheckCircle className="w-4 h-4" />, color: 'border-green-400 text-green-700 hover:bg-green-50' },
+              { status: 'Occupied' as TableStatus, icon: <Users className="w-4 h-4" />, color: 'border-blue-400 text-blue-700 hover:bg-blue-50' },
+              { status: 'Eating' as TableStatus, icon: <Utensils className="w-4 h-4" />, color: 'border-purple-400 text-purple-700 hover:bg-purple-50' },
+              { status: 'Reserved' as TableStatus, icon: <Calendar className="w-4 h-4" />, color: 'border-amber-400 text-amber-700 hover:bg-amber-50' },
+              { status: 'Cleaning' as TableStatus, icon: <Sparkles className="w-4 h-4" />, color: 'border-gray-400 text-gray-700 hover:bg-gray-50' },
+            ]).map(({ status, icon, color }) => (
+              <Button
+                key={status}
+                variant="outline"
+                className={cn('w-full justify-start gap-2', color, statusDialogTable?.status === status && 'ring-2 ring-offset-1')}
+                onClick={() => statusDialogTable && handleTableStatusChange(statusDialogTable.id, status)}
+              >
+                {icon}
+                {status}
+                {statusDialogTable?.status === status && <span className="ml-auto text-xs opacity-60">current</span>}
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Table Dialog */}
       <Dialog open={addTableDialogOpen} onOpenChange={setAddTableDialogOpen}>

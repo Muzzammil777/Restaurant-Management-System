@@ -151,7 +151,7 @@ async def update_table_status(table_id: str, status: str, data: Optional[dict] =
     """Update table status"""
     db = get_db()
     
-    valid_statuses = ["available", "occupied", "reserved", "cleaning", "eating"]
+    valid_statuses = ["available", "occupied", "reserved", "cleaning", "eating", "order_accepted", "served", "checked_out", "walk-in-blocked"]
     if status not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
     
@@ -170,6 +170,14 @@ async def update_table_status(table_id: str, status: str, data: Optional[dict] =
             update_data["waiter"] = None
             update_data["orders"] = []
             update_data["totalBill"] = 0
+        elif status == "walk-in-blocked":
+            update_data["blockingStartTime"] = datetime.utcnow()
+            update_data["blockingTimeout"] = data.get("blockingTimeout")
+            update_data["customerName"] = data.get("customerName")
+            update_data["guestCount"] = data.get("guestCount")
+        elif status == "cleaning":
+            update_data["cleaningStartedAt"] = datetime.utcnow()
+            update_data["cleaningEndTime"] = data.get("cleaningEndTime")
     else:
         # Handle query parameter for guests (backward compatibility)
         if status == "occupied" and guests:
@@ -392,3 +400,23 @@ async def delete_reservation(reservation_id: str):
     await db.reservations.delete_one({"_id": ObjectId(reservation_id)})
     
     return {"success": True}
+
+
+@router.post("/reset-all")
+async def reset_all_tables():
+    """Reset all tables to available status (admin use)"""
+    db = get_db()
+    reset_data = {
+        "status": "available",
+        "updatedAt": datetime.utcnow(),
+        "currentGuests": 0,
+        "guestCount": 0,
+        "waiterId": None,
+        "waiterName": None,
+        "currentOrderId": None,
+        "kitchenStatus": None,
+        "cleaningEndTime": None,
+    }
+    result = await db.tables.update_many({}, {"$set": reset_data})
+    await log_audit("reset_all", "table", "all", {"modified": result.modified_count})
+    return {"success": True, "modified": result.modified_count}

@@ -161,7 +161,7 @@ export function CustomerManagement() {
   };
 
   return (
-    <div className="bg-customer-module space-y-6 max-w-[1600px] mx-auto p-6 min-h-screen">
+    <div className="bg-customer-module space-y-6 max-w-full overflow-x-hidden mx-auto p-6 min-h-screen">
       {/* Header */}
       <div className="module-container flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>

@@ -83,6 +83,42 @@ export function AdminChatBox() {
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Drag state — position is distance from right/bottom edges
+  const [pos, setPos] = useState({ right: 24, bottom: 24 });
+  const [isDragging, setIsDragging] = useState(false);
+  const drag = useRef({ active: false, startX: 0, startY: 0, startRight: 24, startBottom: 24, moved: false });
+
+  const onPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    drag.current = {
+      active: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      startRight: pos.right,
+      startBottom: pos.bottom,
+      moved: false,
+    };
+    setIsDragging(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!drag.current.active) return;
+    const dx = e.clientX - drag.current.startX;
+    const dy = e.clientY - drag.current.startY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) drag.current.moved = true;
+    setPos({
+      right: Math.max(0, Math.min(window.innerWidth - 56, drag.current.startRight - dx)),
+      bottom: Math.max(0, Math.min(window.innerHeight - 56, drag.current.startBottom - dy)),
+    });
+  };
+
+  const onPointerUp = () => {
+    drag.current.active = false;
+    setIsDragging(false);
+    if (!drag.current.moved) setIsOpen(prev => !prev);
+  };
+
   const filteredMessages = messages.filter(m => 
     (m.senderRole === currentRole && m.recipientRole === selectedRecipient) ||
     (m.senderRole === selectedRecipient && m.recipientRole === currentRole)
@@ -146,9 +182,12 @@ export function AdminChatBox() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <>
       {isOpen && (
-        <div className="mb-4 w-80 sm:w-96 h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div
+          className="fixed z-50 w-80 sm:w-96 h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300"
+          style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+        >
           {/* Header */}
           <div className="p-4 border-b bg-white flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -304,22 +343,28 @@ export function AdminChatBox() {
         </div>
       )}
 
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "h-14 w-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95",
-          isOpen ? "bg-red-500 rotate-90" : "bg-primary"
-        )}
-      >
-        {isOpen ? (
-          <X className="h-6 w-6 text-white" />
-        ) : (
-          <div className="relative">
-            <MessageSquare className="h-6 w-6 text-white" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
-          </div>
-        )}
-      </button>
-    </div>
+      {/* Draggable FAB button — separate from the chat panel */}
+      <div className="fixed z-50" style={{ right: pos.right, bottom: pos.bottom }}>
+        <button
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          className={cn(
+            "h-14 w-14 rounded-full flex items-center justify-center shadow-2xl transition-transform duration-200 select-none touch-none",
+            isDragging ? "cursor-grabbing scale-110" : "cursor-grab hover:scale-105 active:scale-95",
+            isOpen ? "bg-red-500 rotate-90" : "bg-primary"
+          )}
+        >
+          {isOpen ? (
+            <X className="h-6 w-6 text-white" />
+          ) : (
+            <div className="relative">
+              <MessageSquare className="h-6 w-6 text-white" />
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
+            </div>
+          )}
+        </button>
+      </div>
+    </>
   );
 }

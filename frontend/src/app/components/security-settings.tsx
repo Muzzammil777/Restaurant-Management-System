@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { LoadingSettings } from '@/app/components/ui/loading-spinner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -78,6 +79,12 @@ const navigationItems: NavigationItem[] = [
 
 export function SecuritySettings() {
   const [activeSection, setActiveSection] = useState<SettingsSection>('account');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 350);
+    return () => clearTimeout(t);
+  }, []);
 
   const renderContent = () => {
     switch (activeSection) {
@@ -98,20 +105,18 @@ export function SecuritySettings() {
     }
   };
 
+  if (loading) return <LoadingSettings />;
+
   return (
-    <div className="bg-settings-module min-h-screen space-y-6">
+    <div className="bg-settings-module min-h-screen space-y-6 max-w-full overflow-x-hidden">
       {/* Header */}
-      <div className="module-container flex items-center justify-between">
+      <div className="module-container flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-white">Settings</h2>
           <p className="text-sm text-white mt-1">
             Manage system configuration, security, and preferences
           </p>
         </div>
-        <Button>
-          <Settings className="h-4 w-4 mr-2" />
-          Quick Actions
-        </Button>
       </div>
 
       {/* Settings Navigation */}

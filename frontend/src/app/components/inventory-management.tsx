@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { LoadingInventory } from '@/app/components/ui/loading-spinner';
 import { 
-  Package, 
+  Package,
   AlertTriangle, 
   ShoppingCart, 
   FileText, 
@@ -15,7 +16,6 @@ import {
   XCircle, 
   Play, 
   Pause,
-  Info,
   History,
   TrendingDown,
   AlertOctagon,
@@ -313,8 +313,10 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
     }
   };
 
+  if (loading) return <LoadingInventory />;
+
   return (
-    <div className="bg-inventory-module min-h-screen pb-20">
+    <div className="bg-inventory-module min-h-screen pb-20 max-w-full overflow-x-hidden">
       <div className="max-w-[1800px] mx-auto p-6 space-y-8">
         
         {/* Header */}
@@ -328,7 +330,7 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
            </div>
            
            <div className="flex items-center gap-3">
-             <Button variant="outline" onClick={fetchData} disabled={loading}>
+             <Button variant="outline" onClick={fetchData} disabled={loading} className="bg-white/10 hover:bg-white/20 text-white border-white/30 hover:text-white backdrop-blur-sm">
                {loading ? (
                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                ) : (
@@ -349,53 +351,34 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
            </div>
         </div>
 
-        {/* Global Alert Banner */}
-        <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-start gap-3 shadow-sm">
-          <Info className="h-5 w-5 text-blue-600 mt-0.5" />
-          <div>
-             <h4 className="font-semibold text-blue-900">Stock Logic Active</h4>
-             <p className="text-sm text-blue-700">
-               Inventory stock is automatically updated <span className="font-bold underline">only</span> from confirmed customer orders. Manual adjustments are disabled to prevent theft and mismanagement.
-             </p>
-          </div>
-        </div>
-
-        <div className="w-full overflow-x-auto pb-6">
-          <nav className="flex gap-3 min-w-max p-1">
+        <div className="w-full overflow-x-auto pb-2">
+          <div className="bg-muted text-muted-foreground rounded-xl p-[3px] grid grid-cols-5 min-w-[560px]">
             {[
-              { id: 'dashboard', label: 'Dashboard', icon: Package, description: 'Inventory overview' },
-              { id: 'inventory', label: 'Ingredients Stock', icon: Package, description: 'Live stock levels' },
-              { id: 'feed', label: 'Deduction Feed', icon: History, description: 'Live order usage' },
-              { id: 'suppliers', label: 'Suppliers', icon: Truck, description: 'Vendor management' },
-              { id: 'records', label: 'Purchase Records', icon: FileText, description: 'Audit history' },
+              { id: 'dashboard', label: 'Dashboard', icon: Package },
+              { id: 'inventory', label: 'Stock', icon: Package },
+              { id: 'feed', label: 'Deductions', icon: History },
+              { id: 'suppliers', label: 'Suppliers', icon: Truck },
+              { id: 'records', label: 'Purchases', icon: FileText },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
-              
               return (
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
                   className={cn(
-                    'flex items-start gap-3 p-3 rounded-lg transition-colors text-left min-w-[220px]',
+                    'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                     isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-card border border-border hover:bg-muted shadow-sm'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'hover:bg-background/50 hover:text-foreground'
                   )}
                 >
-                  <Icon className={cn('h-5 w-5 mt-0.5 flex-shrink-0', isActive ? '' : 'text-muted-foreground')} />
-                  <div className="flex-1 min-w-0">
-                    <p className={cn('text-sm font-medium', isActive ? '' : '')}>
-                      {item.label}
-                    </p>
-                    <p className={cn('text-xs mt-0.5', isActive ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
-                      {item.description}
-                    </p>
-                  </div>
+                  <Icon className="h-4 w-4 flex-shrink-0" />
+                  {item.label}
                 </button>
               );
             })}
-          </nav>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -635,23 +618,6 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
                    </CardContent>
                 </Card>
 
-                <div className="space-y-6">
-                  <Card className="border-none shadow-md bg-white">
-                    <CardHeader>
-                      <CardTitle>System Logic</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4 text-sm">
-                      <div className="p-3 bg-emerald-50 text-emerald-800 rounded border border-emerald-100">
-                         <p className="font-semibold mb-1">Live Connection</p>
-                         <p>Connected to Kitchen Display System (KDS). Deductions occur at "Order Confirmed" stage.</p>
-                      </div>
-                      <div className="p-3 bg-red-50 text-red-800 rounded border border-red-100">
-                         <p className="font-semibold mb-1">Restrictions</p>
-                         <p>Predictive deduction based on reservations is DISABLED.</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
              </div>
           </TabsContent>
 
@@ -839,7 +805,7 @@ function AddPurchaseDialog({ ingredients, suppliers, onSave }: any) {
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Quantity</Label>
               <Input type="number" placeholder="0.00" value={formData.quantity} onChange={(e) => setFormData({...formData, quantity: e.target.value})} />

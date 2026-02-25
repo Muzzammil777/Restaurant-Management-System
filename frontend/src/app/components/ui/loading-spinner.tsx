@@ -11,12 +11,15 @@ import {
   Settings,
   ChefHat,
   ShoppingCart,
+  Bell,
+  TrendingUp,
+  Gift,
   type LucideIcon
 } from 'lucide-react';
 
 interface LoadingSpinnerProps {
   message?: string;
-  icon?: LucideIcon | 'orders' | 'tables' | 'inventory' | 'staff' | 'menu' | 'billing' | 'kitchen' | 'delivery' | 'settings' | 'customers';
+  icon?: LucideIcon | 'orders' | 'tables' | 'inventory' | 'staff' | 'menu' | 'billing' | 'kitchen' | 'delivery' | 'settings' | 'customers' | 'reports' | 'alerts' | 'offers';
   className?: string;
   size?: 'sm' | 'md' | 'lg';
 }
@@ -32,6 +35,9 @@ const iconMap: Record<string, LucideIcon> = {
   delivery: Truck,
   settings: Settings,
   customers: ShoppingCart,
+  reports: TrendingUp,
+  alerts: Bell,
+  offers: Gift,
 };
 
 const sizeClasses = {
@@ -120,4 +126,16 @@ export function LoadingSettings() {
 
 export function LoadingCustomers() {
   return <LoadingSpinner message="Loading customers..." icon="customers" />;
+}
+
+export function LoadingReports() {
+  return <LoadingSpinner message="Loading reports..." icon="reports" />;
+}
+
+export function LoadingAlerts() {
+  return <LoadingSpinner message="Loading notifications..." icon="alerts" />;
+}
+
+export function LoadingOffers() {
+  return <LoadingSpinner message="Loading offers..." icon="offers" />;
 }

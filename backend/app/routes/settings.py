@@ -1098,13 +1098,22 @@ async def list_users():
     # Map staff to user format
     users = []
     for doc in docs:
+        # last_login (snake_case) is written by the login endpoint;
+        # lastLogin (camelCase) is the legacy field used by create_user.
+        raw_last_login = doc.get('last_login') or doc.get('lastLogin')
+        if isinstance(raw_last_login, datetime):
+            last_login_str = raw_last_login.isoformat() + 'Z'
+        elif raw_last_login:
+            last_login_str = str(raw_last_login)
+        else:
+            last_login_str = 'Never'
         users.append({
             '_id': str(doc.get('_id')),
             'name': doc.get('name'),
             'email': doc.get('email'),
             'role': doc.get('role', 'Staff'),
             'status': 'active' if doc.get('active', True) else 'inactive',
-            'lastLogin': doc.get('lastLogin', 'Never'),
+            'lastLogin': last_login_str,
             'createdAt': doc.get('createdAt')
         })
     
@@ -1204,13 +1213,20 @@ async def update_user(user_id: str, user: UserAccountUpdate, request: Request):
     )
     
     updated = await coll.find_one({'_id': to_object_id(user_id)})
+    raw_ll = updated.get('last_login') or updated.get('lastLogin')
+    if isinstance(raw_ll, datetime):
+        ll_str = raw_ll.isoformat() + 'Z'
+    elif raw_ll:
+        ll_str = str(raw_ll)
+    else:
+        ll_str = 'Never'
     return {
         '_id': str(updated.get('_id')),
         'name': updated.get('name'),
         'email': updated.get('email'),
         'role': updated.get('role'),
         'status': 'active' if updated.get('active', True) else 'inactive',
-        'lastLogin': updated.get('lastLogin', 'Never'),
+        'lastLogin': ll_str,
         'createdAt': updated.get('createdAt')
     }
 
@@ -1270,12 +1286,19 @@ async def toggle_user_status(user_id: str, request: Request):
     )
     
     updated = await coll.find_one({'_id': to_object_id(user_id)})
+    raw_ll3 = updated.get('last_login') or updated.get('lastLogin')
+    if isinstance(raw_ll3, datetime):
+        ll_str3 = raw_ll3.isoformat() + 'Z'
+    elif raw_ll3:
+        ll_str3 = str(raw_ll3)
+    else:
+        ll_str3 = 'Never'
     return {
         '_id': str(updated.get('_id')),
         'name': updated.get('name'),
         'email': updated.get('email'),
         'role': updated.get('role'),
         'status': 'active' if updated.get('active', True) else 'inactive',
-        'lastLogin': updated.get('lastLogin', 'Never'),
+        'lastLogin': ll_str3,
         'createdAt': updated.get('createdAt')
     }

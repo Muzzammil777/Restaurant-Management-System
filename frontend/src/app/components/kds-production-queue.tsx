@@ -329,7 +329,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
 
   const handleStartCooking = async (orderId: string) => {
     try {
-      // Update via API - placed → preparing
+      // Update via API - placed ÔåÆ preparing
       await ordersApi.updateStatus(orderId, 'preparing');
       
       // Update local item states
@@ -423,7 +423,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
     const order = orders.find(o => o.id === orderId);
     
     try {
-      // Update API - preparing → ready
+      // Update API - preparing ÔåÆ ready
       await ordersApi.updateStatus(orderId, 'ready');
       
       // Mark all items as completed
@@ -453,7 +453,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
     const order = orders.find(o => o.id === orderId);
     
     try {
-      // Update API - ready → served
+      // Update API - ready ÔåÆ served
       await ordersApi.updateStatus(orderId, 'served');
       
       setOrders(prev => prev.filter(o => o.id !== orderId));
@@ -562,7 +562,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
   };
 
   return (
-    <div className="min-h-screen bg-kitchen-display-module">
+    <div className="min-h-screen bg-kitchen-display-module max-w-full overflow-x-hidden">
       <style>{`
         @keyframes pulse-border {
           0%, 100% { border-color: rgba(230, 57, 70, 0.5); }
@@ -582,26 +582,26 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
 
       {/* Header */}
       <div className="bg-white border-b shadow-sm sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="container mx-auto px-3 sm:px-6 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3 sm:gap-4">
               <div 
-                className="p-3 rounded-xl flex items-center justify-center" 
+                className="p-2 sm:p-3 rounded-xl flex items-center justify-center flex-shrink-0" 
                 style={{ backgroundColor: stationColors[station] }}
               >
-                <ChefHat className="h-6 w-6 text-white" />
+                <ChefHat className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-[#2D2D2D]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                <h1 className="text-lg sm:text-2xl font-bold text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   {station} STATION
                 </h1>
-                <p className="text-sm text-[#6B6B6B]" style={{ fontFamily: 'Inter, sans-serif' }}>
-                  Production Queue • Live Orders
+                <p className="text-xs sm:text-sm text-white/70" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  Production Queue ÔÇó Live Orders
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
               {/* Order Type Filters */}
               <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
                 <Button
@@ -666,19 +666,19 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
               </Button>
 
               {/* Stats */}
-              <div className="flex items-center gap-6 px-6 py-3 bg-gray-100 rounded-lg">
+              <div className="flex items-center gap-3 sm:gap-6 px-3 sm:px-6 py-2 sm:py-3 bg-gray-100 rounded-lg">
                 <div>
-                  <p className="text-xs text-[#6B6B6B] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>NEW</p>
+                  <p className="text-xs text-white/70 mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>NEW</p>
                   <p className="text-2xl font-bold text-blue-600" style={{ fontFamily: 'Poppins, sans-serif' }}>{newOrders.length}</p>
                 </div>
                 <div className="w-px h-10 bg-gray-300" />
                 <div>
-                  <p className="text-xs text-[#6B6B6B] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>COOKING</p>
+                  <p className="text-xs text-white/70 mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>COOKING</p>
                   <p className="text-2xl font-bold text-orange-600" style={{ fontFamily: 'Poppins, sans-serif' }}>{cookingOrders.length}</p>
                 </div>
                 <div className="w-px h-10 bg-gray-300" />
                 <div>
-                  <p className="text-xs text-[#6B6B6B] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>READY</p>
+                  <p className="text-xs text-white/70 mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>READY</p>
                   <p className="text-2xl font-bold text-green-600" style={{ fontFamily: 'Poppins, sans-serif' }}>{readyOrders.length}</p>
                 </div>
               </div>
@@ -701,7 +701,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
           <div className="bg-white rounded-xl p-6 w-96 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-[#2D2D2D]">Recall Order</h3>
+              <h3 className="text-xl font-bold text-gray-800">Recall Order</h3>
               <Button variant="ghost" size="sm" onClick={() => { setIsRecallOpen(false); setRecallInput(""); }}>
                 <X className="h-5 w-5" />
               </Button>
@@ -715,14 +715,14 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
               autoFocus
             />
             <div className="grid grid-cols-3 gap-2 mb-4">
-              {[1,2,3,4,5,6,7,8,9,'C',0,'⌫'].map((key) => (
+              {[1,2,3,4,5,6,7,8,9,'C',0,'Ôî½'].map((key) => (
                 <Button
                   key={key}
                   variant="outline"
                   className="h-14 text-xl font-bold"
                   onClick={() => {
                     if (key === 'C') setRecallInput("");
-                    else if (key === '⌫') setRecallInput(prev => prev.slice(0, -1));
+                    else if (key === 'Ôî½') setRecallInput(prev => prev.slice(0, -1));
                     else setRecallInput(prev => prev + key);
                   }}
                 >
@@ -742,14 +742,14 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
       )}
 
       {/* Main Content */}
-      <div className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8">
         {viewMode === "ORDERS" ? (
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           
           {/* NEW ORDERS */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-[#2D2D2D]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+              <h2 className="text-xl font-bold text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>
                 New Orders
               </h2>
               <Badge className="bg-blue-600 text-white">{newOrders.length}</Badge>
@@ -805,7 +805,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-4 mt-2 text-sm text-[#6B6B6B]">
+                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                       <span className="flex items-center gap-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                         <Users className="h-4 w-4" />
                         {order.tableNumber}
@@ -820,7 +820,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                     {order.items.map((item) => (
                       <div key={item.id} className="p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-start justify-between mb-1">
-                          <p className="font-semibold text-[#2D2D2D]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                          <p className="font-semibold text-gray-800" style={{ fontFamily: 'Poppins, sans-serif' }}>
                             {item.quantity}x {item.name}
                           </p>
                           <div className="flex items-center gap-2">
@@ -877,7 +877,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
               
               {newOrders.length === 0 && (
                 <Card className="p-8 text-center border-dashed">
-                  <p className="text-[#6B6B6B]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-gray-400" style={{ fontFamily: 'Inter, sans-serif' }}>
                     No new orders
                   </p>
                 </Card>
@@ -888,7 +888,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
           {/* COOKING */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-[#2D2D2D]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+              <h2 className="text-xl font-bold text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>
                 In Progress
               </h2>
               <Badge className="bg-orange-600 text-white">{cookingOrders.length}</Badge>
@@ -922,7 +922,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-4 mt-2 text-sm text-[#6B6B6B]">
+                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                       <span className="flex items-center gap-1">
                         <Users className="h-4 w-4" />
                         {order.tableNumber}
@@ -942,7 +942,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                         )}
                       >
                         <div className="flex items-start justify-between mb-2">
-                          <p className="font-semibold text-[#2D2D2D]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                          <p className="font-semibold text-gray-800" style={{ fontFamily: 'Poppins, sans-serif' }}>
                             {item.status === "COMPLETED" && <Check className="h-4 w-4 inline mr-1 text-green-600" />}
                             {item.quantity}x {item.name}
                           </p>
@@ -1015,7 +1015,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
               
               {cookingOrders.length === 0 && (
                 <Card className="p-8 text-center border-dashed">
-                  <p className="text-[#6B6B6B]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-gray-400" style={{ fontFamily: 'Inter, sans-serif' }}>
                     No orders in progress
                   </p>
                 </Card>
@@ -1026,7 +1026,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
           {/* READY */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-[#2D2D2D]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+              <h2 className="text-xl font-bold text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>
                 Ready to Serve
               </h2>
               <Badge className="bg-green-600 text-white">{readyOrders.length}</Badge>
@@ -1054,7 +1054,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                       <CheckCircle2 className="h-5 w-5 text-green-600" />
                     </div>
                     
-                    <div className="flex items-center gap-4 mt-2 text-sm text-[#6B6B6B]">
+                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                       <span className="flex items-center gap-1">
                         <Users className="h-4 w-4" />
                         {order.tableNumber}
@@ -1065,7 +1065,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                   <CardContent className="space-y-2">
                     {order.items.map((item) => (
                       <div key={item.id} className="p-3 bg-white rounded-lg border border-green-200">
-                        <p className="font-semibold text-[#2D2D2D] flex items-center gap-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                        <p className="font-semibold text-gray-800 flex items-center gap-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
                           <Check className="h-4 w-4 text-green-600" />
                           {item.quantity}x {item.name}
                         </p>
@@ -1073,13 +1073,10 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                     ))}
 
                     <div className="pt-2 flex gap-2">
-                      <Button
-                        onClick={() => handleDeliverOrder(order.id)}
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        <Utensils className="h-4 w-4 mr-2" />
-                        Serve Order
-                      </Button>
+                      <div className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm font-medium">
+                        <Utensils className="h-4 w-4" />
+                        Awaiting waiter pickup
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -1087,7 +1084,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
               
               {readyOrders.length === 0 && (
                 <Card className="p-8 text-center border-dashed">
-                  <p className="text-[#6B6B6B]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-gray-400" style={{ fontFamily: 'Inter, sans-serif' }}>
                     No ready orders
                   </p>
                 </Card>
@@ -1100,7 +1097,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
           /* BATCH VIEW */
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-[#2D2D2D]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+              <h2 className="text-2xl font-bold text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>
                 Batch Production View
               </h2>
               <Badge className="bg-[#8B5A2B] text-white px-4 py-2 text-lg">
@@ -1132,7 +1129,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                         x{batch.total}
                       </Badge>
                     </div>
-                    <p className="text-lg font-bold text-[#2D2D2D] mt-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                    <p className="text-lg font-bold text-gray-800 mt-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
                       {batch.name}
                     </p>
                   </CardHeader>
@@ -1181,7 +1178,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
               {batchedItems.length === 0 && (
                 <Card className="col-span-full p-12 text-center border-dashed">
                   <ChefHat className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                  <p className="text-xl text-[#6B6B6B]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-xl text-gray-400" style={{ fontFamily: 'Inter, sans-serif' }}>
                     No items to prepare
                   </p>
                 </Card>
