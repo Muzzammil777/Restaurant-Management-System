@@ -116,27 +116,6 @@ export function BillingPayment() {
 
   const fetchOrders = async () => {
     try {
-<<<<<<< HEAD
-      // Fetch real served orders from API
-      const result = await billingApi.listEntries({ status: 'pending_payment' });
-      if (result?.data) {
-        // Transform billing entries to match Order interface
-        const transformedOrders = result.data.map((entry: any) => ({
-          id: entry._id,
-          table_number: entry.tableNumber,
-          customer_name: entry.customerName || 'Customer',
-          items: entry.items || [],
-          total: entry.grandTotal || entry.subtotal || 0,
-          status: 'served', // These are served orders ready for billing
-          orderNumber: entry.orderNumber,
-          billingId: entry._id,  // Store billing ID for payment processing
-        }));
-        setOrders(transformedOrders as any);
-      }
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-      toast.error('Failed to fetch orders for billing');
-=======
       // Fetch served and bill_requested orders from the real backend in parallel
       const [servedRes, billRes] = await Promise.all([
         ordersApi.list({ status: 'served' }),
@@ -168,36 +147,11 @@ export function BillingPayment() {
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast.error('Failed to load orders');
->>>>>>> 3789df7ba77936489afea51b97006d855458fabd
     }
   };
 
   const fetchInvoices = async () => {
     try {
-<<<<<<< HEAD
-      // Fetch real invoices from API
-      const result = await billingApi.list({ status: 'paid' });
-      if (result?.data) {
-        const transformedInvoices = result.data.map((payment: any) => ({
-          id: payment._id,
-          invoice_number: payment.transactionId || `INV-${payment._id.slice(-6)}`,
-          customer_name: payment.customerName || 'Customer',
-          table_number: payment.tableNumber,
-          items: [], // Will be populated from order data if needed
-          subtotal: payment.amount || 0,
-          tax_rate: 5,
-          tax_amount: (payment.amount || 0) * 0.05,
-          discount_type: 'percentage' as 'flat' | 'percentage',
-          discount_value: 0,
-          discount_amount: 0,
-          grand_total: payment.totalAmount || payment.amount || 0,
-          payment_mode: payment.method || 'cash',
-          status: 'paid',
-          created_at: payment.createdAt,
-        }));
-        setInvoices(transformedInvoices);
-      }
-=======
       const res = await billingApi.listInvoices();
       const raw: any[] = Array.isArray(res) ? res : [];
       const normalized: Invoice[] = raw.map((inv: any) => ({
@@ -224,7 +178,6 @@ export function BillingPayment() {
         created_at: inv.createdAt || inv.created_at || new Date().toISOString(),
       }));
       setInvoices(normalized);
->>>>>>> 3789df7ba77936489afea51b97006d855458fabd
     } catch (error) {
       console.error('Error fetching invoices:', error);
     }
@@ -290,64 +243,6 @@ export function BillingPayment() {
     }
     setIsGenerating(true);
 
-<<<<<<< HEAD
-    if (!selectedOrder?.billingId) {
-      toast.error('No billing information found for this order');
-      return;
-    }
-
-    try {
-      const totals = calculateTotals();
-      
-      // Process payment through API
-      const paymentData = {
-        billingId: selectedOrder.billingId,
-        method: paymentMode,
-        amount: totals.grandTotal,
-        tips: 0  // Can be added as a UI input later
-      };
-
-      const response = await billingApi.processPayment(paymentData);
-      
-      if (response.success) {
-        // Create invoice object for display/printing
-        const invoiceNumber = response.transactionId;
-        const invoice: Invoice = {
-          id: response.payment._id,
-          invoice_number: invoiceNumber,
-          customer_name: selectedOrder.customer_name || 'Walk-in Customer',
-          table_number: selectedOrder.table_number || 0,
-          items: billItems,
-          subtotal: totals.subtotal,
-          tax_rate: taxRate,
-          tax_amount: totals.taxAmount,
-          discount_type: discountType,
-          discount_value: discountValue,
-          discount_amount: totals.discountAmount,
-          grand_total: totals.grandTotal,
-          payment_mode: paymentMode,
-          status: 'paid',
-          created_at: new Date().toISOString(),
-        };
-
-        setInvoices([invoice, ...invoices]);
-        setPreviewInvoice(invoice);
-        setShowInvoicePreview(true);
-        
-        // Reset form
-        setBillItems([]);
-        setSelectedOrder(null);
-        setDiscountValue(0);
-        
-        // Refresh orders list
-        fetchOrders();
-        
-        toast.success(`Payment processed successfully! Transaction ID: ${invoiceNumber}`);
-      }
-    } catch (error) {
-      console.error('Error processing payment:', error);
-      toast.error('Failed to process payment. Please try again.');
-=======
     const totals = calculateTotals();
 
     const invoicePayload = {
@@ -415,7 +310,6 @@ export function BillingPayment() {
       toast.error('Failed to save invoice. Please try again.');
     } finally {
       setIsGenerating(false);
->>>>>>> 3789df7ba77936489afea51b97006d855458fabd
     }
   };
 
@@ -874,15 +768,9 @@ export function BillingPayment() {
                       </RadioGroup>
                     </div>
 
-<<<<<<< HEAD
-                    <Button onClick={generateInvoice} className="w-full" size="lg">
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Process Payment & Generate Invoice
-=======
                     <Button onClick={generateInvoice} className="w-full" size="lg" disabled={isGenerating}>
                       <Receipt className="h-5 w-5 mr-2" />
                       {isGenerating ? 'Processing...' : 'Generate Invoice & Process Payment'}
->>>>>>> 3789df7ba77936489afea51b97006d855458fabd
                     </Button>
                   </>
                 )}
