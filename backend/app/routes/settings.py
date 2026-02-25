@@ -544,10 +544,12 @@ async def create_backup(payload: BackupCreate, request: Request):
     
     # Get list of collections to backup - include all important data collections
     collection_names = payload.collections or [
-        'staff', 'settings', 'system_config', 'roles', 'audit_logs', 
-        'attendance', 'shifts', 'performance_logs', 'menu_items', 
+        'staff', 'settings', 'system_config', 'roles', 'audit_logs',
+        'attendance', 'shifts', 'performance_logs', 'menu_items',
         'combo_meals', 'orders', 'customers', 'tables', 'ingredients',
-        'recipes', 'offers', 'notifications'
+        'recipes', 'suppliers', 'purchases', 'coupons', 'membership_plans',
+        'discount_rules', 'invoices', 'payments', 'notifications',
+        'tax_config', 'backup_config'
     ]
     
     # Export actual data from each collection

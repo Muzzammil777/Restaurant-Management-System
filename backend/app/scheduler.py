@@ -54,10 +54,11 @@ async def run_automatic_backup():
         
         # Collections to backup - comprehensive list
         collection_names = [
-            'staff', 'settings', 'system_config', 'roles', 'audit_logs', 
-            'attendance', 'shifts', 'menu_items', 'combo_meals', 'orders', 
-            'tables', 'ingredients', 'recipes', 'customers', 'offers', 
-            'notifications', 'billing'
+            'staff', 'settings', 'system_config', 'roles', 'audit_logs',
+            'attendance', 'shifts', 'performance_logs', 'menu_items', 'combo_meals',
+            'orders', 'tables', 'ingredients', 'recipes', 'suppliers', 'purchases',
+            'customers', 'coupons', 'membership_plans', 'discount_rules',
+            'invoices', 'payments', 'notifications', 'tax_config', 'backup_config'
         ]
         
         # Export data from each collection  
