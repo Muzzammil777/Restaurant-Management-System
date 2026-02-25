@@ -358,7 +358,7 @@ async def kds_authenticate(payload: KDSAuthRequest):
     db = get_db()
     coll = db.get_collection('staff')
 
-    # Find an active chef assigned to this station with matching PIN
+    # Primary: exact match — chef assigned to this station with the correct PIN
     chef = await coll.find_one({
         'role': 'chef',
         'active': True,
@@ -366,13 +366,29 @@ async def kds_authenticate(payload: KDSAuthRequest):
         'kitchenPin': payload.pin,
     })
 
+    # Fallback for HEAD_CHEF: accept legacy chefs who were created before kitchenStation
+    # was introduced (no station / no PIN).  Default temporary PIN is '0000'.
+    if not chef and payload.station == 'HEAD_CHEF':
+        legacy_chef = await coll.find_one({
+            'role': 'chef',
+            'active': True,
+            '$or': [
+                {'kitchenStation': {'$exists': False}},
+                {'kitchenStation': None},
+            ],
+        })
+        if legacy_chef:
+            effective_pin = legacy_chef.get('kitchenPin') or '0000'
+            if payload.pin == effective_pin:
+                chef = legacy_chef
+
     if not chef:
         raise HTTPException(status_code=401, detail='Invalid station PIN')
 
     return {
         'success': True,
         'name': chef.get('name', ''),
-        'station': chef.get('kitchenStation', payload.station),
+        'station': payload.station,
     }
 
 

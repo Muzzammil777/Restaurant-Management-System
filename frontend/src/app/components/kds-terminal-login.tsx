@@ -128,6 +128,10 @@ export function KDSTerminalLogin({ onLogin }: KDSTerminalLoginProps) {
     fetchChefs();
   }, []);
 
+  // Chefs with no kitchenStation are legacy records — they fall back to HEAD_CHEF access
+  const legacyChefs = chefs.filter((c) => !c.kitchenStation);
+  const hasLegacyChefs = legacyChefs.length > 0;
+
   // Show only stations that have an assigned active chef, plus HEAD_CHEF always
   const visibleStations = TERMINAL_STATIONS.filter((station) => {
     if (station.isHeadChef) return true;
@@ -272,6 +276,23 @@ export function KDSTerminalLogin({ onLogin }: KDSTerminalLoginProps) {
                             )}
                             {!station.isHeadChef && !loadingChefs && assignedChefs.length === 0 && (
                               <p className="text-xs text-gray-400 mt-1 italic">No chef assigned</p>
+                            )}
+                            {station.isHeadChef && assignedChefs.length > 0 && (
+                              <p className="text-xs text-emerald-600 font-medium mt-1">
+                                👨‍🍳 {assignedChefs.map((c) => c.name).join(', ')}
+                              </p>
+                            )}
+                            {station.isHeadChef && hasLegacyChefs && (
+                              <div className="mt-1 space-y-0.5">
+                                {legacyChefs.map((c) => (
+                                  <p key={c._id} className="text-xs text-amber-600 font-medium">
+                                    👨‍🍳 {c.name}
+                                  </p>
+                                ))}
+                                <p className="text-[10px] text-amber-500 italic">
+                                  No station set — default PIN: <strong>0000</strong>
+                                </p>
+                              </div>
                             )}
                           </div>
                         </div>
