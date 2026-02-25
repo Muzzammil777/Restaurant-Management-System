@@ -55,7 +55,7 @@ async function fetchApi<T>(
 export const authApi = {
   // Login with email and password
   login: (email: string, password: string) => 
-    fetchApi<{ success: boolean; user: { id: string; email: string; name: string; role: string; phone?: string; shift?: string; department?: string } }>('/staff/login', {
+    fetchApi<{ success: boolean; user: { id: string; email: string; name: string; role: string; phone?: string; shift?: string; department?: string; kitchenStation?: string | null } }>('/staff/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),

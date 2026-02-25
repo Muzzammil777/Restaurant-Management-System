@@ -92,6 +92,7 @@ async def login(payload: LoginIn, request: Request):
         'phone': user.get('phone'),
         'shift': user.get('shift'),
         'department': user.get('department'),
+        'kitchenStation': user.get('kitchenStation'),
         'last_login': datetime.utcnow().isoformat() + 'Z',
     }
     

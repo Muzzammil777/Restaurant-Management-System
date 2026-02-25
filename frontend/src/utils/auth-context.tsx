@@ -48,6 +48,7 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
+  kitchenStation?: string | null;
 }
 
 interface AuthContextType {
@@ -116,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: (['admin', 'manager', 'waiter', 'cashier', 'chef'].includes((result.user.role || '').toLowerCase())
             ? result.user.role.toLowerCase()
             : 'cashier') as UserRole,
+          kitchenStation: result.user.kitchenStation ?? null,
         };
         setUser(userData);
         localStorage.setItem('rms_current_user', JSON.stringify(userData));
