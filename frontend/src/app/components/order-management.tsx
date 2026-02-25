@@ -9,7 +9,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Textarea } from '@/app/components/ui/textarea';
-import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { Clock, Package, CheckCircle, XCircle, Plus, CreditCard, Eye, IndianRupee, UtensilsCrossed, Zap, Minus, Search, Repeat, Flame, AlertCircle, TrendingUp, Activity, ChefHat, Coffee, Timer, Undo2, Gauge, MoveRight, MoveLeft, Ban, Sparkles, Pizza, ShoppingBag, ClipboardList, ArrowUpDown, ArrowDown, ArrowUp, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ordersApi, menuApi, staffApi } from '@/utils/api';
@@ -29,7 +28,6 @@ interface Order {
   }>;
   total: number;
   status: 'placed' | 'preparing' | 'ready' | 'served' | 'completed' | 'cancelled';
-  paymentStatus?: 'pending_payment' | 'paid' | 'payment_failed' | 'cancelled' | 'expired';
   type: 'dine-in' | 'takeaway' | 'delivery';
   createdAt: string;
   paymentMethod?: 'cash' | 'upi' | 'card';
@@ -139,13 +137,6 @@ function TakeOrderSheet({
       toast.error('Please add at least one item');
       return;
     }
-    
-    if (!order.id) {
-      console.error('Order ID is missing:', order);
-      toast.error('Order ID is missing. Please refresh and try again.');
-      return;
-    }
-    
     setSubmitting(true);
     try {
       await ordersApi.update(order.id, {
@@ -164,8 +155,7 @@ function TakeOrderSheet({
       onOpenChange(false);
     } catch (error) {
       console.error('Error updating order:', error);
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred';
-      toast.error(`Failed to update order: ${errorMsg}`);
+      toast.error('Failed to update order');
     } finally {
       setSubmitting(false);
     }
@@ -175,8 +165,8 @@ function TakeOrderSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col">
-        <SheetHeader className="p-6 pb-4 border-b">
+      <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col h-full overflow-hidden">
+        <SheetHeader className="p-6 pb-4 border-b flex-shrink-0">
           <SheetTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5" />
             Take Order — {order.orderNumber || `Table ${order.tableNumber}`}
@@ -187,7 +177,7 @@ function TakeOrderSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
           {/* Search + Category Filters */}
           <div className="p-4 border-b space-y-3">
             <div className="relative">
@@ -215,7 +205,7 @@ function TakeOrderSheet({
           </div>
 
           {/* Menu Items Grid */}
-          <ScrollArea className="flex-1 p-4">
+          <div className="flex-1 overflow-y-auto p-4 min-h-0">
             <div className="grid grid-cols-2 gap-3">
               {filteredMenuItems.map((item) => {
                 const selected = selectedItems.find((i) => i.menuItemId === item.id);
@@ -275,11 +265,11 @@ function TakeOrderSheet({
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
 
           {/* Notes */}
           {selectedItems.length > 0 && (
-            <div className="p-4 border-t">
+            <div className="p-4 border-t flex-shrink-0">
               <Label className="text-xs font-medium text-muted-foreground">Special Instructions</Label>
               <Textarea
                 value={notes}
@@ -292,7 +282,7 @@ function TakeOrderSheet({
         </div>
 
         {/* Footer — Cart Summary + Submit */}
-        <SheetFooter className="p-4 border-t bg-gray-50">
+        <SheetFooter className="p-4 border-t bg-gray-50 flex-shrink-0">
           <div className="w-full space-y-3">
             {/* Cart Summary */}
             {selectedItems.length > 0 && (
@@ -345,13 +335,13 @@ function TakeOrderSheet({
 
 // Innovation #6: Smart Notes Keywords
 const SMART_NOTE_KEYWORDS = {
-  'no onion': { icon: '', color: 'text-orange-600', bg: 'bg-orange-50' },
-  'no garlic': { icon: '', color: 'text-orange-600', bg: 'bg-orange-50' },
-  'extra spicy': { icon: '', color: 'text-red-600', bg: 'bg-red-50' },
-  'mild': { icon: '', color: 'text-green-600', bg: 'bg-green-50' },
-  'urgent': { icon: '', color: 'text-yellow-600', bg: 'bg-yellow-50' },
-  'allergy': { icon: '', color: 'text-red-600', bg: 'bg-red-50' },
-  'vip': { icon: '', color: 'text-purple-600', bg: 'bg-purple-50' },
+  'no onion': { color: 'text-orange-600', bg: 'bg-orange-50' },
+  'no garlic': { color: 'text-orange-600', bg: 'bg-orange-50' },
+  'extra spicy': { color: 'text-red-600', bg: 'bg-red-50' },
+  'mild': { color: 'text-green-600', bg: 'bg-green-50' },
+  'urgent': { color: 'text-yellow-600', bg: 'bg-yellow-50' },
+  'allergy': { color: 'text-red-600', bg: 'bg-red-50' },
+  'vip': { color: 'text-purple-600', bg: 'bg-purple-50' },
 };
 
 export function OrderManagement() {
@@ -370,6 +360,7 @@ export function OrderManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
   
   // Quick Order Panel State
   const [quickOrderOpen, setQuickOrderOpen] = useState(false);
@@ -409,14 +400,9 @@ export function OrderManagement() {
     const calculatedTotal = normalizedItems.reduce((sum: number, item: { name: string; quantity: number; price: number }) => sum + (item.price * item.quantity), 0);
     const finalTotal = rawTotal > 0 ? rawTotal : calculatedTotal;
     
-    const orderId = rawOrder?._id || rawOrder?.id;
-    if (!orderId) {
-      console.warn('Order without ID detected:', rawOrder);
-    }
-    
     return {
       ...rawOrder,
-      id: orderId || '',
+      id: rawOrder?._id || rawOrder?.id || '',
       orderNumber: rawOrder?.orderNumber || rawOrder?.order_number,
       items: normalizedItems,
       total: finalTotal,
@@ -482,6 +468,33 @@ export function OrderManagement() {
       setMenuItems(Array.isArray(items) ? items.filter((item: MenuItem) => item.available !== false) : []);
     } catch (error) {
       console.error('Error fetching menu items:', error);
+    }
+  };
+
+  const deleteOrder = async (orderId: string, orderDisplayId: string) => {
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      `Are you sure you want to delete order ${orderDisplayId}?` +
+      '\n\n• Active orders will be marked as cancelled' +
+      '\n• Cancelled orders will be permanently deleted'
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      // Don't modify the ID - use it as is since it's already a MongoDB ObjectId
+      await ordersApi.delete(orderId);
+      toast.success('Order deleted successfully!');
+      fetchOrders();
+    } catch (error: any) {
+      console.error('Error deleting order:', error);
+      if (error.message?.includes('404') || error.message?.includes('not found')) {
+        toast.error('Order not found. It may have been already deleted.');
+        // Refresh orders to show current state
+        fetchOrders();
+      } else {
+        toast.error('Failed to delete order');
+      }
     }
   };
 
@@ -638,7 +651,7 @@ export function OrderManagement() {
     return true;
   });
 
-  // Sort orders: bottleneck orders first, then by age
+  // Sort orders: bottleneck orders first, then by age, then by user preference
   const sortedOrders = [...filteredOrders].sort((a, b) => {
     const aAge = getOrderAge(a);
     const bAge = getOrderAge(b);
@@ -657,8 +670,14 @@ export function OrderManagement() {
     if (aDelay === 'warning' && bDelay !== 'warning') return -1;
     if (bDelay === 'warning' && aDelay !== 'warning') return 1;
 
-    // Most recent first for same priority (higher timestamp = newer)
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    // Extract order ID numbers for sorting
+    const aOrderId = generateOrderDisplayId(a.id, a.orderNumber);
+    const bOrderId = generateOrderDisplayId(b.id, b.orderNumber);
+    const aOrderNum = parseInt(aOrderId.replace(/[^0-9]/g, '')) || 0;
+    const bOrderNum = parseInt(bOrderId.replace(/[^0-9]/g, '')) || 0;
+
+    // Sort by user preference (newest/oldest) based on order ID number
+    return sortBy === 'newest' ? bOrderNum - aOrderNum : aOrderNum - bOrderNum;
   });
 
   // Calculate statistics
@@ -865,6 +884,31 @@ export function OrderManagement() {
             >
               Clear Filters
             </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <ArrowUpDown className="h-4 w-4" />
+                  Sort
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem 
+                  onClick={() => setSortBy('newest')}
+                  className={sortBy === 'newest' ? 'bg-accent' : ''}
+                >
+                  <ArrowDown className="h-4 w-4 mr-2" />
+                  New to Old
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setSortBy('oldest')}
+                  className={sortBy === 'oldest' ? 'bg-accent' : ''}
+                >
+                  <ArrowUp className="h-4 w-4 mr-2" />
+                  Old to New
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </CardContent>
       </Card>
@@ -926,8 +970,18 @@ export function OrderManagement() {
                   delayLevel === 'warning' ? 'border-yellow-400 border-2' : ''
                 }`}
               >
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start mb-2">
+                <CardHeader className="pb-3 relative">
+                  {/* Delete Button - Top Right Corner */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteOrder(order.id, generateOrderDisplayId(order.id, order.orderNumber))}
+                    className="absolute top-2 right-2 h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                  
+                  <div className="flex justify-between items-start mb-2 pr-10">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <CardTitle className="text-lg font-semibold">
@@ -976,7 +1030,6 @@ export function OrderManagement() {
                             key={idx} 
                             className={`text-xs ${keyword.bg} ${keyword.color} border-0`}
                           >
-                            <span className="mr-1">{keyword.icon}</span>
                             {note.text}
                           </Badge>
                         );
@@ -1079,11 +1132,12 @@ export function OrderManagement() {
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {new Date(order.createdAt).toLocaleTimeString('en-US', {
+                        {new Date(order.createdAt).toLocaleTimeString('en-IN', {
                           hour: '2-digit',
                           minute: '2-digit',
-                          hour12: true
-                        })}
+                          hour12: true,
+                          timeZone: 'Asia/Kolkata'
+                        })} IST
                       </span>
                       {order.paymentMethod && (
                         <span className="flex items-center gap-1">

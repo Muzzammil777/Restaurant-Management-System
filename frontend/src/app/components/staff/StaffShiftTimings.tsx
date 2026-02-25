@@ -379,7 +379,7 @@ export function StaffShiftTimings({ globalSearch = '' }: StaffShiftTimingsProps)
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>Start Time</Label>
                   <Input
@@ -453,7 +453,7 @@ export function StaffShiftTimings({ globalSearch = '' }: StaffShiftTimingsProps)
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>Start Time</Label>
                   <Input
@@ -636,8 +636,8 @@ export function StaffShiftTimings({ globalSearch = '' }: StaffShiftTimingsProps)
             </div>
             <div className="flex items-center gap-3">
               <Button 
-                variant="ghost" 
-                className="text-gray-400 font-bold uppercase tracking-widest text-[11px] px-6"
+                variant="outline" 
+                className="text-black border border-gray-300 hover:border-gray-400 hover:text-black font-bold uppercase tracking-widest text-[11px] px-6"
                 onClick={() => setRatesDialogOpen(true)}
               >
                 Modify Financial Rates
@@ -681,7 +681,7 @@ export function StaffShiftTimings({ globalSearch = '' }: StaffShiftTimingsProps)
             <div className="border-t pt-4">
               <Label className="text-sm font-semibold mb-2 block">Individual Staff Rates</Label>
               {staff.map((s) => (
-                <div key={s._id} className="grid grid-cols-3 gap-2 items-center mb-3">
+                <div key={s._id} className="grid grid-cols-2 sm:grid-cols-3 gap-2 items-center mb-3">
                   <span className="text-sm truncate">{s.name}</span>
                   <Input
                     type="number"

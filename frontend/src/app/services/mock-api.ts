@@ -79,6 +79,7 @@ export interface MockInvoice {
   discountType: 'flat' | 'percent';
   discountValue: number;
   discountAmount: number;
+  couponCode?: string;
   grandTotal: number;
   paymentMethod: 'Cash' | 'Card' | 'UPI';
   createdAt: string;

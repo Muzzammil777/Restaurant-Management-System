@@ -69,7 +69,10 @@ async def seed_database():
         return
     
     client = AsyncIOMotorClient(uri)
-    db = client.get_default_database() or client['rms']
+    try:
+        db = client.get_default_database()
+    except Exception:
+        db = client['rms']
     
     print("Starting database seed...")
     

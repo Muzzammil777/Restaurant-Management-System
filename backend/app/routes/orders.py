@@ -194,24 +194,29 @@ async def create_order(data: dict):
     try:
         db = get_db()
         
-        # Remove id and _id fields to let MongoDB generate them
-        # This prevents duplicate key errors when frontend sends id: null
+        # Remove any incoming id/_id fields from the client
         data.pop("id", None)
         data.pop("_id", None)
-        
+
+        # Pre-generate ObjectId so _id and id are set atomically in one insert,
+        # eliminating the race window that caused E11000 dup key: { id: null }
+        new_id = ObjectId()
+        data["_id"] = new_id
+        data["id"] = str(new_id)
+
         # Generate order number
         count = await db.orders.count_documents({})
         data["orderNumber"] = f"#ORD-{count + 1001}"
         data["createdAt"] = datetime.utcnow().isoformat() + 'Z'
         data["status"] = data.get("status", "placed")
         data["statusUpdatedAt"] = datetime.utcnow().isoformat() + 'Z'
-        
-        result = await db.orders.insert_one(data)
-        created = await db.orders.find_one({"_id": result.inserted_id})
+
+        await db.orders.insert_one(data)
+        created = await db.orders.find_one({"_id": new_id})
         
         # Try to log audit but don't fail if it doesn't work
         try:
-            await log_audit("create", "order", str(result.inserted_id), {
+            await log_audit("create", "order", str(new_id), {
                 "orderNumber": data["orderNumber"],
                 "total": data.get("total")
             })

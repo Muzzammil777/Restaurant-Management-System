@@ -170,7 +170,7 @@ export function AccountAuthentication() {
   }
 
   return (
-    <div className="bg-settings-module min-h-screen space-y-6 p-6">
+    <div className="bg-settings-module min-h-screen space-y-6 p-6 max-w-full overflow-x-hidden">
       {/* Change Password Section */}
       <Card>
         <CardHeader>
@@ -367,7 +367,15 @@ export function AccountAuthentication() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {user.lastLogin}
+                    {user.lastLogin && user.lastLogin !== 'Never'
+                      ? (() => {
+                          try {
+                            return new Date(user.lastLogin).toLocaleString();
+                          } catch {
+                            return user.lastLogin;
+                          }
+                        })()
+                      : 'Never'}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Button } from '@/app/components/ui/button';
+import { useState, useEffect } from 'react';
+import { LoadingStaff } from '@/app/components/ui/loading-spinner';
 import { Input } from '@/app/components/ui/input';
 import {
   Tabs,
@@ -34,10 +34,16 @@ import { StaffReports } from "./staff/StaffReports";
 
 export function StaffManagement() {
   const [activeTab, setActiveTab] = useState('overview');
+  const [loading, setLoading] = useState(true);
   const [globalSearch, setGlobalSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [shiftFilter, setShiftFilter] = useState('all');
   const { user } = useAuth();
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 350);
+    return () => clearTimeout(t);
+  }, []);
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -51,12 +57,14 @@ export function StaffManagement() {
     { id: 'reports', label: 'Reports', icon: FileBarChart, description: 'Analytics & insights' },
   ];
 
+  if (loading) return <LoadingStaff />;
+
   return (
-    <div className="bg-staff-module min-h-screen flex flex-col">
+    <div className="bg-staff-module min-h-screen flex flex-col max-w-full overflow-x-hidden">
       {/* Module Header Bar */}
-      <div className="bg-black/40 backdrop-blur-sm border-b border-gray-700 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-30">
-        <div className="flex items-center gap-3 flex-1">
-          <div className="relative w-full md:w-[300px]">
+      <div className="bg-black/40 backdrop-blur-sm border-b border-gray-700 px-3 sm:px-6 py-3 sm:py-4 flex flex-col md:flex-row md:items-center justify-between gap-3 sticky top-0 z-30">
+        <div className="flex flex-wrap items-center gap-2 flex-1">
+          <div className="relative w-full sm:w-[300px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/60" />
             <Input
               placeholder="Search staff..."
@@ -105,7 +113,7 @@ export function StaffManagement() {
         </div>
       </div>
 
-      <div className="flex-1 container mx-auto px-6 py-4">
+      <div className="flex-1 container mx-auto px-3 sm:px-6 py-4">
         {/* Custom Tab Navigation - matching Inventory style */}
         <div className="w-full overflow-x-auto pb-6">
           <nav className="flex gap-3 min-w-max p-1">
@@ -120,16 +128,16 @@ export function StaffManagement() {
                   className={cn(
                     'flex items-start gap-3 p-3 rounded-lg transition-colors text-left min-w-[180px]',
                     isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-card border border-border hover:bg-muted shadow-sm'
+                      ? 'bg-[#8B5A2B] text-white shadow-lg'
+                      : 'bg-white/10 border border-white/20 text-white hover:bg-white/20 shadow-sm backdrop-blur-sm'
                   )}
                 >
-                  <Icon className={cn('h-5 w-5 mt-0.5 flex-shrink-0', isActive ? '' : 'text-muted-foreground')} />
+                  <Icon className="h-5 w-5 mt-0.5 flex-shrink-0 text-white" />
                   <div className="flex-1 min-w-0">
-                    <p className={cn('text-sm font-medium', isActive ? '' : '')}>
+                    <p className="text-sm font-medium text-white">
                       {item.label}
                     </p>
-                    <p className={cn('text-xs mt-0.5', isActive ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
+                    <p className={cn('text-xs mt-0.5', isActive ? 'text-white/80' : 'text-white/60')}>
                       {item.description}
                     </p>
                   </div>

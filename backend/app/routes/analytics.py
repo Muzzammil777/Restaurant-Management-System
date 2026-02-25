@@ -55,6 +55,22 @@ def normalize_status(value) -> str:
     return str(value or "").strip().lower()
 
 
+def _safe_int(value, default: int = 0) -> int:
+    """Safely convert a value to int"""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def normalize_order_type(order: dict) -> str:
+    raw = str(order.get("type") or order.get("orderType") or order.get("order_type") or "unknown").strip().lower()
+    if raw in {"dinein", "dine-in", "dine_in"}:
+        return "dine-in"
+    if raw in {"pickup", "take away", "take-away"}:
+        return "takeaway"
+    return raw or "unknown"
+
 def extract_items(order: dict):
     items = []
     raw_items = order.get("items") or []
@@ -81,6 +97,7 @@ async def get_analytics():
     db = get_db()
     all_orders = await db.orders.find({}).to_list(50000)
 
+    # Total orders
     total_orders = len(all_orders)
     completed_orders = sum(1 for o in all_orders if normalize_status(o.get("status")) == "completed")
     active_orders = sum(1 for o in all_orders if normalize_status(o.get("status")) in ["pending", "confirmed", "preparing", "ready"])
@@ -91,7 +108,71 @@ async def get_analytics():
         if normalize_status(order.get("status")) == "completed"
     )
 
+<<<<<<< HEAD
     avg_order_value = round(total_revenue / completed_orders, 2) if completed_orders else 0
+=======
+    # Completed orders
+    completed_orders = sum(1 for order in all_orders if normalize_status(order.get("status")) in completed_statuses)
+
+    # Active orders (in progress)
+    active_orders = sum(1 for order in all_orders if normalize_status(order.get("status")) in active_statuses)
+
+    # Total revenue from completed orders
+    total_revenue = sum(get_order_total(order) for order in all_orders if normalize_status(order.get("status")) in completed_statuses)
+
+    # Average order value
+    avg_order_value = round(total_revenue / completed_orders, 2) if completed_orders > 0 else 0.0
+
+    # Popular items with revenue
+    popular_map = {}
+    for order in all_orders:
+        for item in extract_items(order):
+            key = item["name"]
+            if key not in popular_map:
+                popular_map[key] = {"name": key, "count": 0, "revenue": 0.0}
+            popular_map[key]["count"] += item["quantity"]
+            popular_map[key]["revenue"] += item["price"] * item["quantity"]
+
+    popular_items = sorted(popular_map.values(), key=lambda item: item["count"], reverse=True)[:10]
+
+    # Table occupancy
+    total_tables = _safe_int(await db.tables.count_documents({}))
+    occupied_tables = _safe_int(await db.tables.count_documents({"status": "occupied"}))
+    table_occupancy = round((occupied_tables / total_tables * 100), 1) if total_tables > 0 else 0.0
+
+    # Order type breakdown — field is "type" on orders
+    order_types = {}
+    for order in all_orders:
+        order_type = normalize_order_type(order)
+        order_types[order_type] = order_types.get(order_type, 0) + 1
+
+    # Category distribution — category is stored directly on order items
+    category_map = {}
+    for order in all_orders:
+        for item in extract_items(order):
+            category = item["category"] or "Other"
+            category_map[category] = category_map.get(category, 0) + item["quantity"]
+    categories = [{"name": name, "value": count} for name, count in sorted(category_map.items(), key=lambda row: row[1], reverse=True)]
+
+    # Total customers
+    total_customers = await db.customers.count_documents({})
+    if total_customers == 0:
+        customer_keys = set()
+        for order in all_orders:
+            key = (
+                str(order.get("customerId") or "").strip()
+                or str(order.get("customerPhone") or "").strip()
+                or str(order.get("customerName") or "").strip().lower()
+            )
+            if key:
+                customer_keys.add(key)
+        total_customers = len(customer_keys)
+
+    # Staff counts
+    total_staff = await db.staff.count_documents({"active": True})
+    on_duty_staff = await db.staff.count_documents({"active": True, "status": "on-duty"})
+    on_leave_staff = await db.staff.count_documents({"active": True, "status": "on-leave"})
+>>>>>>> 3789df7ba77936489afea51b97006d855458fabd
 
     return {
         "success": True,
@@ -102,4 +183,215 @@ async def get_analytics():
             "totalRevenue": round(total_revenue, 2),
             "avgOrderValue": avg_order_value,
         }
+<<<<<<< HEAD
     }
+=======
+    }
+
+
+@router.get("/daily")
+async def get_daily_analytics(date: str = None):
+    """Get analytics for a specific date"""
+    db = get_db()
+    
+    if date:
+        target_date = datetime.fromisoformat(date)
+    else:
+        target_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    next_day = target_date + timedelta(days=1)
+    
+    all_orders = await db.orders.find({}).to_list(50000)
+    day_orders = []
+    for order in all_orders:
+        order_dt = get_order_datetime(order)
+        if order_dt and target_date <= order_dt < next_day:
+            day_orders.append(order)
+
+    total_orders = len(day_orders)
+    total_revenue = sum(get_order_total(order) for order in day_orders)
+    completed_count = sum(1 for order in day_orders if normalize_status(order.get("status")) == "completed")
+
+    hourly_buckets = {}
+    for order in day_orders:
+        order_dt = get_order_datetime(order)
+        if not order_dt:
+            continue
+        hour_key = order_dt.hour
+        if hour_key not in hourly_buckets:
+            hourly_buckets[hour_key] = {"hour": hour_key, "orders": 0, "revenue": 0.0}
+        hourly_buckets[hour_key]["orders"] += 1
+        hourly_buckets[hour_key]["revenue"] += get_order_total(order)
+
+    hourly_result = [hourly_buckets[hour] for hour in sorted(hourly_buckets.keys())]
+    
+    return {
+        "date": target_date.isoformat()[:10],
+        "orders": total_orders,
+        "revenue": round(total_revenue, 2),
+        "completed": completed_count,
+        "hourly": [{"hour": h["hour"], "orders": h["orders"], "revenue": round(h["revenue"], 2)} for h in hourly_result]
+    }
+
+
+@router.get("/weekly")
+async def get_weekly_analytics():
+    """Get analytics for the past week"""
+    db = get_db()
+
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = today - timedelta(days=6)
+
+    all_orders = await db.orders.find({}).to_list(50000)
+
+    current_week_orders = []
+    previous_week_orders = []
+    prev_week_start = week_start - timedelta(days=7)
+    for order in all_orders:
+        order_dt = get_order_datetime(order)
+        if not order_dt:
+            continue
+        if week_start <= order_dt < (today + timedelta(days=1)):
+            current_week_orders.append(order)
+        elif prev_week_start <= order_dt < week_start:
+            previous_week_orders.append(order)
+
+    daily_buckets = {}
+    for offset in range(7):
+        d = week_start + timedelta(days=offset)
+        key = d.strftime("%Y-%m-%d")
+        daily_buckets[key] = {"date": key, "orders": 0, "revenue": 0.0}
+
+    for order in current_week_orders:
+        order_dt = get_order_datetime(order)
+        if not order_dt:
+            continue
+        key = order_dt.strftime("%Y-%m-%d")
+        if key in daily_buckets:
+            daily_buckets[key]["orders"] += 1
+            daily_buckets[key]["revenue"] += get_order_total(order)
+
+    daily_result = [
+        {"date": row["date"], "orders": row["orders"], "revenue": round(row["revenue"], 2)}
+        for row in [daily_buckets[k] for k in sorted(daily_buckets.keys())]
+    ]
+
+    current_item_counts = {}
+    current_item_revenue = {}
+    for order in current_week_orders:
+        for item in extract_items(order):
+            name = item["name"]
+            current_item_counts[name] = current_item_counts.get(name, 0) + item["quantity"]
+            current_item_revenue[name] = current_item_revenue.get(name, 0.0) + (item["price"] * item["quantity"])
+
+    prev_counts = {}
+    for order in previous_week_orders:
+        for item in extract_items(order):
+            name = item["name"]
+            prev_counts[name] = prev_counts.get(name, 0) + item["quantity"]
+
+    top_items = sorted(current_item_counts.items(), key=lambda row: row[1], reverse=True)[:10]
+
+    def trend(item_name, curr_count):
+        prev = prev_counts.get(str(item_name), 0)
+        if prev == 0:
+            return 0
+        return round(((curr_count - prev) / prev) * 100)
+
+    return {
+        "startDate": week_start.isoformat()[:10],
+        "endDate": today.isoformat()[:10],
+        "daily": daily_result,
+        "topItems": [{
+            "name": name,
+            "count": count,
+            "revenue": round(current_item_revenue.get(name, 0.0), 2),
+            "trend": trend(name, count)
+        } for name, count in top_items]
+    }
+
+
+@router.get("/staff-performance")
+async def get_staff_performance():
+    """Get staff performance analytics derived from staff and performance logs"""
+    db = get_db()
+
+    # Get all staff (default include active unless explicitly false)
+    staff_docs = await db.staff.find({}).to_list(1000)
+    staff_list = [s for s in staff_docs if s.get("active", True) is not False]
+
+    # Performance logs can be legacy fields (rating/ordersHandled/serviceTimeMins)
+    # or metric/value records from staff module.
+    perf_logs = await db.performance_logs.find({}).to_list(10000)
+    perf_map = {}
+    for log in perf_logs:
+        sid = str(log.get("staffId") or "").strip()
+        if not sid:
+            continue
+        if sid not in perf_map:
+            perf_map[sid] = {
+                "orders_total": 0,
+                "ratings": [],
+                "service_times": [],
+            }
+
+        metric = str(log.get("metric") or "").strip().lower()
+        value = to_number(log.get("value"), None)
+
+        if value is not None:
+            if metric in {"orders", "orders_handled", "ordershandled"}:
+                perf_map[sid]["orders_total"] += int(value)
+            elif metric in {"rating", "customer_rating", "performance_rating"}:
+                perf_map[sid]["ratings"].append(value)
+            elif metric in {"service_time", "service_time_mins", "avg_service_time", "servicetimemins"}:
+                perf_map[sid]["service_times"].append(value)
+
+        legacy_orders = to_number(log.get("ordersHandled"), None)
+        if legacy_orders is not None:
+            perf_map[sid]["orders_total"] += int(legacy_orders)
+
+        legacy_rating = to_number(log.get("rating"), None)
+        if legacy_rating is not None:
+            perf_map[sid]["ratings"].append(legacy_rating)
+
+        legacy_service = to_number(log.get("serviceTimeMins"), None)
+        if legacy_service is not None:
+            perf_map[sid]["service_times"].append(legacy_service)
+
+    attendance_docs = await db.attendance.find({}).to_list(10000)
+    att_map = {}
+    for row in attendance_docs:
+        sid = str(row.get("staffId") or "").strip()
+        if not sid:
+            continue
+        if sid not in att_map:
+            att_map[sid] = {"total": 0, "present": 0}
+        att_map[sid]["total"] += 1
+        if normalize_status(row.get("status")) == "present":
+            att_map[sid]["present"] += 1
+
+    results = []
+    for s in staff_list:
+        sid = str(s["_id"])
+        perf = perf_map.get(sid, {"orders_total": 0, "ratings": [], "service_times": []})
+        att = att_map.get(sid, {"total": 0, "present": 0})
+        total_att = att.get("total", 0)
+        present_att = att.get("present", 0)
+        attendance_pct = f"{round((present_att / total_att) * 100)}%" if total_att > 0 else "—"
+        avg_rating = round(sum(perf["ratings"]) / len(perf["ratings"]), 1) if perf["ratings"] else None
+        avg_service = round(sum(perf["service_times"]) / len(perf["service_times"])) if perf["service_times"] else None
+        performance_score = min(100, round(avg_rating * 20)) if avg_rating else None
+        results.append({
+            "id": sid,
+            "name": s.get("name", ""),
+            "role": s.get("role", ""),
+            "orders_handled": perf["orders_total"],
+            "avg_service_time": f"{avg_service} mins" if avg_service is not None else "—",
+            "rating": avg_rating,
+            "attendance": attendance_pct,
+            "performance_score": performance_score,
+        })
+
+    results.sort(key=lambda x: x["orders_handled"], reverse=True)
+    return results
+>>>>>>> 3789df7ba77936489afea51b97006d855458fabd

@@ -29,7 +29,8 @@ import {
   UserX,
   UserCheck,
   AlertCircle,
-  Loader2
+  Loader2,
+  Wifi
 } from 'lucide-react';
 import { motion } from "framer-motion";
 import { attendanceApi, staffApi } from '@/utils/api';
@@ -54,6 +55,14 @@ interface StaffMember {
   shift: string;
   phone?: string;
   department?: string;
+}
+
+interface OnlineUser {
+  _id: string;
+  name: string;
+  role: string;
+  department?: string;
+  last_login: string;
 }
 
 interface AttendanceForm {
@@ -82,6 +91,8 @@ export function StaffAttendance({ globalSearch = '' }: StaffAttendanceProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+  const [onlineLoading, setOnlineLoading] = useState(true);
   const [attendanceForm, setAttendanceForm] = useState<AttendanceForm>({
     staffId: '',
     date: new Date().toISOString().split('T')[0],
@@ -101,6 +112,32 @@ export function StaffAttendance({ globalSearch = '' }: StaffAttendanceProps) {
   useEffect(() => {
     fetchData();
   }, [departmentFilter]);
+
+  // Fetch online / recently-logged-in users; poll every 30 s
+  const fetchOnlineUsers = async () => {
+    try {
+      const data = await staffApi.getOnline(30);
+      setOnlineUsers(data || []);
+    } catch {
+      // silently ignore — non-critical
+    } finally {
+      setOnlineLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOnlineUsers();
+    const iv = setInterval(fetchOnlineUsers, 30_000);
+    return () => clearInterval(iv);
+  }, []);
+
+  // Helper: format last_login as a relative string
+  const formatLastSeen = (isoStr: string) => {
+    const diff = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    return `${Math.floor(diff / 3600)}h ago`;
+  };
 
   const fetchData = async () => {
     try {
@@ -250,11 +287,11 @@ export function StaffAttendance({ globalSearch = '' }: StaffAttendanceProps) {
         <div className="flex flex-wrap items-center gap-2">
           <Button 
             variant="outline" 
-            className="gap-2 bg-white border-gray-200 shadow-sm"
+            className="gap-2 text-white border-white/30 hover:text-white hover:bg-white/10"
             onClick={handleExportCsv}
             disabled={exporting}
           >
-            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarIcon className="h-4 w-4 text-[#8B5A2B]" />}
+            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarIcon className="h-4 w-4 text-white" />}
             Export
           </Button>
           <Dialog open={manualEntryOpen} onOpenChange={setManualEntryOpen}>
@@ -317,7 +354,7 @@ export function StaffAttendance({ globalSearch = '' }: StaffAttendanceProps) {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="checkIn">Clock In Time</Label>
                     <Input
@@ -378,17 +415,71 @@ export function StaffAttendance({ globalSearch = '' }: StaffAttendanceProps) {
         </div>
       </div>
 
+      {/* Currently Online Users */}
+      <Card className="border-none shadow-sm bg-white rounded-2xl">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Wifi className="h-5 w-5 text-green-500" />
+                <span className="absolute -top-1 -right-1 h-2 w-2 bg-green-400 rounded-full animate-pulse" />
+              </div>
+              <h3 className="text-sm font-bold text-gray-800 uppercase tracking-widest">Currently Online</h3>
+            </div>
+            <Badge className="bg-green-50 text-green-600 border-none font-bold text-[11px] px-3">
+              {onlineLoading ? '…' : onlineUsers.length} active
+            </Badge>
+          </div>
+          {onlineLoading ? (
+            <div className="flex items-center justify-center py-4 text-gray-400 gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Loading...</span>
+            </div>
+          ) : onlineUsers.length === 0 ? (
+            <p className="text-sm text-gray-400 py-4 text-center">No staff currently online</p>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {onlineUsers.map((user) => (
+                <div
+                  key={user._id}
+                  className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 min-w-[180px]"
+                >
+                  <div className="relative">
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-green-100 to-emerald-200 flex items-center justify-center text-green-700 font-bold text-xs shadow-sm">
+                      {user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                    </div>
+                    <span className="absolute bottom-0 right-0 h-3 w-3 bg-green-400 border-2 border-white rounded-full" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-gray-800 text-sm">{user.name}</div>
+                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{user.role}</div>
+                    <div className="text-[10px] text-green-600 font-semibold mt-0.5 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {formatLastSeen(user.last_login)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-none shadow-sm bg-white">
           <CardContent className="p-6">
             <div className="flex justify-between items-start mb-4">
               <div>
                 <p className="text-[10px] font-bold text-white-600 uppercase tracking-widest mb-1">Active On-Site</p>
-                {loading ? (
+                {onlineLoading ? (
                   <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
                 ) : (
-                  <div className="text-4xl font-bold text-[#2D2D2D]">{activeOnSite}/{totalStaff}</div>
+                  <div className="text-4xl font-bold text-[#2D2D2D]">{onlineUsers.length}/{totalStaff}</div>
                 )}
+                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                  <span className="inline-block h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+                  {onlineUsers.length} logged in now
+                </p>
               </div>
               <Badge className="bg-green-50 text-green-600 border-none font-bold text-[10px]">+5.2%</Badge>
             </div>
@@ -396,7 +487,7 @@ export function StaffAttendance({ globalSearch = '' }: StaffAttendanceProps) {
               <motion.div 
                 className="bg-green-500 h-full rounded-full"
                 initial={{ width: 0 }}
-                animate={{ width: totalStaff > 0 ? `${(activeOnSite / totalStaff) * 100}%` : '0%' }}
+                animate={{ width: totalStaff > 0 ? `${(onlineUsers.length / totalStaff) * 100}%` : '0%' }}
                 transition={{ duration: 1, ease: "easeOut" }}
               />
             </div>
@@ -464,6 +555,8 @@ export function StaffAttendance({ globalSearch = '' }: StaffAttendanceProps) {
               <Input 
                 placeholder="Search by name..." 
                 className="pl-10 bg-[#FDFCFB] border-none rounded-xl"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
           </div>
@@ -618,7 +711,7 @@ export function StaffAttendance({ globalSearch = '' }: StaffAttendanceProps) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Clock In Time</Label>
                 <Input

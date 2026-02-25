@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { jsPDF } from 'jspdf';
+import { LoadingBilling } from '@/app/components/ui/loading-spinner';
+import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
@@ -34,7 +35,7 @@ import {
   Calculator,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { billingApi } from '@/utils/api';
+import { ordersApi, billingApi } from '@/utils/api';
 
 interface Order {
   id: string;
@@ -86,10 +87,13 @@ export function BillingPayment() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [showInvoicePreview, setShowInvoicePreview] = useState(false);
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
-    fetchOrders();
-    fetchInvoices();
+    Promise.all([fetchOrders(), fetchInvoices()]).finally(() => setLoading(false));
+    const interval = setInterval(fetchOrders, 10000); // auto-refresh every 10s
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -97,8 +101,22 @@ export function BillingPayment() {
     setSubtotal(total);
   }, [billItems]);
 
+  const normalizeOrder = (o: any): Order => ({
+    id: o._id || o.id,
+    table_number: o.tableNumber || o.table_number || 0,
+    customer_name: o.customerName || o.customer_name || 'Guest',
+    items: (o.items || []).map((item: any) => ({
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+    })),
+    total: o.total || o.totalAmount || 0,
+    status: o.status,
+  });
+
   const fetchOrders = async () => {
     try {
+<<<<<<< HEAD
       // Fetch real served orders from API
       const result = await billingApi.listEntries({ status: 'pending_payment' });
       if (result?.data) {
@@ -118,11 +136,45 @@ export function BillingPayment() {
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast.error('Failed to fetch orders for billing');
+=======
+      // Fetch served and bill_requested orders from the real backend in parallel
+      const [servedRes, billRes] = await Promise.all([
+        ordersApi.list({ status: 'served' }),
+        ordersApi.list({ status: 'bill_requested' }),
+      ]);
+
+      const extract = (res: any): any[] =>
+        Array.isArray(res) ? res : (res?.data ?? []);
+
+      const combined = [...extract(servedRes), ...extract(billRes)];
+
+      // Deduplicate by id
+      const seen = new Set<string>();
+      const unique = combined.filter(o => {
+        const id = o._id || o.id;
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+
+      // bill_requested first, then served
+      unique.sort((a, b) => {
+        if (a.status === 'bill_requested' && b.status !== 'bill_requested') return -1;
+        if (a.status !== 'bill_requested' && b.status === 'bill_requested') return 1;
+        return 0;
+      });
+
+      setOrders(unique.map(normalizeOrder));
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      toast.error('Failed to load orders');
+>>>>>>> 3789df7ba77936489afea51b97006d855458fabd
     }
   };
 
   const fetchInvoices = async () => {
     try {
+<<<<<<< HEAD
       // Fetch real invoices from API
       const result = await billingApi.list({ status: 'paid' });
       if (result?.data) {
@@ -145,6 +197,34 @@ export function BillingPayment() {
         }));
         setInvoices(transformedInvoices);
       }
+=======
+      const res = await billingApi.listInvoices();
+      const raw: any[] = Array.isArray(res) ? res : [];
+      const normalized: Invoice[] = raw.map((inv: any) => ({
+        id: inv._id || inv.id,
+        invoice_number: inv.invoiceNumber || inv.invoice_number || inv.id,
+        customer_name: inv.customerName || inv.customer_name || 'Guest',
+        table_number: inv.tableNumber || inv.table_number || 0,
+        items: (inv.items || []).map((item: any, idx: number) => ({
+          id: item.id || `item-${idx}`,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          total: item.quantity * item.price,
+        })),
+        subtotal: inv.subtotal || 0,
+        tax_rate: inv.taxPercent ?? inv.tax_rate ?? 5,
+        tax_amount: inv.taxAmount ?? inv.tax_amount ?? 0,
+        discount_type: inv.discountType || inv.discount_type || 'flat',
+        discount_value: inv.discountValue ?? inv.discount_value ?? 0,
+        discount_amount: inv.discountAmount ?? inv.discount_amount ?? 0,
+        grand_total: inv.grandTotal || inv.grand_total || 0,
+        payment_mode: inv.paymentMethod || inv.payment_mode || 'cash',
+        status: inv.status || 'paid',
+        created_at: inv.createdAt || inv.created_at || new Date().toISOString(),
+      }));
+      setInvoices(normalized);
+>>>>>>> 3789df7ba77936489afea51b97006d855458fabd
     } catch (error) {
       console.error('Error fetching invoices:', error);
     }
@@ -208,7 +288,9 @@ export function BillingPayment() {
       toast.error('Please add items to the bill');
       return;
     }
+    setIsGenerating(true);
 
+<<<<<<< HEAD
     if (!selectedOrder?.billingId) {
       toast.error('No billing information found for this order');
       return;
@@ -265,6 +347,75 @@ export function BillingPayment() {
     } catch (error) {
       console.error('Error processing payment:', error);
       toast.error('Failed to process payment. Please try again.');
+=======
+    const totals = calculateTotals();
+
+    const invoicePayload = {
+      orderId: selectedOrder?.id,
+      tableId: selectedOrder?.id ? undefined : undefined,
+      tableNumber: selectedOrder?.table_number,
+      customerName: selectedOrder?.customer_name || 'Walk-in Customer',
+      items: billItems.map(item => ({ name: item.name, quantity: item.quantity, price: item.price })),
+      subtotal: totals.subtotal,
+      taxPercent: taxRate,
+      taxAmount: totals.taxAmount,
+      discountType,
+      discountValue,
+      discountAmount: totals.discountAmount,
+      grandTotal: totals.grandTotal,
+      paymentMethod: paymentMode,
+      status: 'paid',
+    };
+
+    try {
+      // Persist invoice to backend
+      const created = await billingApi.createInvoice(invoicePayload);
+      const invoiceNumber = created?.invoiceNumber || `INV-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(4, '0')}`;
+
+      // Mark order as completed in backend
+      if (selectedOrder?.id) {
+        try {
+          await ordersApi.updateStatus(selectedOrder.id, 'completed', false);
+        } catch (e) {
+          console.warn('Could not mark order as completed:', e);
+        }
+      }
+
+      const invoice: Invoice = {
+        id: created?._id || created?.id || Date.now().toString(),
+        invoice_number: invoiceNumber,
+        customer_name: selectedOrder?.customer_name || 'Walk-in Customer',
+        table_number: selectedOrder?.table_number || 0,
+        items: billItems,
+        subtotal: totals.subtotal,
+        tax_rate: taxRate,
+        tax_amount: totals.taxAmount,
+        discount_type: discountType,
+        discount_value: discountValue,
+        discount_amount: totals.discountAmount,
+        grand_total: totals.grandTotal,
+        payment_mode: paymentMode,
+        status: 'paid',
+        created_at: created?.createdAt || new Date().toISOString(),
+      };
+
+      setInvoices(prev => [invoice, ...prev]);
+      setPreviewInvoice(invoice);
+      setShowInvoicePreview(true);
+
+      // Remove the order from the list since it's now billed
+      setOrders(prev => prev.filter(o => o.id !== selectedOrder?.id));
+      setBillItems([]);
+      setSelectedOrder(null);
+      setDiscountValue(0);
+
+      toast.success(`Invoice ${invoiceNumber} generated successfully!`);
+    } catch (error) {
+      console.error('Failed to generate invoice:', error);
+      toast.error('Failed to save invoice. Please try again.');
+    } finally {
+      setIsGenerating(false);
+>>>>>>> 3789df7ba77936489afea51b97006d855458fabd
     }
   };
 
@@ -462,36 +613,45 @@ export function BillingPayment() {
 
   const totals = calculateTotals();
 
+  if (loading) return <LoadingBilling />;
+
   return (
-    <div className="bg-billing-module min-h-screen space-y-6 p-6">
-      <div className="module-container flex items-center justify-between">
+    <div className="bg-billing-module min-h-screen space-y-4 sm:space-y-6 p-3 sm:p-6 max-w-full overflow-x-hidden">
+      <div className="module-container flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-white drop-shadow-lg">Billing & Payment</h2>
           <p className="text-sm text-gray-200 mt-1">
             Generate bills, manage payments, and process refunds
           </p>
         </div>
-        <Button onClick={fetchOrders} variant="outline" size="sm">
+        <Button onClick={fetchOrders} variant="outline" size="sm" className="self-start">
           <RefreshCcw className="h-4 w-4 mr-2" />
           Refresh
         </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 lg:w-[500px]">
-          <TabsTrigger value="generate">Bill Generation</TabsTrigger>
-          <TabsTrigger value="invoices">Invoices</TabsTrigger>
-          <TabsTrigger value="refunds">Refunds</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 sm:w-[500px] bg-[#F5EDE5] p-1 rounded-xl">
+          <TabsTrigger value="generate" className="rounded-xl font-medium text-[#6B5B4F] transition-all duration-300 hover:bg-[#F5EDE5] hover:text-[#8B5A2B] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B] data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25">Bill Generation</TabsTrigger>
+          <TabsTrigger value="invoices" className="rounded-xl font-medium text-[#6B5B4F] transition-all duration-300 hover:bg-[#F5EDE5] hover:text-[#8B5A2B] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B] data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25">Invoices</TabsTrigger>
+          <TabsTrigger value="refunds" className="rounded-xl font-medium text-[#6B5B4F] transition-all duration-300 hover:bg-[#F5EDE5] hover:text-[#8B5A2B] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#8B5A2B] data-[state=active]:to-[#A0694B] data-[state=active]:!text-white data-[state=active]:shadow-md data-[state=active]:shadow-[#8B5A2B]/25">Refunds</TabsTrigger>
         </TabsList>
 
         {/* Bill Generation Tab */}
         <TabsContent value="generate" className="space-y-6">
-          <div className="grid lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Order Selection */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Select Order</CardTitle>
-                <CardDescription>Choose a completed order</CardDescription>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  Select Order
+                  {orders.filter(o => o.status === 'bill_requested').length > 0 && (
+                    <Badge className="bg-amber-500 text-white text-xs">
+                      {orders.filter(o => o.status === 'bill_requested').length} Pending
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CardDescription>Bill-requested orders appear first</CardDescription>
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-[500px] pr-4">
@@ -500,14 +660,23 @@ export function BillingPayment() {
                       <Card
                         key={order.id}
                         className={`cursor-pointer transition-all hover:shadow-md ${
-                          selectedOrder?.id === order.id ? 'border-primary bg-primary/5' : ''
+                          selectedOrder?.id === order.id
+                            ? 'border-primary bg-primary/5'
+                            : order.status === 'bill_requested'
+                            ? 'border-amber-400 bg-amber-50'
+                            : ''
                         }`}
                         onClick={() => loadOrderIntoBill(order)}
                       >
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between mb-2">
                             <span className="font-medium">Table {order.table_number}</span>
-                            <Badge variant="outline">{order.status}</Badge>
+                            <Badge
+                              variant={order.status === 'bill_requested' ? 'default' : 'outline'}
+                              className={order.status === 'bill_requested' ? 'bg-amber-500 text-white' : ''}
+                            >
+                              {order.status === 'bill_requested' ? '⚑ Bill Requested' : order.status}
+                            </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground mb-2">{order.customer_name}</p>
                           <p className="text-sm font-medium">
@@ -520,7 +689,8 @@ export function BillingPayment() {
                     {orders.length === 0 && (
                       <div className="text-center py-8 text-muted-foreground">
                         <Receipt className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                        <p className="text-sm">No completed orders</p>
+                        <p className="text-sm">No pending bills</p>
+                        <p className="text-xs mt-1">Bills appear here when a waiter marks a table as Available</p>
                       </div>
                     )}
                   </div>
@@ -656,7 +826,7 @@ export function BillingPayment() {
                     <div className="space-y-3">
                       <Label>Payment Mode</Label>
                       <RadioGroup value={paymentMode} onValueChange={setPaymentMode}>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <Label
                             htmlFor="cash"
                             className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
@@ -704,9 +874,15 @@ export function BillingPayment() {
                       </RadioGroup>
                     </div>
 
+<<<<<<< HEAD
                     <Button onClick={generateInvoice} className="w-full" size="lg">
                       <CreditCard className="h-4 w-4 mr-2" />
                       Process Payment & Generate Invoice
+=======
+                    <Button onClick={generateInvoice} className="w-full" size="lg" disabled={isGenerating}>
+                      <Receipt className="h-5 w-5 mr-2" />
+                      {isGenerating ? 'Processing...' : 'Generate Invoice & Process Payment'}
+>>>>>>> 3789df7ba77936489afea51b97006d855458fabd
                     </Button>
                   </>
                 )}
