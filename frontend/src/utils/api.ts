@@ -712,6 +712,11 @@ export const ordersApi = {
       method: 'PATCH',
     }),
 
+  //======== ORDERS FOR BILLING INTEGRATION ========
+  
+  // Get served orders ready for billing
+  getServedForBilling: () => fetchApi<any[]>('/orders/served-for-billing'),
+
   // Kitchen queue (legacy)
   getKitchenQueue: () => fetchApi<any[]>('/orders/kitchen/queue'),
 
@@ -1168,6 +1173,29 @@ export const notificationsApi = {
 
 // ============ BILLING API ============
 export const billingApi = {
+  // ===== BILLING ENTRIES (SERVED ORDERS) =====
+  
+  // List billing entries (served orders ready for payment)
+  listEntries: (params?: { status?: string; date_from?: string; date_to?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.status) query.append('status', params.status);
+    if (params?.date_from) query.append('date_from', params.date_from);
+    if (params?.date_to) query.append('date_to', params.date_to);
+    return fetchApi<{ data: any[]; total: number }>(`/billing/entries?${query.toString()}`);
+  },
+
+  // Get single billing entry
+  getEntry: (id: string) => fetchApi<any>(`/billing/entries/${id}`),
+
+  // Process payment for billing entry
+  processPayment: (data: { billingId: string; method: string; amount: number; tips?: number }) =>
+    fetchApi<{ success: boolean; payment: any; transactionId: string }>('/billing/process-payment', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // ===== PAYMENTS =====
+  
   // List payments
   list: (params?: { status?: string; method?: string; date_from?: string; date_to?: string }) => {
     const query = new URLSearchParams();

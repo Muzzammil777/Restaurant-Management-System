@@ -34,8 +34,7 @@ import {
   Calculator,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { API_BASE_URL } from '@/utils/supabase/info';
-import { mockApi } from '@/app/services/mock-api';
+import { billingApi } from '@/utils/api';
 
 interface Order {
   id: string;
@@ -44,6 +43,8 @@ interface Order {
   items: Array<{ name: string; quantity: number; price: number }>;
   total: number;
   status: string;
+  orderNumber?: string;
+  billingId?: string;  // For linking to billing entry
 }
 
 interface BillItem {
@@ -98,45 +99,55 @@ export function BillingPayment() {
 
   const fetchOrders = async () => {
     try {
-      // Use mock API
-      const result = await mockApi.getOrders();
-      if (result.success) {
-        // Filter for completed orders only
-        const completedOrders = result.data.filter((order: any) => 
-          order.status === 'completed' || order.status === 'ready'
-        );
-        setOrders(completedOrders as any);
+      // Fetch real served orders from API
+      const result = await billingApi.listEntries({ status: 'pending_payment' });
+      if (result?.data) {
+        // Transform billing entries to match Order interface
+        const transformedOrders = result.data.map((entry: any) => ({
+          id: entry._id,
+          table_number: entry.tableNumber,
+          customer_name: entry.customerName || 'Customer',
+          items: entry.items || [],
+          total: entry.grandTotal || entry.subtotal || 0,
+          status: 'served', // These are served orders ready for billing
+          orderNumber: entry.orderNumber,
+          billingId: entry._id,  // Store billing ID for payment processing
+        }));
+        setOrders(transformedOrders as any);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
+      toast.error('Failed to fetch orders for billing');
     }
   };
 
   const fetchInvoices = async () => {
-    // Mock invoice data - replace with actual API call
-    const mockInvoices: Invoice[] = [
-      {
-        id: '1',
-        invoice_number: 'INV-2026-0001',
-        customer_name: 'John Doe',
-        table_number: 5,
-        items: [
-          { id: '1', name: 'Butter Chicken', quantity: 2, price: 320, total: 640 },
-          { id: '2', name: 'Naan', quantity: 4, price: 40, total: 160 },
-        ],
-        subtotal: 800,
-        tax_rate: 5,
-        tax_amount: 40,
-        discount_type: 'percentage',
-        discount_value: 10,
-        discount_amount: 80,
-        grand_total: 760,
-        payment_mode: 'UPI',
-        status: 'paid',
-        created_at: new Date().toISOString(),
-      },
-    ];
-    setInvoices(mockInvoices);
+    try {
+      // Fetch real invoices from API
+      const result = await billingApi.list({ status: 'paid' });
+      if (result?.data) {
+        const transformedInvoices = result.data.map((payment: any) => ({
+          id: payment._id,
+          invoice_number: payment.transactionId || `INV-${payment._id.slice(-6)}`,
+          customer_name: payment.customerName || 'Customer',
+          table_number: payment.tableNumber,
+          items: [], // Will be populated from order data if needed
+          subtotal: payment.amount || 0,
+          tax_rate: 5,
+          tax_amount: (payment.amount || 0) * 0.05,
+          discount_type: 'percentage' as 'flat' | 'percentage',
+          discount_value: 0,
+          discount_amount: 0,
+          grand_total: payment.totalAmount || payment.amount || 0,
+          payment_mode: payment.method || 'cash',
+          status: 'paid',
+          created_at: payment.createdAt,
+        }));
+        setInvoices(transformedInvoices);
+      }
+    } catch (error) {
+      console.error('Error fetching invoices:', error);
+    }
   };
 
   const loadOrderIntoBill = (order: Order) => {
@@ -192,43 +203,69 @@ export function BillingPayment() {
     };
   };
 
-  const generateInvoice = () => {
+  const generateInvoice = async () => {
     if (billItems.length === 0) {
       toast.error('Please add items to the bill');
       return;
     }
 
-    const totals = calculateTotals();
-    const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(4, '0')}`;
+    if (!selectedOrder?.billingId) {
+      toast.error('No billing information found for this order');
+      return;
+    }
 
-    const invoice: Invoice = {
-      id: Date.now().toString(),
-      invoice_number: invoiceNumber,
-      customer_name: selectedOrder?.customer_name || 'Walk-in Customer',
-      table_number: selectedOrder?.table_number || 0,
-      items: billItems,
-      subtotal: totals.subtotal,
-      tax_rate: taxRate,
-      tax_amount: totals.taxAmount,
-      discount_type: discountType,
-      discount_value: discountValue,
-      discount_amount: totals.discountAmount,
-      grand_total: totals.grandTotal,
-      payment_mode: paymentMode,
-      status: 'paid',
-      created_at: new Date().toISOString(),
-    };
+    try {
+      const totals = calculateTotals();
+      
+      // Process payment through API
+      const paymentData = {
+        billingId: selectedOrder.billingId,
+        method: paymentMode,
+        amount: totals.grandTotal,
+        tips: 0  // Can be added as a UI input later
+      };
 
-    setInvoices([invoice, ...invoices]);
-    setPreviewInvoice(invoice);
-    setShowInvoicePreview(true);
-    
-    // Reset form
-    setBillItems([]);
-    setSelectedOrder(null);
-    setDiscountValue(0);
-    
-    toast.success(`Invoice ${invoiceNumber} generated successfully!`);
+      const response = await billingApi.processPayment(paymentData);
+      
+      if (response.success) {
+        // Create invoice object for display/printing
+        const invoiceNumber = response.transactionId;
+        const invoice: Invoice = {
+          id: response.payment._id,
+          invoice_number: invoiceNumber,
+          customer_name: selectedOrder.customer_name || 'Walk-in Customer',
+          table_number: selectedOrder.table_number || 0,
+          items: billItems,
+          subtotal: totals.subtotal,
+          tax_rate: taxRate,
+          tax_amount: totals.taxAmount,
+          discount_type: discountType,
+          discount_value: discountValue,
+          discount_amount: totals.discountAmount,
+          grand_total: totals.grandTotal,
+          payment_mode: paymentMode,
+          status: 'paid',
+          created_at: new Date().toISOString(),
+        };
+
+        setInvoices([invoice, ...invoices]);
+        setPreviewInvoice(invoice);
+        setShowInvoicePreview(true);
+        
+        // Reset form
+        setBillItems([]);
+        setSelectedOrder(null);
+        setDiscountValue(0);
+        
+        // Refresh orders list
+        fetchOrders();
+        
+        toast.success(`Payment processed successfully! Transaction ID: ${invoiceNumber}`);
+      }
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      toast.error('Failed to process payment. Please try again.');
+    }
   };
 
   const downloadInvoice = (invoice: Invoice) => {
@@ -668,8 +705,8 @@ export function BillingPayment() {
                     </div>
 
                     <Button onClick={generateInvoice} className="w-full" size="lg">
-                      <Receipt className="h-5 w-5 mr-2" />
-                      Generate Invoice & Process Payment
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Process Payment & Generate Invoice
                     </Button>
                   </>
                 )}

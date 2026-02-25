@@ -23,6 +23,127 @@ def serialize_doc(doc):
     return doc
 
 
+# ============ BILLING ENTRIES ============
+
+@router.get("/entries")
+async def list_billing_entries(
+    status: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    limit: int = Query(100, le=500),
+    skip: int = 0,
+):
+    """Get all billing entries (served orders ready for payment)"""
+    db = get_db()
+    query = {}
+    
+    if status and status != "all":
+        query["status"] = status
+    if date_from:
+        query["createdAt"] = {"$gte": datetime.fromisoformat(date_from)}
+    if date_to:
+        if "createdAt" in query:
+            query["createdAt"]["$lte"] = datetime.fromisoformat(date_to)
+        else:
+            query["createdAt"] = {"$lte": datetime.fromisoformat(date_to)}
+    
+    billing_entries = await db.billing.find(query).sort("createdAt", -1).skip(skip).limit(limit).to_list(limit)
+    total = await db.billing.count_documents(query)
+    
+    return {"data": [serialize_doc(entry) for entry in billing_entries], "total": total}
+
+
+@router.get("/entries/{billing_id}")
+async def get_billing_entry(billing_id: str):
+    """Get single billing entry"""
+    db = get_db()
+    billing = await db.billing.find_one({"_id": ObjectId(billing_id)})
+    if not billing:
+        raise HTTPException(status_code=404, detail="Billing entry not found")
+    return serialize_doc(billing)
+
+
+@router.post("/process-payment")
+async def process_order_payment(data: dict):
+    """Process payment for a billing entry"""
+    db = get_db()
+    
+    required_fields = ["billingId", "method", "amount"]
+    for field in required_fields:
+        if field not in data:
+            raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+    
+    billing_id = data["billingId"]
+    payment_method = data["method"]
+    amount = float(data["amount"])
+    tips = float(data.get("tips", 0))
+    
+    # Get billing entry
+    billing = await db.billing.find_one({"_id": ObjectId(billing_id)})
+    if not billing:
+        raise HTTPException(status_code=404, detail="Billing entry not found")
+    
+    # Create payment record
+    count = await db.payments.count_documents({})
+    payment_data = {
+        "transactionId": f"TXN-{datetime.utcnow().strftime('%Y%m%d')}-{count + 1001}",
+        "billingId": billing_id,
+        "orderId": billing.get("orderId"),
+        "orderNumber": billing.get("orderNumber"),
+        "tableNumber": billing.get("tableNumber"),
+        "customerName": billing.get("customerName"),
+        "amount": amount,
+        "tips": tips,
+        "totalAmount": amount + tips,
+        "method": payment_method,
+        "status": "completed",
+        "createdAt": datetime.utcnow(),
+    }
+    
+    payment_result = await db.payments.insert_one(payment_data)
+    
+    # Update billing entry
+    await db.billing.update_one(
+        {"_id": ObjectId(billing_id)},
+        {"$set": {
+            "status": "paid",
+            "paymentId": str(payment_result.inserted_id),
+            "paymentMethod": payment_method,
+            "paidAt": datetime.utcnow().isoformat() + 'Z',
+            "paidAmount": amount,
+            "tips": tips,
+        }}
+    )
+    
+    # Update order status to completed
+    if billing.get("orderId"):
+        await db.orders.update_one(
+            {"_id": ObjectId(billing["orderId"])},
+            {"$set": {
+                "status": "completed",
+                "paymentStatus": "paid",
+                "paymentMethod": payment_method,
+                "paidAt": datetime.utcnow().isoformat() + 'Z',
+                "completedAt": datetime.utcnow().isoformat() + 'Z'
+            }}
+        )
+    
+    await log_audit("payment_processed", "billing", billing_id, {
+        "amount": amount,
+        "method": payment_method,
+        "transactionId": payment_data["transactionId"]
+    })
+    
+    # Get created payment
+    created_payment = await db.payments.find_one({"_id": payment_result.inserted_id})
+    
+    return {
+        "success": True,
+        "payment": serialize_doc(created_payment),
+        "transactionId": payment_data["transactionId"]
+    }
+
+
 # ============ PAYMENTS ============
 
 @router.get("")

@@ -12,6 +12,55 @@ from bson import ObjectId
 from ..db import get_db
 from ..audit import log_audit
 
+
+# Helper function to create billing entry when order is served
+async def create_billing_entry_for_order(db, order_id: str, order: dict):
+    """Create a billing entry when order is marked as served"""
+    try:
+        # Check if billing entry already exists
+        existing_billing = await db.billing.find_one({"orderId": order_id})
+        if existing_billing:
+            return  # Already has billing entry
+        
+        # Create billing entry
+        billing_entry = {
+            "orderId": order_id,
+            "orderNumber": order.get("orderNumber", f"#ORD-{order_id[:8]}"),
+            "tableNumber": order.get("tableNumber"),
+            "customerName": order.get("customerName", "Customer"),
+            "items": order.get("items", []),
+            "subtotal": order.get("total", 0),
+            "taxRate": 5.0,  # Default GST rate
+            "taxAmount": order.get("total", 0) * 0.05,
+            "discountAmount": 0,
+            "grandTotal": order.get("total", 0) * 1.05,
+            "status": "pending_payment",
+            "type": order.get("type", "dine-in"),
+            "waiterId": order.get("waiterId"),
+            "waiterName": order.get("waiterName"),
+            "createdAt": datetime.utcnow().isoformat() + 'Z',
+            "servedAt": datetime.utcnow().isoformat() + 'Z',
+        }
+        
+        result = await db.billing.insert_one(billing_entry)
+        
+        # Update order with billing reference
+        await db.orders.update_one(
+            {"_id": ObjectId(order_id)},
+            {"$set": {
+                "billingId": str(result.inserted_id),
+                "paymentStatus": "pending_payment",
+                "servedAt": datetime.utcnow().isoformat() + 'Z'
+            }}
+        )
+        
+        print(f"Created billing entry {result.inserted_id} for order {order_id}")
+        
+    except Exception as e:
+        print(f"Error creating billing entry for order {order_id}: {e}")
+        # Don't fail the order status update if billing creation fails
+        pass
+
 router = APIRouter(tags=["Orders"])
 
 
@@ -33,6 +82,20 @@ def serialize_doc(doc):
                 doc[field] = doc[field] + 'Z' if 'T' in doc[field] else doc[field]
     
     return doc
+
+
+@router.get("/served-for-billing")
+async def get_served_orders_for_billing():
+    """Get orders that are served and ready for billing"""
+    db = get_db()
+    
+    # Find orders that are served but don't have completed payment
+    served_orders = await db.orders.find({
+        "status": "served",
+        "paymentStatus": {"$ne": "paid"}
+    }).sort("servedAt", -1).to_list(100)
+    
+    return [serialize_doc(order) for order in served_orders]
 
 
 # ============ ORDERS ============
@@ -252,6 +315,11 @@ async def update_order_status(order_id: str, status: str, deduct_inventory: bool
             "createdAt": datetime.utcnow().isoformat() + 'Z'
         }
         await db.notifications.insert_one(notification)
+    
+    # FLOW INTEGRATION: Create billing entry when order is served
+    if status == "served" and previous_status != "served":
+        # Create billing entry for the served order
+        await create_billing_entry_for_order(db, order_id, order)
     
     # FLOW INTEGRATION: Update payment when completed
     if status == "completed" and order.get("paymentStatus") != "paid":
