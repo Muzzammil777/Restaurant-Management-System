@@ -30,6 +30,7 @@ from .routes import notifications as notifications_router
 from .routes import billing as billing_router
 from .routes import analytics as analytics_router
 from .routes import recipes as recipes_router
+from .routes import catalog as catalog_router
 
 
 app = FastAPI(title='RMS Backend (FastAPI)')
@@ -77,6 +78,9 @@ async def shutdown():
 app.include_router(settings_router.router, prefix='/api/settings')
 app.include_router(staff_router.router, prefix='/api/staff')
 app.include_router(audit_router.router, prefix='/api/audit')
+
+# Catalog Management
+app.include_router(catalog_router.router, prefix='/api/catalog')
 
 # Core Operations
 app.include_router(menu_router.router, prefix='/api/menu')

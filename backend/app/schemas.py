@@ -468,3 +468,38 @@ class UserAccountOut(BaseModel):
     status: str = "active"
     lastLogin: Optional[str] = None
     createdAt: Optional[datetime] = None
+
+# ============ CATALOG MANAGEMENT (Cuisines, Categories, Addons) ============
+class CuisineIn(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+
+class CuisineOut(CuisineIn):
+    id: Optional[str] = Field(None, alias="_id")
+    createdAt: Optional[datetime] = None
+    updatedAt: Optional[datetime] = None
+
+
+class CategoryIn(BaseModel):
+    name: str
+    displayName: Optional[str] = None
+    description: Optional[str] = None
+
+
+class CategoryOut(CategoryIn):
+    id: Optional[str] = Field(None, alias="_id")
+    createdAt: Optional[datetime] = None
+    updatedAt: Optional[datetime] = None
+
+
+class AddonIn(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price: Optional[float] = 0
+
+
+class AddonOut(AddonIn):
+    id: Optional[str] = Field(None, alias="_id")
+    createdAt: Optional[datetime] = None
+    updatedAt: Optional[datetime] = None

@@ -36,7 +36,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
-import { menuApi } from "@/utils/api";
+import { menuApi, catalogApi } from "@/utils/api";
 
 type CuisineType = "South Indian" | "North Indian" | "Chinese" | "Italian" | "Continental";
 
@@ -77,11 +77,34 @@ interface ComboMeal {
 const SPICE_LEVELS = ["None", "Mild", "Medium", "Hot", "Extra Hot"];
 const AVAILABLE_ADDONS = ["Ketchup", "Mayonnaise", "Green Sauce", "Pepper Dip", "Raita", "Sweet Chili"];
 
+const normalizeCategory = (value?: string): string => {
+  const raw = (value ?? "").toString().trim();
+  if (!raw) return "main-course";
+
+  const key = raw.toLowerCase();
+  const map: Record<string, string> = {
+    "starters": "starters",
+    "starter": "starters",
+    "main course": "main-course",
+    "main-course": "main-course",
+    "maincourse": "main-course",
+    "breads": "breads",
+    "bread": "breads",
+    "desserts": "desserts",
+    "dessert": "desserts",
+    "beverages": "beverages",
+    "beverage": "beverages",
+    "drinks": "beverages",
+  };
+
+  return map[key] ?? key.replace(/\s+/g, "-");
+};
+
 const normalizeMenuItems = (items: any[]): MenuItem[] =>
   items.map((item) => ({
     id: item._id ?? item.id ?? `menu-${Math.random().toString(36).slice(2)}`,
     name: item.name ?? "Unnamed Item",
-    category: item.category ?? "main-course",
+    category: normalizeCategory(item.category),
     cuisine: item.cuisine ?? "North Indian",
     price: Number(item.price ?? 0),
     description: item.description ?? "",
@@ -130,6 +153,19 @@ export function MenuManagement() {
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [comboDialogOpen, setComboDialogOpen] = useState(false);
+  const [addCuisineDialogOpen, setAddCuisineDialogOpen] = useState(false);
+  const [addCategoryDialogOpen, setAddCategoryDialogOpen] = useState(false);
+  const [manageAddonsDialogOpen, setManageAddonsDialogOpen] = useState(false);
+  const [newCuisine, setNewCuisine] = useState("");
+  const [newCategory, setNewCategory] = useState("");
+  const [newAddon, setNewAddon] = useState("");
+  const [cuisineList, setCuisineList] = useState<any[]>([]);
+  const [categoryList, setCategoryList] = useState<any[]>([]);
+  const [addonsList, setAddonsList] = useState<any[]>([]);
+  const [comboDropdownOpen, setComboDropdownOpen] = useState(false);
+  const [comboItemSearchQuery, setComboItemSearchQuery] = useState("");
+  const [comboCategoryFilter, setComboCategoryFilter] = useState("all");
+  
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [editingCombo, setEditingCombo] = useState<ComboMeal | null>(null);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
@@ -142,47 +178,125 @@ export function MenuManagement() {
   const [loading, setLoading] = useState(true);
 
 useEffect(() => {
-  const loadMenuData = async () => {
+  const loadAllData = async () => {
     try {
-      const [menuRes, comboRes] = await Promise.all([
-        menuApi.list(),
-        menuApi.listCombos()
+      console.log("🔄 Loading all data...");
+      
+      const [menuRes, comboRes, cuisinesRes, categoriesRes, addonsRes] = await Promise.all([
+        menuApi.list().catch(e => { console.error("❌ menuApi.list() failed:", e); throw e; }),
+        menuApi.listCombos().catch(e => { console.error("❌ menuApi.listCombos() failed:", e); throw e; }),
+        catalogApi.getCuisines().catch(e => { console.error("❌ catalogApi.getCuisines() failed:", e); throw e; }),
+        catalogApi.getCategories().catch(e => { console.error("❌ catalogApi.getCategories() failed:", e); throw e; }),
+        catalogApi.getAddons().catch(e => { console.error("❌ catalogApi.getAddons() failed:", e); throw e; })
       ]);
+
+      console.log("✅ All data loaded successfully");
+      console.log("   Menu items:", menuRes);
+      console.log("   Combos:", comboRes);
+      console.log("   Cuisines:", cuisinesRes);
+      console.log("   Categories:", categoriesRes);
+      console.log("   Addons:", addonsRes);
 
       const menuData = Array.isArray(menuRes) ? menuRes : (menuRes as any)?.data || [];
       const comboData = Array.isArray(comboRes) ? comboRes : [];
 
       setMenuItems(normalizeMenuItems(menuData));
       setComboMeals(normalizeComboMeals(comboData));
+      
+      // Load catalog data
+      setCuisineList(Array.isArray(cuisinesRes) ? cuisinesRes : []);
+      setCategoryList(Array.isArray(categoriesRes) ? categoriesRes : []);
+      setAddonsList(Array.isArray(addonsRes) ? addonsRes : []);
 
     } catch (error) {
-      console.error("Failed to load menu data:", error);
-      toast.error("Failed to load menu data from server");
+      console.error("❌ Failed to load data from server:", error);
+      console.error("   Error details:", {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : null,
+      });
+      toast.error("Failed to load data from server - Check browser console for details");
     } finally {
       setLoading(false);
     }
   };
 
-  loadMenuData();
+  loadAllData();
 }, []);
 
+  // Handlers for adding cuisine, category, and addons
+  const handleAddCuisine = async () => {
+    if (!newCuisine.trim()) {
+      toast.error("Please enter a cuisine name");
+      return;
+    }
+    
+    try {
+      const result = await catalogApi.createCuisine({ name: newCuisine.trim() });
+      setCuisineList([...cuisineList, result]);
+      setNewCuisine("");
+      setAddCuisineDialogOpen(false);
+      toast.success(`Cuisine "${newCuisine.trim()}" added!`);
+    } catch (error) {
+      toast.error("Failed to add cuisine");
+    }
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCategory.trim()) {
+      toast.error("Please enter a category name");
+      return;
+    }
+    
+    try {
+      const normalized = newCategory.trim().toLowerCase().replace(/\s+/g, "-");
+      const result = await catalogApi.createCategory({ name: normalized, displayName: newCategory.trim() });
+      setCategoryList([...categoryList, result]);
+      setNewCategory("");
+      setAddCategoryDialogOpen(false);
+      toast.success(`Category "${newCategory.trim()}" added!`);
+    } catch (error) {
+      toast.error("Failed to add category");
+    }
+  };
+
+  const handleAddAddon = async () => {
+    if (!newAddon.trim()) {
+      toast.error("Please enter an addon name");
+      return;
+    }
+    
+    try {
+      const result = await catalogApi.createAddon({ name: newAddon.trim() });
+      setAddonsList([...addonsList, result]);
+      setNewAddon("");
+      toast.success(`Addon "${newAddon.trim()}" added!`);
+    } catch (error) {
+      toast.error("Failed to add addon");
+    }
+  };
+
+  const handleRemoveAddon = async (addon: any) => {
+    try {
+      await catalogApi.deleteAddon(addon.id || addon._id);
+      setAddonsList(addonsList.filter(a => (a.id || a._id) !== (addon.id || addon._id)));
+      setSelectedAddons(selectedAddons.filter(a => a !== addon.name));
+      toast.success(`Addon "${addon.name}" removed`);
+    } catch (error) {
+      toast.error("Failed to remove addon");
+    }
+  };
 
   const categories = [
     { id: "all", name: "ALL" },
-    { id: "starters", name: "STARTERS" },
-    { id: "main-course", name: "MAIN COURSE" },
-    { id: "breads", name: "BREADS" },
-    { id: "desserts", name: "DESSERTS" },
-    { id: "beverages", name: "BEVERAGES" }
+    ...categoryList.map(cat => ({
+      id: cat.name,
+      name: cat.displayName || cat.name.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
+    }))
   ];
 
   const cuisines = [
     { id: "all", name: "ALL CUISINE" },
-    { id: "South Indian", name: "South Indian" },
-    { id: "North Indian", name: "North Indian" },
-    { id: "Italian", name: "Italian" },
-    { id: "Chinese", name: "Chinese" },
-    { id: "Continental", name: "Continental" }
+    ...cuisineList.map(c => ({ id: c.name, name: c.name }))
   ];
 
   const handleUpdateItem = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -283,7 +397,9 @@ useEffect(() => {
 
       setComboDialogOpen(false);
       setEditingCombo(null);
-      setSelectedComboItems([]); // Reset selected items
+      setSelectedComboItems([]);
+      setComboDropdownOpen(false);
+      setComboItemSearchQuery("");
     } catch (error) {
       console.error("Failed to save combo:", error);
       toast.error("Failed to save combo");
@@ -398,7 +514,7 @@ useEffect(() => {
               <Plus className="mr-2 h-4 w-4" /> Add Item
             </Button>
             <Button 
-              onClick={() => { setEditingCombo(null); setSelectedComboItems([]); setComboDialogOpen(true); }}
+              onClick={() => { setEditingCombo(null); setSelectedComboItems([]); setComboDropdownOpen(false); setComboItemSearchQuery(""); setComboDialogOpen(true); }}
               className="h-11 px-6 bg-white hover:bg-gray-50 text-[#8B5A2B] border-2 border-[#8B5A2B] rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-200"
               style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}
             >
@@ -760,6 +876,15 @@ useEffect(() => {
                     {combo.description}
                   </p>
 
+                  {/* Cuisine Badge */}
+                  {combo.cuisine && (
+                    <div className="mt-2">
+                      <Badge className="bg-orange-600 text-white text-xs" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        {combo.cuisine}
+                      </Badge>
+                    </div>
+                  )}
+
                   {/* Info Row - Calories and Time */}
                   <div className="flex items-center justify-between text-white text-xs mt-2">
                     <div className="flex items-center gap-1">
@@ -809,6 +934,8 @@ useEffect(() => {
                         onClick={() => { 
                           setEditingCombo(combo); 
                           setSelectedComboItems(combo.items || []);
+                          setComboDropdownOpen(false);
+                          setComboItemSearchQuery("");
                           setComboDialogOpen(true); 
                         }}
                       >
@@ -852,34 +979,54 @@ useEffect(() => {
                 <Input id="name" name="name" defaultValue={editingItem?.name} required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="cuisine" style={{ fontFamily: 'Inter, sans-serif' }}>Cuisine</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="cuisine" style={{ fontFamily: 'Inter, sans-serif' }}>Cuisine</Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-xs text-[#8B5A2B] hover:bg-[#8B5A2B]/10"
+                    onClick={() => setAddCuisineDialogOpen(true)}
+                  >
+                    + Add
+                  </Button>
+                </div>
                 <Select name="cuisine" defaultValue={editingItem?.cuisine}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select cuisine" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="South Indian">South Indian</SelectItem>
-                    <SelectItem value="North Indian">North Indian</SelectItem>
-                    <SelectItem value="Chinese">Chinese</SelectItem>
-                    <SelectItem value="Italian">Italian</SelectItem>
-                    <SelectItem value="Continental">Continental</SelectItem>
+                    {cuisineList.map((c: any) => (
+                      <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="category" style={{ fontFamily: 'Inter, sans-serif' }}>Category</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="category" style={{ fontFamily: 'Inter, sans-serif' }}>Category</Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-xs text-[#8B5A2B] hover:bg-[#8B5A2B]/10"
+                    onClick={() => setAddCategoryDialogOpen(true)}
+                  >
+                    + Add
+                  </Button>
+                </div>
                 <Select name="category" defaultValue={editingItem?.category}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="starters">Starters</SelectItem>
-                    <SelectItem value="main-course">Main Course</SelectItem>
-                    <SelectItem value="breads">Breads</SelectItem>
-                    <SelectItem value="desserts">Desserts</SelectItem>
-                    <SelectItem value="beverages">Beverages</SelectItem>
+                    {categoryList.map((c: any) => (
+                      <SelectItem key={c.name} value={c.name}>
+                        {c.displayName || c.name.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -954,22 +1101,33 @@ useEffect(() => {
               
               {/* Addons as Checkboxes */}
               <div className="space-y-2 mt-4">
-                <Label style={{ fontFamily: 'Inter, sans-serif' }}>Available Addons (Select Multiple)</Label>
+                <div className="flex items-center justify-between">
+                  <Label style={{ fontFamily: 'Inter, sans-serif' }}>Available Addons</Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-xs text-[#8B5A2B] hover:bg-[#8B5A2B]/10"
+                    onClick={() => setManageAddonsDialogOpen(true)}
+                  >
+                    + Manage
+                  </Button>
+                </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg">
-                  {AVAILABLE_ADDONS.map(addon => (
-                    <div key={addon} className="flex items-center space-x-2">
+                  {addonsList.map((addon: any) => (
+                    <div key={addon.id || addon._id} className="flex items-center space-x-2">
                       <Checkbox 
-                        id={addon}
-                        checked={selectedAddons.includes(addon)}
+                        id={addon.name}
+                        checked={selectedAddons.includes(addon.name)}
                         onCheckedChange={(checked) => {
                           if (checked) {
-                            setSelectedAddons([...selectedAddons, addon]);
+                            setSelectedAddons([...selectedAddons, addon.name]);
                           } else {
-                            setSelectedAddons(selectedAddons.filter(a => a !== addon));
+                            setSelectedAddons(selectedAddons.filter(a => a !== addon.name));
                           }
                         }}
                       />
-                      <label htmlFor={addon} className="text-sm cursor-pointer" style={{ fontFamily: 'Inter, sans-serif' }}>{addon}</label>
+                      <label htmlFor={addon.name} className="text-sm cursor-pointer" style={{ fontFamily: 'Inter, sans-serif' }}>{addon.name}</label>
                     </div>
                   ))}
                 </div>
@@ -1068,17 +1226,26 @@ useEffect(() => {
               <Input id="comboDesc" name="desc" defaultValue={editingCombo?.description} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="comboCuisine" style={{ fontFamily: 'Inter, sans-serif' }}>Cuisine</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="comboCuisine" style={{ fontFamily: 'Inter, sans-serif' }}>Cuisine</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2 text-xs text-[#8B5A2B] hover:bg-[#8B5A2B]/10"
+                  onClick={() => setAddCuisineDialogOpen(true)}
+                >
+                  + Add
+                </Button>
+              </div>
               <Select name="cuisine" defaultValue={editingCombo?.cuisine}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select cuisine" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="South Indian">South Indian</SelectItem>
-                  <SelectItem value="North Indian">North Indian</SelectItem>
-                  <SelectItem value="Chinese">Chinese</SelectItem>
-                  <SelectItem value="Italian">Italian</SelectItem>
-                  <SelectItem value="Continental">Continental</SelectItem>
+                  {cuisineList.map((c: any) => (
+                    <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -1100,57 +1267,243 @@ useEffect(() => {
               <Label htmlFor="comboPrepTime" style={{ fontFamily: 'Inter, sans-serif' }}>Prep Time</Label>
               <Input id="comboPrepTime" name="prepTime" defaultValue={editingCombo?.prepTime} placeholder="e.g., 25mins" required />
             </div>
-            {/* Menu Items Selection */}
-            <div className="space-y-2">
-              <Label style={{ fontFamily: 'Inter, sans-serif' }}>Included Items ({selectedComboItems.length} selected)</Label>
-              <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2 bg-gray-50">
-                {menuItems.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No menu items available</p>
-                ) : (
-                  menuItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className={`flex items-center justify-between p-2 rounded cursor-pointer transition-colors ${
-                        selectedComboItems.includes(item.id) 
-                          ? 'bg-[#8B5A2B]/10 border border-[#8B5A2B]' 
-                          : 'bg-white hover:bg-gray-100 border border-transparent'
-                      }`}
-                      onClick={() => {
-                        setSelectedComboItems(prev => 
-                          prev.includes(item.id) 
-                            ? prev.filter(id => id !== item.id)
-                            : [...prev, item.id]
-                        );
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${
-                          selectedComboItems.includes(item.id) 
-                            ? 'bg-[#8B5A2B] border-[#8B5A2B]' 
-                            : 'border-gray-300'
-                        }`}>
-                          {selectedComboItems.includes(item.id) && (
-                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </div>
-                        <span className="text-sm font-medium">{item.name}</span>
-                        <Badge variant="outline" className="text-xs">{item.category}</Badge>
-                      </div>
-                      <span className="text-sm text-muted-foreground">₹{item.price}</span>
+            {/* Menu Items Selection with Search and Filter */}
+            <div className="space-y-3">
+              <Label style={{ fontFamily: 'Inter, sans-serif' }}>Select Items for Combo</Label>
+              
+              {/* Expandable Multi-Select (Works within Modal) */}
+              <div className="border-2 border-gray-300 rounded-lg bg-white">
+                {/* Header Button */}
+                <button
+                  type="button"
+                  onClick={() => setComboDropdownOpen(!comboDropdownOpen)}
+                  className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
+                  style={{ fontFamily: 'Inter, sans-serif' }}
+                >
+                  <span className="text-sm font-medium">
+                    {selectedComboItems.length === 0 
+                      ? "🔍 Click to Select Items" 
+                      : `✓ ${selectedComboItems.length} item${selectedComboItems.length !== 1 ? 's' : ''} selected`}
+                  </span>
+                  <svg className={`w-5 h-5 text-gray-600 transition-transform ${comboDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                </button>
+
+                {/* Expandable Content */}
+                {comboDropdownOpen && (
+                  <div className="border-t border-gray-200">
+                    {/* Search Input */}
+                    <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
+                      <input
+                        type="text"
+                        placeholder="Search items..."
+                        value={comboItemSearchQuery}
+                        onChange={(e) => setComboItemSearchQuery(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#8B5A2B]"
+                        style={{ fontFamily: 'Inter, sans-serif' }}
+                        autoFocus
+                      />
                     </div>
-                  ))
+
+                    {/* Items List with Fixed Height Scroll */}
+                    <div className="max-h-80 overflow-y-auto">
+                      {menuItems
+                        .filter((item) => item.name.toLowerCase().includes(comboItemSearchQuery.toLowerCase()))
+                        .length === 0 ? (
+                        <div className="px-4 py-4 text-sm text-gray-500 text-center">
+                          No items found
+                        </div>
+                      ) : (
+                        menuItems
+                          .filter((item) => item.name.toLowerCase().includes(comboItemSearchQuery.toLowerCase()))
+                          .map((item) => (
+                            <label
+                              key={item.id}
+                              className="flex items-center gap-3 px-4 py-2 hover:bg-[#8B5A2B]/5 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedComboItems.includes(item.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedComboItems([...selectedComboItems, item.id]);
+                                  } else {
+                                    setSelectedComboItems(selectedComboItems.filter((id) => id !== item.id));
+                                  }
+                                }}
+                                className="w-4 h-4 rounded border-gray-300 text-[#8B5A2B] cursor-pointer"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-800 truncate">{item.name}</p>
+                                <p className="text-xs text-gray-500">{item.category}</p>
+                              </div>
+                              <span className="text-sm font-semibold text-[#8B5A2B] whitespace-nowrap">₹{item.price}</span>
+                            </label>
+                          ))
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
+
+              {/* Selected Items Tags */}
+              {selectedComboItems.length > 0 && (
+                <div className="flex flex-wrap gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  {selectedComboItems.map((itemId) => {
+                    const item = menuItems.find((m) => m.id === itemId);
+                    return item ? (
+                      <div
+                        key={item.id}
+                        className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 text-white text-sm rounded-full"
+                      >
+                        <span className="truncate">{item.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedComboItems(selectedComboItems.filter((id) => id !== itemId))}
+                          className="ml-1 hover:opacity-75 transition-opacity"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : null;
+                  })}
+                </div>
+              )}
             </div>
             <div className="flex gap-3 pt-4">
               <Button type="submit" className="flex-1 bg-[#8B5A2B] hover:bg-[#6D421E]">
                 {editingCombo ? "Update Combo" : "Add Combo"}
               </Button>
-              <Button type="button" variant="outline" onClick={() => { setComboDialogOpen(false); setEditingCombo(null); setSelectedComboItems([]); }}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => { setComboDialogOpen(false); setEditingCombo(null); setSelectedComboItems([]); setComboDropdownOpen(false); setComboItemSearchQuery(""); }}>Cancel</Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Cuisine Dialog */}
+      <Dialog open={addCuisineDialogOpen} onOpenChange={setAddCuisineDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle style={{ fontFamily: 'Poppins, sans-serif' }}>Add New Cuisine</DialogTitle>
+            <DialogDescription style={{ fontFamily: 'Inter, sans-serif' }}>
+              Add a new cuisine type to your menu
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newCuisine" style={{ fontFamily: 'Inter, sans-serif' }}>Cuisine Name</Label>
+              <Input
+                id="newCuisine"
+                placeholder="e.g., Thai, Japanese, Mexican"
+                value={newCuisine}
+                onChange={(e) => setNewCuisine(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddCuisine()}
+              />
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button onClick={handleAddCuisine} className="flex-1 bg-[#8B5A2B] hover:bg-[#6D421E]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                Add Cuisine
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setAddCuisineDialogOpen(false)} style={{ fontFamily: 'Inter, sans-serif' }}>Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Category Dialog */}
+      <Dialog open={addCategoryDialogOpen} onOpenChange={setAddCategoryDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle style={{ fontFamily: 'Poppins, sans-serif' }}>Add New Category</DialogTitle>
+            <DialogDescription style={{ fontFamily: 'Inter, sans-serif' }}>
+              Add a new menu category
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newCategory" style={{ fontFamily: 'Inter, sans-serif' }}>Category Name</Label>
+              <Input
+                id="newCategory"
+                placeholder="e.g., Appetizers, Soups, Salads"
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
+              />
+              <p className="text-xs text-gray-500">Will be normalized to lowercase with hyphens</p>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button onClick={handleAddCategory} className="flex-1 bg-[#8B5A2B] hover:bg-[#6D421E]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                Add Category
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setAddCategoryDialogOpen(false)} style={{ fontFamily: 'Inter, sans-serif' }}>Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Addons Dialog */}
+      <Dialog open={manageAddonsDialogOpen} onOpenChange={setManageAddonsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle style={{ fontFamily: 'Poppins, sans-serif' }}>Manage Addons</DialogTitle>
+            <DialogDescription style={{ fontFamily: 'Inter, sans-serif' }}>
+              Add or remove available addons
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Add new addon */}
+            <div className="space-y-2">
+              <Label htmlFor="newAddon" style={{ fontFamily: 'Inter, sans-serif' }}>Add New Addon</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="newAddon"
+                  placeholder="e.g., Extra Cheese, Bacon"
+                  value={newAddon}
+                  onChange={(e) => setNewAddon(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddAddon()}
+                />
+                <Button size="sm" onClick={handleAddAddon} className="bg-[#8B5A2B] hover:bg-[#6D421E]">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Current addons list */}
+            <div className="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-3 bg-gray-50">
+              <p className="text-xs font-semibold text-gray-600" style={{ fontFamily: 'Inter, sans-serif' }}>Current Addons ({addonsList.length})</p>
+              <div className="space-y-2">
+                {addonsList.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-3">No addons yet. Add one to get started!</p>
+                ) : (
+                  addonsList.map(addon => (
+                    <div key={addon} className="flex items-center justify-between p-2 bg-white rounded border text-sm">
+                      <span style={{ fontFamily: 'Inter, sans-serif' }}>{addon}</span>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 text-red-600 hover:bg-red-50"
+                        onClick={() => handleRemoveAddon(addon)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setManageAddonsDialogOpen(false)}
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
+                Done
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -30,6 +30,9 @@ async function fetchApi<T>(
   const url = `${API_BASE_URL}${endpoint}`;
   
   try {
+    // Log the API call for debugging
+    console.log(`📡 Fetching API: ${options.method || 'GET'} ${url}`);
+    
     const response = await fetch(url, {
       ...options,
       headers: {
@@ -40,12 +43,22 @@ async function fetchApi<T>(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      const errorMessage = errorData.detail || `HTTP error! status: ${response.status}`;
+      console.error(`❌ API Error [${endpoint}]: ${errorMessage}`, errorData);
+      throw new Error(errorMessage);
     }
 
-    return response.json();
+    const data = await response.json();
+    console.log(`✅ API Success [${endpoint}]:`, data);
+    return data;
   } catch (error) {
-    console.error(`API Error [${endpoint}]:`, error);
+    console.error(`❌ API Error [${endpoint}]:`, error);
+    // If it's a network error
+    if (error instanceof TypeError) {
+      console.error(`🔌 Network/Connection Error: Unable to reach ${API_BASE_URL}`);
+      console.error(`   Make sure backend is running on: http://localhost:8000`);
+      console.error(`   Or check VITE_API_URL in .env.local`);
+    }
     throw error;
   }
 }
@@ -668,6 +681,52 @@ listCombos: () => fetchApi<any[]>('/menu/combos'),
   }),
   toggleComboAvailability: (id: string, available: boolean) => fetchApi<any>(`/menu/combos/${id}/availability?available=${available}`, {
     method: 'PATCH',
+  }),
+};
+
+
+// ============ CATALOG API (Cuisines, Categories, Addons) ============
+export const catalogApi = {
+  // Cuisines
+  getCuisines: () => fetchApi<any[]>('/catalog/cuisines'),
+  createCuisine: (data: { name: string; description?: string }) => fetchApi<any>('/catalog/cuisines', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  updateCuisine: (id: string, data: { name: string; description?: string }) => fetchApi<any>(`/catalog/cuisines/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  deleteCuisine: (id: string) => fetchApi<any>(`/catalog/cuisines/${id}`, {
+    method: 'DELETE',
+  }),
+
+  // Categories
+  getCategories: () => fetchApi<any[]>('/catalog/categories'),
+  createCategory: (data: { name: string; displayName?: string; description?: string }) => fetchApi<any>('/catalog/categories', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  updateCategory: (id: string, data: { name: string; displayName?: string; description?: string }) => fetchApi<any>(`/catalog/categories/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  deleteCategory: (id: string) => fetchApi<any>(`/catalog/categories/${id}`, {
+    method: 'DELETE',
+  }),
+
+  // Addons
+  getAddons: () => fetchApi<any[]>('/catalog/addons'),
+  createAddon: (data: { name: string; description?: string; price?: number }) => fetchApi<any>('/catalog/addons', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  updateAddon: (id: string, data: { name: string; description?: string; price?: number }) => fetchApi<any>(`/catalog/addons/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  deleteAddon: (id: string) => fetchApi<any>(`/catalog/addons/${id}`, {
+    method: 'DELETE',
   }),
 };
 
@@ -1443,6 +1502,7 @@ export default {
   backup: backupApi,
   audit: auditApi,
   menu: menuApi,
+  catalog: catalogApi,
   orders: ordersApi,
   tables: tablesApi,
   inventory: inventoryApi,
