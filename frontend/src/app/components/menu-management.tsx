@@ -65,6 +65,7 @@ interface ComboMeal {
   name: string;
   description: string;
   cuisine: CuisineType;
+  category?: string;
   originalPrice: number;
   discountedPrice: number;
   image: string;
@@ -369,12 +370,13 @@ useEffect(() => {
     const payload = {
       name: fd.get("name") as string,
       cuisine: fd.get("cuisine") as CuisineType,
+      category: fd.get("category") as string,
       discountedPrice: discountedPrice,
       calories: parseInt(fd.get("calories") as string) || 0,
       prepTime: fd.get("prepTime") as string,
       description: fd.get("desc") as string,
       originalPrice: originalPrice,
-      image: editingCombo?.image ?? "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800",
+      image: (fd.get("image") as string) || editingCombo?.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800",
       available: editingCombo?.available ?? true,
       items: selectedComboItems, // Include selected menu item IDs
     };
@@ -876,14 +878,19 @@ useEffect(() => {
                     {combo.description}
                   </p>
 
-                  {/* Cuisine Badge */}
-                  {combo.cuisine && (
-                    <div className="mt-2">
+                  {/* Cuisine and Category Badges */}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {combo.cuisine && (
                       <Badge className="bg-orange-600 text-white text-xs" style={{ fontFamily: 'Inter, sans-serif' }}>
                         {combo.cuisine}
                       </Badge>
-                    </div>
-                  )}
+                    )}
+                    {combo.category && (
+                      <Badge className="bg-blue-600 text-white text-xs" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        {combo.category}
+                      </Badge>
+                    )}
+                  </div>
 
                   {/* Info Row - Calories and Time */}
                   <div className="flex items-center justify-between text-white text-xs mt-2">
@@ -1249,6 +1256,30 @@ useEffect(() => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="comboCategory" style={{ fontFamily: 'Inter, sans-serif' }}>Category</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2 text-xs text-[#8B5A2B] hover:bg-[#8B5A2B]/10"
+                  onClick={() => setAddCategoryDialogOpen(true)}
+                >
+                  + Add
+                </Button>
+              </div>
+              <Select name="category" defaultValue={editingCombo?.category}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categoryList.map((c: any) => (
+                    <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="originalPrice" style={{ fontFamily: 'Inter, sans-serif' }}>Original Price (₹)</Label>
@@ -1267,6 +1298,17 @@ useEffect(() => {
               <Label htmlFor="comboPrepTime" style={{ fontFamily: 'Inter, sans-serif' }}>Prep Time</Label>
               <Input id="comboPrepTime" name="prepTime" defaultValue={editingCombo?.prepTime} placeholder="e.g., 25mins" required />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="comboImage" style={{ fontFamily: 'Inter, sans-serif' }}>Image URL</Label>
+              <Input 
+                id="comboImage" 
+                name="image" 
+                type="url" 
+                defaultValue={editingCombo?.image} 
+                placeholder="https://example.com/combo-image.jpg" 
+              />
+            </div>
+
             {/* Menu Items Selection with Search and Filter */}
             <div className="space-y-3">
               <Label style={{ fontFamily: 'Inter, sans-serif' }}>Select Items for Combo</Label>
