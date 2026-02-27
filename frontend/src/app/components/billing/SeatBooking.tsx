@@ -244,8 +244,8 @@ export function SeatBooking() {
   };
 
   return (
-    <div className="bg-billing-module min-h-screen space-y-6 p-6">
-      <div className="module-container flex justify-between items-center">
+    <div className="bg-billing-module min-h-screen space-y-6 p-0">
+      <div className="module-container flex justify-between items-center px-6 pt-6">
         <div>
           <h2 className="text-2xl font-bold text-white drop-shadow-lg">Seat Booking Management</h2>
           <p className="text-gray-200 mt-1">Manage reservations and track table availability</p>

@@ -347,9 +347,9 @@ export function OrderManagement() {
   }
 
   return (
-    <div className="bg-order-management-module min-h-screen p-6 space-y-6">
+    <div className="bg-order-management-module min-h-screen p-0 space-y-6">
       {/* Header Section */}
-      <div className="module-container flex justify-between items-start">
+      <div className="module-container flex justify-between items-start px-6 pt-6">
         <div>
           <h1 className="text-3xl font-bold text-white drop-shadow-lg">Orders</h1>
           <p className="text-gray-200">View, manage, and track all customer orders</p>
@@ -363,7 +363,7 @@ export function OrderManagement() {
       </div>
 
       {/* Mini Order Insights */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3 px-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Active Orders</CardTitle>
@@ -402,8 +402,9 @@ export function OrderManagement() {
       </div>
 
       {/* Innovation #8: Kitchen Load Meter */}
-      <Card className={`border-2 ${kitchenLoad.bgColor} border-opacity-50`}>
-        <CardContent className="pt-6">
+      <div className="px-6">
+        <Card className={`border-2 ${kitchenLoad.bgColor} border-opacity-50`}>
+          <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Gauge className={`h-6 w-6 ${kitchenLoad.color}`} />
@@ -426,8 +427,10 @@ export function OrderManagement() {
           </div>
         </CardContent>
       </Card>
+      </div>
 
       {/* Smart Filters & Search */}
+      <div className="px-6">
       <Card>
         <CardContent className="pt-6">
           <div className="grid gap-4 md:grid-cols-5">
@@ -495,9 +498,11 @@ export function OrderManagement() {
           </div>
         </CardContent>
       </Card>
+      </div>
 
       {/* Innovation #9: Undo Last Action Toast */}
       {lastAction && undoCountdown > 0 && (
+        <div className="px-6">
         <Card className="border-2 border-yellow-400 bg-yellow-50">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -524,18 +529,21 @@ export function OrderManagement() {
             </div>
           </CardContent>
         </Card>
+        </div>
       )}
 
       {/* Orders Grid */}
       {sortedOrders.length === 0 ? (
+        <div className="px-6">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Package className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground">No orders found.</p>
           </CardContent>
         </Card>
+        </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 px-6 pb-6">
           {sortedOrders.map((order) => {
             const orderItems = Array.isArray(order.items) ? order.items : [];
             const totalItems = orderItems.reduce((sum, item) => sum + item.quantity, 0);

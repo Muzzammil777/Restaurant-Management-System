@@ -179,9 +179,9 @@ export function BackupRecovery() {
     .toFixed(2);
 
   return (
-    <div className="bg-settings-module min-h-screen space-y-6 p-6">
+    <div className="bg-settings-module min-h-screen space-y-6 p-0">
       {/* Backup Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-6 pt-6 pb-6\">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">

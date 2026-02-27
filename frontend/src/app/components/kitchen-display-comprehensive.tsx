@@ -407,9 +407,9 @@ export function KitchenDisplayComprehensive() {
   const activeTerminalMeta = TERMINAL_STATIONS.find((s) => s.id === activeTerminal);
 
   return (
-    <div className="bg-kitchen-display-module min-h-screen p-6 space-y-6">
+    <div className="bg-kitchen-display-module min-h-screen p-0 space-y-6">
       {/* Header */}
-      <div className="module-container bg-black/40 backdrop-blur-sm border border-gray-600 p-6 rounded-xl shadow-sm sticky top-0 z-10">
+      <div className="module-container bg-black/40 backdrop-blur-sm border border-gray-600 p-6 rounded-xl shadow-sm sticky top-0 z-10 mx-6 mt-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold text-white drop-shadow-lg flex items-center gap-3">
@@ -447,7 +447,7 @@ export function KitchenDisplayComprehensive() {
       </div>
 
       {/* View Tabs */}
-      <Tabs value={view} onValueChange={(v) => setView(v as 'tickets' | 'batch')} className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+      <Tabs value={view} onValueChange={(v) => setView(v as 'tickets' | 'batch')} className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 mx-6 mb-6">
         <TabsList className="bg-transparent border-0 p-1">
           <TabsTrigger value="tickets" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
             <Package className="w-4 h-4 mr-2" />

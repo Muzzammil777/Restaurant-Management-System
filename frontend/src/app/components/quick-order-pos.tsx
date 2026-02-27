@@ -2,29 +2,26 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/app/components/ui/sheet';
+import { Dialog, DialogContent } from '@/app/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Textarea } from '@/app/components/ui/textarea';
 import { ScrollArea } from '@/app/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { 
   Plus, Minus, X, IndianRupee, UtensilsCrossed, Zap, 
   Search, Sparkles, ShoppingBag, CheckCircle, ChevronDown, 
   ChevronUp, Tag as TagIcon, Flame, Package2, Clock, 
   AlertTriangle, ChefHat, Repeat, Volume2, VolumeX, 
   ArrowRight, ArrowLeft, Ban, Edit, Trash2, Check, 
-  Timer, TrendingUp, Package
+  Package, CreditCard
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { API_BASE_URL } from '@/utils/supabase/info';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/app/components/ui/dialog';
 import { restaurantState } from '@/app/services/restaurant-state';
 import { Switch } from '@/app/components/ui/switch';
 import { Progress } from '@/app/components/ui/progress';
 import { motion, AnimatePresence } from 'motion/react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/app/components/ui/collapsible';
 
 // ==================== INTERFACES ====================
 
@@ -89,16 +86,6 @@ interface QuickOrderPOSProps {
 
 const QUICK_TAGS = ['Extra Spicy', 'No Onion', 'No Garlic', 'Priority', 'VIP', 'Allergy'];
 
-const ORDER_STATUSES: OrderTimeline['status'][] = ['placed', 'accepted', 'preparing', 'ready', 'served'];
-
-const STATUS_COLORS = {
-  placed: 'bg-blue-500',
-  accepted: 'bg-yellow-500',
-  preparing: 'bg-orange-500',
-  ready: 'bg-green-500',
-  served: 'bg-gray-500',
-};
-
 const COOKING_STATIONS = {
   grill: { label: 'Grill', icon: Flame, color: 'text-red-600 bg-red-50' },
   wok: { label: 'Wok', icon: ChefHat, color: 'text-orange-600 bg-orange-50' },
@@ -159,32 +146,11 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
   const [orderItems, setOrderItems] = useState<QuickOrderItem[]>([]);
 
   // Progressive Disclosure State
-  const [showSpecialInstructions, setShowSpecialInstructions] = useState(false);
   const [notes, setNotes] = useState('');
   const [tags, setTags] = useState<string[]>([]);
 
-  // Feature #1: Live Order Timeline State
-  const [orderTimeline, setOrderTimeline] = useState<OrderTimeline[]>([
-    { status: 'placed', timestamp: new Date(), duration: 0 }
-  ]);
-  const [currentStatus, setCurrentStatus] = useState<OrderTimeline['status']>('placed');
-
-  // Feature #2: Bottleneck Detection State
-  const [isBottleneck, setIsBottleneck] = useState(false);
-  const [preparingDuration, setPreparingDuration] = useState(0);
-  const BOTTLENECK_THRESHOLD = 15; // minutes
-
   // Feature #3: Smart KOT Grouping State
   const [groupedItems, setGroupedItems] = useState<Record<string, QuickOrderItem[]>>({});
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-
-  // Feature #4: Rollback Protection State
-  const [rollbackDialog, setRollbackDialog] = useState(false);
-
-  // Feature #5: Drag Gesture State
-  const [dragStartX, setDragStartX] = useState(0);
-  const [dragOffset, setDragOffset] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
 
   // Feature #6: Combo Split Select State
   const [expandedCombo, setExpandedCombo] = useState<string | null>(null);
@@ -197,8 +163,6 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
   // Role State for access control
   const [currentRole, setCurrentRole] = useState<'admin' | 'waiter'>('admin');
-
-  // Feature #11: Inline Search (already implemented with searchQuery)
 
   // Feature #12: Gesture Shortcuts State
   const [lastTap, setLastTap] = useState<number>(0);
@@ -643,65 +607,6 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
   };
 
   // ========== ORDER STATUS MANAGEMENT ==========
-
-  // Feature #5: Drag gesture handlers
-  const handleDragStart = (e: React.TouchEvent | React.MouseEvent) => {
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    setDragStartX(clientX);
-    setIsDragging(true);
-  };
-
-  const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
-    if (!isDragging) return;
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    setDragOffset(clientX - dragStartX);
-  };
-
-  const handleDragEnd = () => {
-    if (!isDragging) return;
-    
-    // Swipe right for next status
-    if (dragOffset > 100) {
-      moveToNextStatus();
-    }
-    // Swipe left for cancel
-    else if (dragOffset < -100) {
-      handleCancelOrder();
-    }
-    
-    setDragOffset(0);
-    setIsDragging(false);
-  };
-
-  // Feature #4: Move to next status with rollback protection
-  const moveToNextStatus = () => {
-    const currentIndex = ORDER_STATUSES.indexOf(currentStatus);
-    if (currentIndex < ORDER_STATUSES.length - 1) {
-      const nextStatus = ORDER_STATUSES[currentIndex + 1];
-      
-      // Feature #4: Rollback Protection - show confirmation before PREPARING
-      if (nextStatus === 'preparing' && currentStatus === 'accepted') {
-        setRollbackDialog(true);
-      } else {
-        updateOrderStatus(nextStatus);
-      }
-    }
-  };
-
-  const updateOrderStatus = (newStatus: OrderTimeline['status']) => {
-    setCurrentStatus(newStatus);
-    setOrderTimeline(prev => [
-      ...prev,
-      { status: newStatus, timestamp: new Date() }
-    ]);
-    
-    // Feature #10: Smart Notification
-    toast.success(`Order moved to ${newStatus}`, { duration: 2000 });
-    
-    // Feature #13: Sound Feedback
-    playSound('complete', soundEnabled);
-  };
-
   // ========== ORDER CREATION ==========
 
   // Calculate totals
@@ -825,162 +730,167 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
 
   // ========== RENDER ==========
 
+  const [currentSection, setCurrentSection] = useState<'info' | 'items' | 'payment'>('info');
+
   return (
-    <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent
-          side="right"
-          className="w-full sm:max-w-[95vw] lg:max-w-[1400px] p-0 overflow-hidden"
-        >
-          {/* Header - Matching Orders Page Theme */}
-          <div className="sticky top-0 z-20 bg-[#8B5E34] text-white px-8 py-6 shadow-lg">
-            <SheetHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                    <Zap className="h-7 w-7 text-white" />
-                  </div>
-                  <div>
-                    <SheetTitle className="text-2xl text-white font-bold">
-                      Quick Order (POS Mode)
-                    </SheetTitle>
-                    <SheetDescription className="text-white/80 text-base">
-                      Fast, flexible order creation
-                    </SheetDescription>
-                  </div>
-                </div>
-                
-                {/* Feature #7: Menu Sync Badge + Role Warning */}
-                <div className="flex items-center gap-3">
-                  {currentRole !== 'waiter' && (
-                    <Badge className="bg-red-500/90 text-white border-white/30 animate-pulse">
-                      <AlertTriangle className="h-3 w-3 mr-1" />
-                      Admin Mode - Cannot Create Orders
-                    </Badge>
-                  )}
-                  {currentRole === 'waiter' && (
-                    <Badge className="bg-green-500/20 text-white border-white/30">
-                      <Check className="h-3 w-3 mr-1" />
-                      Waiter Mode Active
-                    </Badge>
-                  )}
-                  <Badge className="bg-blue-500/20 text-white border-white/30">
-                    <Check className="h-3 w-3 mr-1" />
-                    Menu Synced
-                  </Badge>
-                  
-                  {/* Feature #13: Sound Toggle */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSoundEnabled(!soundEnabled)}
-                    className="text-white hover:bg-white/20"
-                  >
-                    {soundEnabled ? (
-                      <Volume2 className="h-5 w-5" />
-                    ) : (
-                      <VolumeX className="h-5 w-5" />
-                    )}
-                  </Button>
-                </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0 gap-0 bg-[#F7F3EE]">
+        {/* Header */}
+        <div className="sticky top-0 z-20 bg-[#8B5E34] text-white px-8 py-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                <Zap className="h-7 w-7 text-white" />
               </div>
-            </SheetHeader>
+              <div>
+                <h2 className="text-2xl text-white font-bold">
+                  Quick Order (POS Mode)
+                </h2>
+                <p className="text-white/80 text-base">
+                  Fast, flexible order creation
+                </p>
+              </div>
+            </div>
+            
+            {/* Feature #7: Menu Sync Badge + Role Warning */}
+            <div className="flex items-center gap-3">
+              {currentRole !== 'waiter' && (
+                <Badge className="bg-red-500/90 text-white border-white/30 animate-pulse">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Admin Mode - Cannot Create Orders
+                </Badge>
+              )}
+              {currentRole === 'waiter' && (
+                <Badge className="bg-green-500/20 text-white border-white/30">
+                  <Check className="h-3 w-3 mr-1" />
+                  Waiter Mode Active
+                </Badge>
+              )}
+              <Badge className="bg-blue-500/20 text-white border-white/30">
+                <Check className="h-3 w-3 mr-1" />
+                Menu Synced
+              </Badge>
+              
+              {/* Feature #13: Sound Toggle */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                className="text-white hover:bg-white/20"
+              >
+                {soundEnabled ? (
+                  <Volume2 className="h-5 w-5" />
+                ) : (
+                  <VolumeX className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
           </div>
+        </div>
 
-          {/* 2-Panel Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 p-8 h-[calc(100vh-180px)] overflow-y-auto bg-[#F7F3EE]">
-            {/* LEFT PANEL: Order Creation */}
-            <div className="lg:col-span-7 space-y-6">
-              {/* Order Information Card */}
-              <Card className="shadow-md border-2 border-[#8B5E34]/10">
-                <CardHeader className="bg-gradient-to-r from-[#F6F2ED] to-white pb-4">
-                  <CardTitle className="text-lg flex items-center gap-2 text-[#8B5E34]">
-                    <UtensilsCrossed className="h-5 w-5" />
-                    Order Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6 space-y-5">
-                  {/* Order Type */}
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                      Order Type *
-                    </Label>
-                    <Select
-                      value={orderType}
-                      onValueChange={(value: 'dine-in' | 'takeaway') =>
-                        setOrderType(value)
-                      }
-                    >
-                      <SelectTrigger className="h-12 text-base font-medium border-2">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="dine-in">🍽️ Dine-In</SelectItem>
-                        <SelectItem value="takeaway">📦 Takeaway</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+        {/* Section Navigation */}
+        <div className="flex items-center gap-4 px-8 py-4 bg-white border-b border-gray-200">
+          <Button
+            variant={currentSection === 'info' ? 'default' : 'outline'}
+            onClick={() => setCurrentSection('info')}
+            className={`gap-2 ${currentSection === 'info' ? 'bg-[#8B5E34] hover:bg-[#8B5E34]/90' : ''}`}
+          >
+            <UtensilsCrossed className="h-4 w-4" />
+            Order Info
+          </Button>
+          <Button
+            variant={currentSection === 'items' ? 'default' : 'outline'}
+            onClick={() => setCurrentSection('items')}
+            className={`gap-2 ${currentSection === 'items' ? 'bg-[#8B5E34] hover:bg-[#8B5E34]/90' : ''}`}
+          >
+            <ShoppingBag className="h-4 w-4" />
+            Select Items ({totalItems})
+          </Button>
+          <Button
+            variant={currentSection === 'payment' ? 'default' : 'outline'}
+            onClick={() => setCurrentSection('payment')}
+            className={`gap-2 ${currentSection === 'payment' ? 'bg-[#8B5E34] hover:bg-[#8B5E34]/90' : ''}`}
+          >
+            <CreditCard className="h-4 w-4" />
+            Payment
+          </Button>
+        </div>
 
-                  {/* Table Number (conditional) */}
-                  {orderType === 'dine-in' && (
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto px-8 py-6">
+          {/* Section 1: Order Information */}
+          <AnimatePresence mode="wait">
+            {currentSection === 'info' && (
+              <motion.div
+                key="info"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <Card className="shadow-md border-2 border-[#8B5E34]/10">
+                  <CardHeader className="bg-gradient-to-r from-[#F6F2ED] to-white pb-4">
+                    <CardTitle className="text-lg flex items-center gap-2 text-[#8B5E34]">
+                      <UtensilsCrossed className="h-5 w-5" />
+                      Order Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6 space-y-5">
+                    {/* Order Type */}
                     <div className="space-y-2">
                       <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                        Table Number *
+                        Order Type *
+                      </Label>
+                      <Select
+                        value={orderType}
+                        onValueChange={(value: 'dine-in' | 'takeaway') =>
+                          setOrderType(value)
+                        }
+                      >
+                        <SelectTrigger className="h-12 text-base font-medium border-2">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="dine-in">🍽️ Dine-In</SelectItem>
+                          <SelectItem value="takeaway">📦 Takeaway</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Table Number (conditional) */}
+                    {orderType === 'dine-in' && (
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                          Table Number *
+                        </Label>
+                        <Input
+                          type="number"
+                          placeholder="Enter table #"
+                          value={tableNumber}
+                          onChange={(e) => setTableNumber(e.target.value)}
+                          className="h-12 text-lg font-semibold text-center border-2"
+                        />
+                      </div>
+                    )}
+
+                    {/* Customer Name */}
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                        Customer Name
                       </Label>
                       <Input
-                        type="number"
-                        placeholder="Enter table #"
-                        value={tableNumber}
-                        onChange={(e) => setTableNumber(e.target.value)}
-                        className="h-12 text-lg font-semibold text-center border-2"
+                        placeholder="Optional"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        className="h-12 border-2"
                       />
                     </div>
-                  )}
 
-                  {/* Customer Name */}
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                      Customer Name
-                    </Label>
-                    <Input
-                      placeholder="Optional"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      className="h-12 border-2"
-                    />
-                  </div>
-
-                  {/* Progressive Disclosure: Special Instructions */}
-                  {!showSpecialInstructions ? (
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowSpecialInstructions(true)}
-                      className="w-full h-11 gap-2 border-dashed border-2"
-                    >
-                      <TagIcon className="h-4 w-4" />
-                      Add special instructions
-                      <ChevronDown className="h-4 w-4 ml-auto" />
-                    </Button>
-                  ) : (
+                    {/* Special Instructions */}
                     <div className="space-y-4 pt-2 border-t-2 border-dashed">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                          Special Instructions
-                        </Label>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setShowSpecialInstructions(false);
-                            setNotes('');
-                            setTags([]);
-                          }}
-                          className="h-7 text-xs"
-                        >
-                          <ChevronUp className="h-3 w-3 mr-1" />
-                          Hide
-                        </Button>
-                      </div>
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                        Special Instructions
+                      </Label>
 
                       {/* Tags */}
                       <div className="space-y-2">
@@ -1007,745 +917,566 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated }: QuickOrder
                           placeholder="e.g., No onion, Extra spicy..."
                           value={notes}
                           onChange={(e) => setNotes(e.target.value)}
-                          rows={3}
+                          rows={4}
                           className="resize-none border-2"
                         />
                       </div>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-              {/* Item Selection Card */}
-              <Card className="shadow-md border-2 border-[#8B5E34]/10 flex-1 flex flex-col">
-                <CardHeader className="bg-gradient-to-r from-[#F6F2ED] to-white pb-4">
-                  <CardTitle className="text-lg flex items-center gap-2 text-[#8B5E34]">
-                    <ShoppingBag className="h-5 w-5" />
-                    Select Items
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6 flex-1 flex flex-col overflow-hidden">
-                  {/* Tabs: Combos | Individual Items | Recent Orders */}
-                  <Tabs
-                    value={activeTab}
-                    onValueChange={(value) =>
-                      setActiveTab(value as 'combos' | 'items' | 'recent')
-                    }
-                    className="flex-1 flex flex-col"
-                  >
-                    <TabsList className="grid w-full grid-cols-3 h-12 mb-4">
-                      <TabsTrigger value="combos" className="text-sm font-semibold">
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Combos
-                      </TabsTrigger>
-                      <TabsTrigger value="items" className="text-sm font-semibold">
-                        <Package2 className="h-4 w-4 mr-2" />
-                        Items
-                      </TabsTrigger>
-                      <TabsTrigger value="recent" className="text-sm font-semibold">
-                        <Repeat className="h-4 w-4 mr-2" />
-                        Recent
-                      </TabsTrigger>
-                    </TabsList>
+          {/* Section 2: Select Items & Cart */}
+          <AnimatePresence mode="wait">
+            {currentSection === 'items' && (
+              <motion.div
+                key="items"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="grid grid-cols-1 lg:grid-cols-7 gap-6"
+              >
+                {/* Item Selection */}
+                <div className="lg:col-span-4">
+                  <Card className="shadow-md border-2 border-[#8B5E34]/10">
+                    <CardHeader className="bg-gradient-to-r from-[#F6F2ED] to-white pb-4">
+                      <CardTitle className="text-lg flex items-center gap-2 text-[#8B5E34]">
+                        <ShoppingBag className="h-5 w-5" />
+                        Select Items
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6 space-y-4">
+                      {/* Tabs: Combos | Items */}
+                      <div className="space-y-2 border-b pb-4">
+                        <div className="flex gap-2 mb-4">
+                          <Button
+                            variant={activeTab === 'combos' ? 'default' : 'outline'}
+                            onClick={() => setActiveTab('combos')}
+                            className={`gap-2 text-sm ${activeTab === 'combos' ? 'bg-[#8B5E34] hover:bg-[#8B5E34]/90' : ''}`}
+                          >
+                            <Sparkles className="h-4 w-4" />
+                            Combos
+                          </Button>
+                          <Button
+                            variant={activeTab === 'items' ? 'default' : 'outline'}
+                            onClick={() => setActiveTab('items')}
+                            className={`gap-2 text-sm ${activeTab === 'items' ? 'bg-[#8B5E34] hover:bg-[#8B5E34]/90' : ''}`}
+                          >
+                            <Package2 className="h-4 w-4" />
+                            Items
+                          </Button>
+                          <Button
+                            variant={activeTab === 'recent' ? 'default' : 'outline'}
+                            onClick={() => setActiveTab('recent')}
+                            className={`gap-2 text-sm ${activeTab === 'recent' ? 'bg-[#8B5E34] hover:bg-[#8B5E34]/90' : ''}`}
+                          >
+                            <Repeat className="h-4 w-4" />
+                            Recent
+                          </Button>
+                        </div>
+                      </div>
 
-                    {/* Combos Tab */}
-                    <TabsContent value="combos" className="flex-1 overflow-hidden mt-0 space-y-2">
-                      {/* Task 2: Show Total Combo Count */}
-                      {!loading && comboMeals.length > 0 && (
-                        <div className="flex items-center text-sm px-1">
-                          <span className="text-muted-foreground">
-                            <Sparkles className="inline h-4 w-4 mr-1" />
-                            <strong className="text-[#8B5E34]">{comboMeals.length}</strong> combo meals available
-                          </span>
+                      {/* Combos Tab */}
+                      {activeTab === 'combos' && (
+                        <ScrollArea className="h-[400px] pr-4">
+                          <div className="space-y-3">
+                            {!loading && comboMeals.length > 0 && (
+                              <div className="flex items-center text-sm px-1">
+                                <span className="text-muted-foreground">
+                                  <Sparkles className="inline h-4 w-4 mr-1" />
+                                  <strong className="text-[#8B5E34]">{comboMeals.length}</strong> combo meals available
+                                </span>
+                              </div>
+                            )}
+
+                            {loading ? (
+                              <div className="flex items-center justify-center h-40">
+                                <div className="text-center">
+                                  <div className="animate-spin h-8 w-8 border-4 border-[#8B5E34] border-t-transparent rounded-full mx-auto mb-3"></div>
+                                  <p className="text-sm text-muted-foreground">Loading combos...</p>
+                                </div>
+                              </div>
+                            ) : comboMeals.length === 0 ? (
+                              <div className="flex items-center justify-center h-40">
+                                <div className="text-center max-w-sm">
+                                  <Sparkles className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                                  <h3 className="text-lg font-semibold mb-2">No Combos Available</h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    Create combo meals in Menu Management
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              comboMeals.map((combo) => {
+                                const savings = combo.originalPrice - combo.discountedPrice;
+                                const discountPercent = Math.round(
+                                  (savings / combo.originalPrice) * 100
+                                );
+                                const isExpanded = expandedCombo === combo.id;
+
+                                return (
+                                  <Card
+                                    key={combo.id}
+                                    className="cursor-pointer hover:shadow-lg transition-shadow duration-150 border-2 hover:border-[#8B5E34]/50"
+                                  >
+                                    <CardContent className="p-3">
+                                      <div className="flex gap-3 mb-2">
+                                        <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-orange-100 to-amber-100">
+                                          <img
+                                            src={combo.image}
+                                            alt={combo.name}
+                                            className="w-full h-full object-cover"
+                                            style={{ aspectRatio: '1' }}
+                                          />
+                                        </div>
+                                        <div className="flex-1 min-w-0 flex flex-col justify-between">
+                                          <div>
+                                            <div className="flex items-start justify-between gap-2 mb-1">
+                                              <h4 className="font-semibold text-sm line-clamp-1">{combo.name}</h4>
+                                              {discountPercent > 0 && (
+                                                <Badge className="bg-green-100 text-green-700 text-xs flex-shrink-0">
+                                                  {discountPercent}% OFF
+                                                </Badge>
+                                              )}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground line-clamp-2">{combo.description}</p>
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            {combo.originalPrice > combo.discountedPrice && (
+                                              <span className="text-xs text-muted-foreground line-through flex items-center">
+                                                <IndianRupee className="h-3 w-3" />
+                                                {combo.originalPrice}
+                                              </span>
+                                            )}
+                                            <span className="text-base font-bold text-[#8B5E34] flex items-center">
+                                              <IndianRupee className="h-4 w-4" />
+                                              {combo.discountedPrice}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <Button
+                                        size="sm"
+                                        onClick={() => addComboToOrder(combo)}
+                                        className="w-full h-8 text-xs bg-[#8B5E34] hover:bg-[#8B5E34]/90"
+                                      >
+                                        <Plus className="h-3 w-3 mr-1" />
+                                        Add Combo
+                                      </Button>
+                                    </CardContent>
+                                  </Card>
+                                );
+                              })
+                            )}
+                          </div>
+                        </ScrollArea>
+                      )}
+
+                      {/* Items Tab */}
+                      {activeTab === 'items' && (
+                        <div className="space-y-4">
+                          <div className="flex gap-3">
+                            <div className="relative flex-1">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                placeholder="Search dishes..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-9 h-10 border-2"
+                              />
+                            </div>
+                            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                              <SelectTrigger className="w-[150px] h-10 border-2">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {categories.map((category) => (
+                                  <SelectItem key={category} value={category}>
+                                    {category === 'all'
+                                      ? 'All Categories'
+                                      : category.charAt(0).toUpperCase() + category.slice(1)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {!loading && (
+                            <div className="flex items-center justify-between text-sm px-1">
+                              <span className="text-muted-foreground">
+                                {filteredMenuItems.length === menuItems.length ? (
+                                  <>
+                                    <Package className="inline h-4 w-4 mr-1" />
+                                    <strong className="text-[#8B5E34]">{menuItems.length}</strong> items available
+                                  </>
+                                ) : (
+                                  <>
+                                    Showing <strong className="text-[#8B5E34]">{filteredMenuItems.length}</strong> of{' '}
+                                    <strong className="text-[#8B5E34]">{menuItems.length}</strong> items
+                                  </>
+                                )}
+                              </span>
+                            </div>
+                          )}
+
+                          <ScrollArea className="h-[350px] pr-4">
+                            <div className="space-y-3">
+                              {loading ? (
+                                <div className="flex items-center justify-center h-40">
+                                  <div className="text-center">
+                                    <div className="animate-spin h-8 w-8 border-4 border-[#8B5E34] border-t-transparent rounded-full mx-auto mb-3"></div>
+                                    <p className="text-sm text-muted-foreground">Loading items...</p>
+                                  </div>
+                                </div>
+                              ) : filteredMenuItems.length === 0 ? (
+                                <div className="flex items-center justify-center h-40">
+                                  <div className="text-center max-w-sm">
+                                    <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                                    <h3 className="text-sm font-semibold mb-1">No Items Found</h3>
+                                    <p className="text-xs text-muted-foreground">
+                                      Try adjusting your search
+                                    </p>
+                                  </div>
+                                </div>
+                              ) : (
+                                filteredMenuItems.map((item) => (
+                                  <Card
+                                    key={item.id}
+                                    className="cursor-pointer hover:shadow-lg transition-shadow duration-150 border-2 hover:border-[#8B5E34]/50"
+                                    onClick={() => addItemToOrder(item)}
+                                  >
+                                    <CardContent className="p-3">
+                                      <div className="flex gap-3">
+                                        <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-orange-100 to-amber-100">
+                                          <img
+                                            src={item.image}
+                                            alt={item.name}
+                                            className="w-full h-full object-cover"
+                                            style={{ aspectRatio: '1' }}
+                                          />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-start justify-between gap-2">
+                                            <h4 className="font-semibold text-sm line-clamp-1">{item.name}</h4>
+                                            {item.dietType && (
+                                              <Badge variant="outline" className={`text-xs flex-shrink-0 ${item.dietType === 'veg' ? 'border-green-500 text-green-700' : 'border-red-500 text-red-700'}`}>
+                                                {item.dietType === 'veg' ? '🌱' : '🍖'}
+                                              </Badge>
+                                            )}
+                                          </div>
+                                          <p className="text-xs text-muted-foreground line-clamp-1 mb-1">{item.description}</p>
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-sm font-bold text-[#8B5E34] flex items-center">
+                                              <IndianRupee className="h-3 w-3" />
+                                              {item.price}
+                                            </span>
+                                            {item.preparationTime && (
+                                              <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                                                <Clock className="h-3 w-3" />
+                                                {item.preparationTime}m
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+                                ))
+                              )}
+                            </div>
+                          </ScrollArea>
                         </div>
                       )}
-                      
-                      {loading ? (
-                        <div className="flex items-center justify-center h-full">
-                          <div className="text-center">
-                            <div className="animate-spin h-8 w-8 border-4 border-[#8B5E34] border-t-transparent rounded-full mx-auto mb-3"></div>
-                            <p className="text-sm text-muted-foreground">Loading combos...</p>
+
+                      {/* Recent Orders Tab */}
+                      {activeTab === 'recent' && (
+                        <ScrollArea className="h-[400px] pr-4">
+                          <div className="space-y-3">
+                            {recentOrders.length === 0 ? (
+                              <div className="flex items-center justify-center h-40">
+                                <div className="text-center max-w-sm">
+                                  <Repeat className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                                  <h3 className="text-sm font-semibold mb-1">No Recent Orders</h3>
+                                  <p className="text-xs text-muted-foreground">
+                                    Your recent orders will appear here
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              recentOrders.map((order) => (
+                                <Card key={order.id} className="border-2 hover:border-[#8B5E34]/50 transition-colors">
+                                  <CardContent className="p-3">
+                                    <div className="flex items-start justify-between mb-2">
+                                      <div>
+                                        <h4 className="font-semibold text-sm mb-0.5">
+                                          {order.items.length} items
+                                        </h4>
+                                        <p className="text-xs text-muted-foreground">
+                                          {new Date(order.timestamp).toLocaleTimeString()}
+                                        </p>
+                                      </div>
+                                      <span className="text-sm font-bold text-[#8B5E34] flex items-center">
+                                        <IndianRupee className="h-4 w-4" />
+                                        {order.total}
+                                      </span>
+                                    </div>
+                                    
+                                    <div className="space-y-0.5 mb-2">
+                                      {order.items.map((item, idx) => (
+                                        <div key={idx} className="text-xs text-muted-foreground flex justify-between">
+                                          <span>• {item.name} x{item.quantity}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+
+                                    <Button
+                                      size="sm"
+                                      onClick={() => repeatOrder(order)}
+                                      className="w-full h-7 text-xs bg-[#8B5E34] hover:bg-[#8B5E34]/90"
+                                    >
+                                      <Repeat className="h-3 w-3 mr-1" />
+                                      Repeat Order
+                                    </Button>
+                                  </CardContent>
+                                </Card>
+                              ))
+                            )}
                           </div>
+                        </ScrollArea>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Cart */}
+                <div className="lg:col-span-3">
+                  <Card className="shadow-md border-2 border-[#8B5E34]/10 h-full flex flex-col">
+                    <CardHeader className="bg-gradient-to-r from-[#F6F2ED] to-white pb-4">
+                      <CardTitle className="text-lg flex items-center justify-between text-[#8B5E34]">
+                        <div className="flex items-center gap-2">
+                          <Package className="h-5 w-5" />
+                          Cart ({totalItems})
                         </div>
-                      ) : comboMeals.length === 0 ? (
-                        <div className="flex items-center justify-center h-full">
-                          <div className="text-center max-w-sm">
-                            <Sparkles className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                            <h3 className="text-lg font-semibold mb-2">No Combos Available</h3>
-                            <p className="text-sm text-muted-foreground">
-                              Create combo meals in Menu Management
+                        <span className="text-base flex items-center font-bold">
+                          <IndianRupee className="h-5 w-5" />
+                          {subtotal}
+                        </span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6 flex-1 flex flex-col overflow-hidden">
+                      {orderItems.length === 0 ? (
+                        <div className="flex-1 flex items-center justify-center">
+                          <div className="text-center max-w-xs">
+                            <ShoppingBag className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                            <h3 className="text-sm font-semibold mb-1">No Items Added</h3>
+                            <p className="text-xs text-muted-foreground">
+                              Start adding items to create an order
                             </p>
                           </div>
                         </div>
                       ) : (
-                        <ScrollArea className="h-[450px] pr-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
-                            {comboMeals.map((combo) => {
-                              const savings = combo.originalPrice - combo.discountedPrice;
-                              const discountPercent = Math.round(
-                                (savings / combo.originalPrice) * 100
-                              );
-                              const isExpanded = expandedCombo === combo.id;
+                        <ScrollArea className="flex-1 pr-4 -mr-4">
+                          <div className="space-y-2">
+                            {Object.entries(groupedItems).map(([station, items]) => {
+                              const stationInfo = COOKING_STATIONS[station as keyof typeof COOKING_STATIONS];
 
                               return (
-                                <Card
-                                  key={combo.id}
-                                  className="cursor-pointer hover:shadow-lg transition-shadow duration-150 border-2 hover:border-[#8B5E34]/50 group active:scale-[0.98]"
-                                >
-                                  <CardContent className="p-4">
-                                    <div className="flex gap-4">
-                                      {/* Combo Image */}
-                                      <div className="w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-orange-100 to-amber-100 relative">
-                                        <img
-                                          src={combo.image}
-                                          alt={combo.name}
-                                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                                          style={{ aspectRatio: '1', objectFit: 'cover' }}
-                                        />
-                                        {combo.calories && (
-                                          <div className="absolute bottom-1 right-1 bg-black/70 text-[#FF7F50] text-xs px-2 py-0.5 rounded">
-                                            {combo.calories} cal
-                                          </div>
-                                        )}
-                                      </div>
-
-                                      {/* Combo Info */}
+                                <div key={station} className="space-y-1">
+                                  <div className={`text-xs font-bold px-2 py-1 rounded ${stationInfo?.color || 'text-gray-600 bg-gray-100'}`}>
+                                    {stationInfo?.label || station.toUpperCase()}
+                                  </div>
+                                  {items.map((item) => (
+                                    <div key={item.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg text-xs">
                                       <div className="flex-1 min-w-0">
-                                        <div className="flex items-start justify-between gap-2 mb-1">
-                                          <h4 className="font-semibold text-base line-clamp-1">
-                                            {combo.name}
-                                          </h4>
-                                          {discountPercent > 0 && (
-                                            <Badge className="bg-green-100 text-green-700 text-xs flex-shrink-0">
-                                              {discountPercent}% OFF
-                                            </Badge>
-                                          )}
-                                        </div>
-                                        <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                                          {combo.description}
+                                        <p className="font-medium truncate">{item.name}</p>
+                                        <p className="text-muted-foreground flex items-center">
+                                          <IndianRupee className="h-3 w-3" />
+                                          {item.price} x {item.quantity}
                                         </p>
-                                        <div className="flex items-center gap-2">
-                                          {combo.originalPrice > combo.discountedPrice && (
-                                            <span className="text-xs text-muted-foreground line-through flex items-center">
-                                              <IndianRupee className="h-3 w-3" />
-                                              {combo.originalPrice}
-                                            </span>
-                                          )}
-                                          <span className="text-lg font-bold text-[#8B5E34] flex items-center">
-                                            <IndianRupee className="h-4 w-4" />
-                                            {combo.discountedPrice}
-                                          </span>
-                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => updateItemQuantity(item.id, -1)}
+                                          className="h-6 w-6 p-0"
+                                        >
+                                          <Minus className="h-3 w-3" />
+                                        </Button>
+                                        <span className="w-5 text-center text-xs font-semibold">
+                                          {item.quantity}
+                                        </span>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => updateItemQuantity(item.id, 1)}
+                                          className="h-6 w-6 p-0"
+                                        >
+                                          <Plus className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => removeItemFromOrder(item.id)}
+                                          className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </Button>
                                       </div>
                                     </div>
-
-                                    {/* Feature #6: Split Select - Expand combo items */}
-                                    <div className="mt-3 space-y-2">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => toggleComboExpansion(combo.id)}
-                                        className="w-full text-xs"
-                                      >
-                                        {isExpanded ? (
-                                          <>
-                                            <ChevronUp className="h-3 w-3 mr-1" />
-                                            Hide Items
-                                          </>
-                                        ) : (
-                                          <>
-                                            <ChevronDown className="h-3 w-3 mr-1" />
-                                            View Items ({combo.items.length})
-                                          </>
-                                        )}
-                                      </Button>
-
-                                      <AnimatePresence>
-                                        {isExpanded && (
-                                          <motion.div
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: 'auto', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            className="overflow-hidden"
-                                          >
-                                            <div className="border rounded p-2 space-y-1 text-xs bg-gray-50">
-                                              {combo.items.map(itemId => {
-                                                const item = menuItems.find(mi => mi.id === itemId);
-                                                return item ? (
-                                                  <div key={itemId} className="flex justify-between">
-                                                    <span>• {item.name}</span>
-                                                    <span className="text-muted-foreground flex items-center">
-                                                      <IndianRupee className="h-3 w-3" />
-                                                      {item.price}
-                                                    </span>
-                                                  </div>
-                                                ) : null;
-                                              })}
-                                            </div>
-                                          </motion.div>
-                                        )}
-                                      </AnimatePresence>
-
-                                      <Button
-                                        size="sm"
-                                        onClick={() => addComboToOrder(combo)}
-                                        className="w-full h-9 gap-2 bg-[#8B5E34] hover:bg-[#8B5E34]/90"
-                                      >
-                                        <Plus className="h-4 w-4" />
-                                        Add Combo
-                                      </Button>
-                                    </div>
-                                  </CardContent>
-                                </Card>
+                                  ))}
+                                </div>
                               );
                             })}
                           </div>
                         </ScrollArea>
                       )}
-                    </TabsContent>
+                    </CardContent>
+                  </Card>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-                    {/* Individual Items Tab */}
-                    <TabsContent value="items" className="flex-1 overflow-hidden mt-0 space-y-4">
-                      {/* Feature #11: Inline Item Search */}
-                      <div className="space-y-2">
-                        <div className="flex gap-3">
-                          <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              placeholder="Search dishes..."
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
-                              className="pl-9 h-11 border-2"
-                            />
+          {/* Section 3: Payment */}
+          <AnimatePresence mode="wait">
+            {currentSection === 'payment' && (
+              <motion.div
+                key="payment"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="max-w-2xl mx-auto"
+              >
+                <Card className="shadow-md border-2 border-[#8B5E34]/10">
+                  <CardHeader className="bg-gradient-to-r from-[#F6F2ED] to-white pb-4">
+                    <CardTitle className="text-lg flex items-center gap-2 text-[#8B5E34]">
+                      <CreditCard className="h-5 w-5" />
+                      Order Summary & Payment
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6 space-y-6">
+                    {/* Order Summary */}
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-lg mb-3">Order Summary</h3>
+                      {orderItems.length === 0 ? (
+                        <p className="text-muted-foreground text-sm">No items added yet</p>
+                      ) : (
+                        <>
+                          <div className="space-y-2 max-h-40 overflow-y-auto">
+                            {orderItems.map((item) => (
+                              <div key={item.id} className="flex justify-between text-sm">
+                                <span>{item.name} x {item.quantity}</span>
+                                <span className="font-medium flex items-center">
+                                  <IndianRupee className="h-4 w-4" />
+                                  {(item.price * item.quantity).toFixed(2)}
+                                </span>
+                              </div>
+                            ))}
                           </div>
-                          <Select
-                            value={selectedCategory}
-                            onValueChange={setSelectedCategory}
-                          >
-                            <SelectTrigger className="w-[180px] h-11 border-2">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {categories.map((category) => (
-                                <SelectItem key={category} value={category}>
-                                  {category === 'all'
-                                    ? 'All Categories'
-                                    : category.charAt(0).toUpperCase() + category.slice(1)}
-                                </SelectItem>
+                          <div className="border-t pt-3">
+                            <div className="flex justify-between text-base font-bold text-[#8B5E34]">
+                              <span>Total Amount</span>
+                              <span className="flex items-center">
+                                <IndianRupee className="h-5 w-5" />
+                                {subtotal.toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Order Details Display */}
+                    {(orderType || customerName) && (
+                      <div className="border-t pt-4 space-y-2">
+                        <h3 className="font-semibold text-sm mb-2">Order Details</h3>
+                        {orderType === 'dine-in' && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Table Number:</span>
+                            <span className="font-medium">{tableNumber || 'Not selected'}</span>
+                          </div>
+                        )}
+                        {orderType && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Order Type:</span>
+                            <span className="font-medium capitalize">{orderType}</span>
+                          </div>
+                        )}
+                        {customerName && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Customer:</span>
+                            <span className="font-medium">{customerName}</span>
+                          </div>
+                        )}
+                        {tags.length > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Tags:</span>
+                            <div className="flex flex-wrap gap-1 justify-end">
+                              {tags.map((tag) => (
+                                <Badge key={tag} variant="outline" className="text-xs">
+                                  {tag}
+                                </Badge>
                               ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        {/* Task 2: Show Total Menu Item Count */}
-                        {!loading && (
-                          <div className="flex items-center justify-between text-sm px-1">
-                            <span className="text-muted-foreground">
-                              {filteredMenuItems.length === menuItems.length ? (
-                                <>
-                                  <Package className="inline h-4 w-4 mr-1" />
-                                  <strong className="text-[#8B5E34]">{menuItems.length}</strong> items available
-                                </>
-                              ) : (
-                                <>
-                                  Showing <strong className="text-[#8B5E34]">{filteredMenuItems.length}</strong> of{' '}
-                                  <strong className="text-[#8B5E34]">{menuItems.length}</strong> items
-                                </>
-                              )}
-                            </span>
+                            </div>
+                          </div>
+                        )}
+                        {notes && (
+                          <div className="text-sm">
+                            <span className="text-muted-foreground">Notes:</span>
+                            <p className="text-sm mt-1 p-2 bg-gray-50 rounded">{notes}</p>
                           </div>
                         )}
                       </div>
-
-                      {loading ? (
-                        <div className="flex items-center justify-center h-full">
-                          <div className="text-center">
-                            <div className="animate-spin h-8 w-8 border-4 border-[#8B5E34] border-t-transparent rounded-full mx-auto mb-3"></div>
-                            <p className="text-sm text-muted-foreground">Loading items...</p>
-                          </div>
-                        </div>
-                      ) : filteredMenuItems.length === 0 ? (
-                        <div className="flex items-center justify-center h-full">
-                          <div className="text-center max-w-sm">
-                            <Search className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                            <h3 className="text-lg font-semibold mb-2">No Items Found</h3>
-                            <p className="text-sm text-muted-foreground">
-                              Try adjusting your search or filters
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <ScrollArea className="h-[450px] pr-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">\n                            {filteredMenuItems.map((item) => (
-                              <Card
-                                key={item.id}
-                                className="cursor-pointer hover:shadow-lg transition-shadow duration-150 border-2 hover:border-[#8B5E34]/50 group active:scale-[0.98]"
-                                onClick={() => addItemToOrder(item)}
-                                onDoubleClick={() => handleDoubleTap(item)}
-                                onTouchStart={() => handleLongPressStart(item)}
-                                onTouchEnd={handleLongPressEnd}
-                                onMouseDown={() => handleLongPressStart(item)}
-                                onMouseUp={handleLongPressEnd}
-                                onMouseLeave={handleLongPressEnd}
-                              >
-                                <CardContent className="p-4">
-                                  <div className="flex gap-4">
-                                    {/* Item Image */}
-                                    <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-orange-100 to-amber-100 relative">
-                                      <img
-                                        src={item.image}
-                                        alt={item.name}
-                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                                        style={{ aspectRatio: '1', objectFit: 'cover' }}
-                                      />
-                                      {item.calories && (
-                                        <div className="absolute bottom-1 right-1 bg-black/70 text-[#FF7F50] text-xs px-1.5 py-0.5 rounded">
-                                          {item.calories} cal
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {/* Item Info */}
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-start justify-between gap-2">
-                                        <h4 className="font-semibold text-sm line-clamp-1">
-                                          {item.name}
-                                        </h4>
-                                        {item.dietType && (
-                                          <Badge
-                                            variant="outline"
-                                            className={`text-xs flex-shrink-0 ${
-                                              item.dietType === 'veg'
-                                                ? 'border-green-500 text-green-700'
-                                                : 'border-red-500 text-red-700'
-                                            }`}
-                                          >
-                                            {item.dietType === 'veg' ? '🌱' : '🍖'}
-                                          </Badge>
-                                        )}
-                                      </div>
-                                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                                        {item.description}
-                                      </p>
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-base font-bold text-[#8B5E34] flex items-center">
-                                          <IndianRupee className="h-4 w-4" />
-                                          {item.price}
-                                        </span>
-                                        {item.preparationTime && (
-                                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                            <Clock className="h-3 w-3" />
-                                            {item.preparationTime}m
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </div>
-                        </ScrollArea>
-                      )}
-                    </TabsContent>
-
-                    {/* Feature #8: Recent Orders Tab */}
-                    <TabsContent value="recent" className="flex-1 overflow-hidden mt-0">
-                      {recentOrders.length === 0 ? (
-                        <div className="flex items-center justify-center h-full">
-                          <div className="text-center max-w-sm">
-                            <Repeat className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                            <h3 className="text-lg font-semibold mb-2">No Recent Orders</h3>
-                            <p className="text-sm text-muted-foreground">
-                              Your recent orders will appear here
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <ScrollArea className="h-[400px] pr-4">
-                          <div className="space-y-4 pb-4">
-                            {recentOrders.map((order) => (
-                              <Card
-                                key={order.id}
-                                className="border-2 hover:border-[#8B5E34]/50 transition-colors"
-                              >
-                                <CardContent className="p-4">
-                                  <div className="flex items-start justify-between mb-3">
-                                    <div>
-                                      <h4 className="font-semibold text-sm mb-1">
-                                        {order.items.length} items
-                                      </h4>
-                                      <p className="text-xs text-muted-foreground">
-                                        {new Date(order.timestamp).toLocaleTimeString()}
-                                      </p>
-                                    </div>
-                                    <span className="text-base font-bold text-[#8B5E34] flex items-center">
-                                      <IndianRupee className="h-4 w-4" />
-                                      {order.total}
-                                    </span>
-                                  </div>
-                                  
-                                  <div className="space-y-1 mb-3">
-                                    {order.items.map((item, idx) => (
-                                      <div key={idx} className="text-xs text-muted-foreground flex justify-between">
-                                        <span>• {item.name} x{item.quantity}</span>
-                                        <span className="flex items-center">
-                                          <IndianRupee className="h-3 w-3" />
-                                          {item.price * item.quantity}
-                                        </span>
-                                      </div>
-                                    ))}
-                                  </div>
-
-                                  <Button
-                                    size="sm"
-                                    onClick={() => repeatOrder(order)}
-                                    className="w-full h-9 gap-2 bg-[#8B5E34] hover:bg-[#8B5E34]/90"
-                                  >
-                                    <Repeat className="h-4 w-4" />
-                                    Repeat Order
-                                  </Button>
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </div>
-                        </ScrollArea>
-                      )}
-                    </TabsContent>
-                  </Tabs>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* RIGHT PANEL: Live Order Preview + Timeline */}
-            <div className="lg:col-span-5 space-y-6">
-              {/* Feature #1: Live Order Timeline */}
-              <Card className="shadow-md border-2 border-[#8B5E34]/10">
-                <CardHeader className="bg-gradient-to-r from-[#F6F2ED] to-white pb-4">
-                  <CardTitle className="text-lg flex items-center gap-2 text-[#8B5E34]">
-                    <Timer className="h-5 w-5" />
-                    Order Timeline
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="space-y-4">
-                    {/* Progress Bar */}
-                    <div className="relative">
-                      <div className="flex justify-between mb-2">
-                        {ORDER_STATUSES.map((status) => {
-                          const statusIndex = ORDER_STATUSES.indexOf(status);
-                          const currentIndex = ORDER_STATUSES.indexOf(currentStatus);
-                          const isActive = statusIndex <= currentIndex;
-                          
-                          return (
-                            <div key={status} className="flex flex-col items-center">
-                              <div
-                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                                  isActive
-                                    ? STATUS_COLORS[status] + ' text-white scale-110'
-                                    : 'bg-gray-200 text-gray-400'
-                                }`}
-                              >
-                                {isActive && <CheckCircle className="h-5 w-5" />}
-                              </div>
-                              <span className="text-xs mt-1 capitalize">{status}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      
-                      <Progress
-                        value={(ORDER_STATUSES.indexOf(currentStatus) / (ORDER_STATUSES.length - 1)) * 100}
-                        className="h-2"
-                      />
-                    </div>
-
-                    {/* Feature #2: Bottleneck Detection */}
-                    {isBottleneck && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-red-50 border-2 border-red-200 rounded-lg p-3 flex items-center gap-3"
-                      >
-                        <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0" />
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-red-900">
-                            Bottleneck Detected
-                          </p>
-                          <p className="text-xs text-red-700">
-                            Order has been in preparing for {preparingDuration} minutes
-                          </p>
-                        </div>
-                      </motion.div>
                     )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-                    {/* Timeline Details */}
-                    <div className="space-y-2">
-                      {orderTimeline.map((tl, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-between text-sm p-2 bg-gray-50 rounded"
-                        >
-                          <span className="capitalize font-medium">{tl.status}</span>
-                          <span className="text-muted-foreground text-xs">
-                            {tl.timestamp.toLocaleTimeString()}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+        {/* Footer Actions */}
+        <div className="sticky bottom-0 z-20 bg-white border-t-2 border-[#8B5E34]/20 px-8 py-4 shadow-lg flex items-center justify-between gap-4">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={handleCancelOrder}
+            className="h-12 px-6 border-2"
+          >
+            <Ban className="h-5 w-5 mr-2" />
+            Cancel
+          </Button>
 
-              {/* Order Preview Card */}
-              <Card className="shadow-md border-2 border-[#8B5E34]/10 flex-1 flex flex-col">
-                <CardHeader className="bg-gradient-to-r from-[#F6F2ED] to-white pb-4">
-                  <CardTitle className="text-lg flex items-center justify-between text-[#8B5E34]">
-                    <div className="flex items-center gap-2">
-                      <Package className="h-5 w-5" />
-                      Order Items ({totalItems})
-                    </div>
-                    <span className="text-base flex items-center font-bold">
-                      <IndianRupee className="h-5 w-5" />
-                      {subtotal}
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6 flex-1 flex flex-col">
-                  {orderItems.length === 0 ? (
-                    <div className="flex-1 flex items-center justify-center">
-                      <div className="text-center max-w-xs">
-                        <ShoppingBag className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                        <h3 className="text-lg font-semibold mb-2">No Items Added</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Start adding items to create an order
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <ScrollArea className="flex-1 pr-4 -mr-4">
-                      {/* Feature #3: Smart KOT Grouping */}
-                      <div className="space-y-4">
-                        {Object.entries(groupedItems).map(([station, items]) => {
-                          const stationInfo = COOKING_STATIONS[station as keyof typeof COOKING_STATIONS];
-                          const isExpanded = expandedGroups.has(station);
-                          const StationIcon = stationInfo?.icon || Package;
-
-                          return (
-                            <Collapsible
-                              key={station}
-                              open={isExpanded}
-                              onOpenChange={(open) => {
-                                const newExpanded = new Set(expandedGroups);
-                                if (open) {
-                                  newExpanded.add(station);
-                                } else {
-                                  newExpanded.delete(station);
-                                }
-                                setExpandedGroups(newExpanded);
-                              }}
-                            >
-                              <Card className="border-2">
-                                <CollapsibleTrigger asChild>
-                                  <CardHeader className="pb-3 cursor-pointer hover:bg-gray-50">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-2">
-                                        <div className={`p-2 rounded ${stationInfo?.color || 'text-gray-600 bg-gray-100'}`}>
-                                          <StationIcon className="h-4 w-4" />
-                                        </div>
-                                        <div>
-                                          <p className="text-sm font-semibold">
-                                            {stationInfo?.label || station.toUpperCase()}
-                                          </p>
-                                          <p className="text-xs text-muted-foreground">
-                                            {items.length} items
-                                          </p>
-                                        </div>
-                                      </div>
-                                      <ChevronDown
-                                        className={`h-5 w-5 transition-transform ${
-                                          isExpanded ? 'rotate-180' : ''
-                                        }`}
-                                      />
-                                    </div>
-                                  </CardHeader>
-                                </CollapsibleTrigger>
-                                <CollapsibleContent>
-                                  <CardContent className="pt-0">
-                                    <div className="space-y-3">
-                                      {items.map((item) => (
-                                        <div
-                                          key={item.id}
-                                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                                        >
-                                          <div className="flex-1">
-                                            <p className="font-medium text-sm">{item.name}</p>
-                                            {item.isCombo && (
-                                              <Badge className="mt-1 text-xs" variant="outline">
-                                                Combo
-                                              </Badge>
-                                            )}
-                                            <p className="text-xs text-muted-foreground mt-1 flex items-center">
-                                              <IndianRupee className="h-3 w-3" />
-                                              {item.price} x {item.quantity}
-                                            </p>
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            <div className="flex items-center gap-1 border rounded-lg">
-                                              <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                onClick={() => updateItemQuantity(item.id, -1)}
-                                                className="h-8 w-8 p-0"
-                                              >
-                                                <Minus className="h-3 w-3" />
-                                              </Button>
-                                              <span className="text-sm font-semibold w-8 text-center">
-                                                {item.quantity}
-                                              </span>
-                                              <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                onClick={() => updateItemQuantity(item.id, 1)}
-                                                className="h-8 w-8 p-0"
-                                              >
-                                                <Plus className="h-3 w-3" />
-                                              </Button>
-                                            </div>
-                                            <Button
-                                              size="sm"
-                                              variant="ghost"
-                                              onClick={() => removeItemFromOrder(item.id)}
-                                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                            >
-                                              <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </CardContent>
-                                </CollapsibleContent>
-                              </Card>
-                            </Collapsible>
-                          );
-                        })}
-                      </div>
-                    </ScrollArea>
-                  )}
-
-                  {/* Feature #5: Drag Gesture Hint */}
-                  {orderItems.length > 0 && (
-                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-center">
-                      <p className="text-xs text-blue-900">
-                        💡 Swipe right to advance status, left to cancel
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+          <div className="text-center flex-1">
+            <p className="text-xs text-muted-foreground mb-0.5">Total Amount</p>
+            <p className="text-xl font-bold text-[#8B5E34] flex items-center justify-center">
+              <IndianRupee className="h-5 w-5" />
+              {subtotal.toFixed(2)}
+            </p>
           </div>
 
-          {/* Feature #9: Sticky Bottom Action Bar - Order Flow Restriction */}
-          <div className="sticky bottom-0 z-20 bg-white border-t-2 border-[#8B5E34]/20 px-8 py-4 shadow-lg">
-            <div className="flex items-center justify-between gap-4">
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={handleCancelOrder}
-                className="h-12 px-6 border-2"
-              >
-                <Ban className="h-5 w-5 mr-2" />
-                Cancel
-              </Button>
-
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground mb-1">Total Amount</p>
-                <p className="text-2xl font-bold text-[#8B5E34] flex items-center justify-center">
-                  <IndianRupee className="h-6 w-6" />
-                  {subtotal}
-                </p>
-              </div>
-
-              <Button
-                size="lg"
-                onClick={handleCreateOrder}
-                disabled={!isOrderValid}
-                className={`h-12 px-8 text-base font-semibold ${
-                  isOrderValid
-                    ? 'bg-[#8B5E34] hover:bg-[#8B5E34]/90'
-                    : 'bg-gray-300 cursor-not-allowed'
-                }`}
-              >
-                <CheckCircle className="h-5 w-5 mr-2" />
-                Create Order
-                {!isOrderValid && (
-                  <span className="ml-2 text-xs">
-                    ({orderItems.length === 0 ? 'Add items' : 'Select table'})
-                  </span>
-                )}
-              </Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      {/* Feature #4: Rollback Protection Dialog */}
-      <Dialog open={rollbackDialog} onOpenChange={setRollbackDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Status Change</DialogTitle>
-            <DialogDescription>
-              Moving order to PREPARING. This action will send the order to the kitchen.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <p className="text-sm">Would you like to:</p>
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setRollbackDialog(false);
-                  // Open edit mode
-                  toast.info('Edit order', { duration: 2000 });
-                }}
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Edit Order
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setRollbackDialog(false);
-                  handleCancelOrder();
-                }}
-              >
-                <X className="h-4 w-4 mr-2" />
-                Cancel Order
-              </Button>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="secondary"
-              onClick={() => setRollbackDialog(false)}
-            >
-              Go Back
-            </Button>
-            <Button
-              onClick={() => {
-                updateOrderStatus('preparing');
-                setRollbackDialog(false);
-              }}
-              className="bg-[#8B5E34] hover:bg-[#8B5E34]/90"
-            >
-              <ArrowRight className="h-4 w-4 mr-2" />
-              Continue to Preparing
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+          <Button
+            size="lg"
+            onClick={handleCreateOrder}
+            disabled={!isOrderValid}
+            className={`h-12 px-8 text-base font-semibold ${
+              isOrderValid
+                ? 'bg-[#8B5E34] hover:bg-[#8B5E34]/90'
+                : 'bg-gray-300 cursor-not-allowed'
+            }`}
+          >
+            <CheckCircle className="h-5 w-5 mr-2" />
+            Create Order
+            {!isOrderValid && (
+              <span className="ml-2 text-xs">
+                ({orderItems.length === 0 ? 'Add items' : 'Select table'})
+              </span>
+            )}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
-}

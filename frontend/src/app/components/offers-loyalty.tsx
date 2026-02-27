@@ -630,9 +630,9 @@ export function OffersLoyalty() {
   });
 
   return (
-    <div className="bg-offers-module min-h-screen p-6 space-y-6">
+    <div className="bg-offers-module min-h-screen p-0 space-y-6">
       {/* Header */}
-      <div className="module-container flex items-center justify-between">
+      <div className="module-container flex items-center justify-between px-6 pt-6">
         <div>
           <h1 className="text-3xl font-bold text-white drop-shadow-lg">
             Offers & Loyalty
@@ -644,7 +644,7 @@ export function OffersLoyalty() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="w-full overflow-x-auto pb-4">
+      <div className="w-full overflow-x-auto pb-4 px-6">
         <nav className="flex gap-3 min-w-max p-1">
           {[
             {
@@ -721,7 +721,7 @@ export function OffersLoyalty() {
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
-        className="mt-6"
+        className="mt-6 px-6 pb-6"
       >
         {/* ==================== TAB 1: COUPONS (EXISTING) ==================== */}
         <TabsContent value="coupons" className="space-y-4">

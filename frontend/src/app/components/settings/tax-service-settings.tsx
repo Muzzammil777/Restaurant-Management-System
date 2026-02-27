@@ -160,7 +160,8 @@ export function TaxServiceSettings() {
   };
 
   return (
-    <div className="bg-settings-module min-h-screen space-y-6 p-6">
+    <div className="bg-settings-module min-h-screen space-y-6 p-0">
+      <div className="px-6 pt-6 pb-6">
       {/* GST Configuration */}
       <Card>
         <CardHeader>
@@ -431,6 +432,7 @@ export function TaxServiceSettings() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

@@ -93,9 +93,9 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="bg-admin-module min-h-screen p-6 space-y-6">
+    <div className="bg-admin-module min-h-screen p-0 space-y-6">
       {/* Header with Live Indicator */}
-      <div className="module-container flex justify-between items-start">
+      <div className="module-container flex justify-between items-start px-6 pt-6">
         <div>
           <h1 className="text-3xl font-bold text-white drop-shadow-lg">Admin Dashboard</h1>
           <p className="text-gray-200">Restaurant management overview</p>
@@ -111,30 +111,34 @@ export function AdminDashboard() {
 
       {/* Error Alert */}
       {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Connection Error</AlertTitle>
-          <AlertDescription className="flex items-center justify-between">
-            <span>{error}. The system may not be fully connected.</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchAnalytics}
-              className="ml-4"
-            >
-              Retry
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <div className="px-6">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Connection Error</AlertTitle>
+            <AlertDescription className="flex items-center justify-between">
+              <span>{error}. The system may not be fully connected.</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchAnalytics}
+                className="ml-4"
+              >
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
       )}
 
       {/* Quick Start */}
       {analytics?.totalOrders === 0 && (
-        <DataSeeder />
+        <div className="px-6">
+          <DataSeeder />
+        </div>
       )}
 
       {/* Stats Cards - Row 1: Financial & Orders */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 px-6">
         <Card style={{ backgroundColor: '#FFFFFF' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
@@ -183,7 +187,7 @@ export function AdminDashboard() {
       </div>
 
       {/* Stats Cards - Row 2: Staff & Delivery (NEW) */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 px-6">
         {/* Staff Status Card */}
         <Card style={{ backgroundColor: '#FFFFFF', borderLeftColor: '#8B5A2B' }} className="border-l-4">
           <CardHeader className="pb-3">
@@ -280,7 +284,7 @@ export function AdminDashboard() {
       </div>
 
       {/* Enhanced Popular Menu Items & Order Statistics */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 px-6 pb-6">
         {/* Enhanced Popular Menu Items */}
         <Card style={{ backgroundColor: '#FFFFFF' }} className="col-span-1 md:col-span-2">
           <CardHeader>

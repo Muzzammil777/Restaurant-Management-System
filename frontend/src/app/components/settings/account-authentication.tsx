@@ -183,7 +183,8 @@ export function AccountAuthentication() {
   };
 
   return (
-    <div className="bg-settings-module min-h-screen space-y-6 p-6">
+    <div className="bg-settings-module min-h-screen space-y-6 p-0">
+      <div className="px-6 pt-6 pb-6">
       {/* Change Password Section */}
       <Card>
         <CardHeader>
@@ -407,6 +408,7 @@ export function AccountAuthentication() {
           </Table>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

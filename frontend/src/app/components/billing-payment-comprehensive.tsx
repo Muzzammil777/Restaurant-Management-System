@@ -480,9 +480,9 @@ export function BillingPaymentComprehensive() {
   }
 
   return (
-    <div className="bg-billing-module min-h-screen space-y-6">
+    <div className="bg-billing-module min-h-screen space-y-6 p-0">
       {/* Header */}
-      <div className="module-container flex items-center justify-between">
+      <div className="module-container flex items-center justify-between px-6 pt-6">
         <div>
           <h1 className="text-3xl font-bold text-white drop-shadow-lg">Billing & Payment</h1>
           <p className="text-gray-200 mt-1">Manage bills and process payments</p>
@@ -494,7 +494,7 @@ export function BillingPaymentComprehensive() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="pending" className="w-full">
+      <Tabs defaultValue="pending" className="w-full px-6 pb-6">
         <TabsList className="bg-white">
           <TabsTrigger value="pending">
             <AlertCircle className="w-4 h-4 mr-2" />

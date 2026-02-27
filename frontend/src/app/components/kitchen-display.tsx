@@ -111,8 +111,8 @@ export function KitchenDisplay() {
   }
 
   return (
-    <div className="bg-kitchen-display-module min-h-screen p-6 space-y-6">
-      <div className="module-container flex items-center justify-between">
+    <div className="bg-kitchen-display-module min-h-screen p-0 space-y-6">
+      <div className="module-container flex items-center justify-between px-6 pt-6">
         <div className="flex items-center gap-3">
           <ChefHat className="h-8 w-8 text-white drop-shadow-lg" />
           <div>
@@ -131,14 +131,16 @@ export function KitchenDisplay() {
       </div>
 
       {orders.length === 0 ? (
+        <div className="px-6">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <ChefHat className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground">No active orders in the kitchen</p>
           </CardContent>
         </Card>
+        </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 px-6 pb-6">
           {orders.map((order) => {
             const elapsedMinutes = getElapsedTime(order.createdAt);
             const isPriority = elapsedMinutes > 10;

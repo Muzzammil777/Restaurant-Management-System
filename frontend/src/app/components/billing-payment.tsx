@@ -240,8 +240,8 @@ export function BillingPayment() {
   const totals = calculateTotals();
 
   return (
-    <div className="bg-billing-module min-h-screen space-y-6 p-6">
-      <div className="module-container flex items-center justify-between">
+    <div className="bg-billing-module min-h-screen space-y-6 p-0">
+      <div className="module-container flex items-center justify-between px-6 pt-6">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-white drop-shadow-lg">Billing & Payment</h2>
           <p className="text-sm text-gray-200 mt-1">
