@@ -15,6 +15,18 @@
   --color-primary: #8B5A2B;
   --color-primary-foreground: #FFFFFF;
   
+  /* Brown Color Variations */
+  --color-brown-50: #FBF7F4;
+  --color-brown-100: #F5E6D3;
+  --color-brown-200: #DCC5A0;
+  --color-brown-300: #C2A376;
+  --color-brown-400: #A98555;
+  --color-brown-500: #8B5A2B;
+  --color-brown-600: #794D23;
+  --color-brown-700: #5F3C15;
+  --color-brown-800: #472B0F;
+  --color-brown-900: #2F1A07;
+  
   /* Secondary Colors (Light tan/beige from Figma) */
   --color-secondary: #D4B896;
   --color-secondary-foreground: #2D2D2D;
@@ -98,4 +110,29 @@ button:hover {
 :focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(139, 90, 43, 0.2);
+}
+
+/* Brown Theme Utilities */
+.bg-brown {
+  background-color: #8B5A2B;
+}
+
+.text-brown {
+  color: #8B5A2B;
+}
+
+.border-brown {
+  border-color: #8B5A2B;
+}
+
+/* Header specific styles for brown theme */
+header {
+  background: linear-gradient(135deg, #8B5A2B 0%, #794D23 100%);
+}
+
+/* Navigation hover effects with brown theme */
+[role="tablist"] [role="tab"]:hover,
+[class*="nav"] a:hover {
+  color: #8B5A2B;
+  background-color: rgba(139, 90, 43, 0.1);
 }

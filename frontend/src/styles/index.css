@@ -3,6 +3,7 @@
 @import './theme.css';
 @import './fonts.css';
 @import './backgrounds.css';
+@import './typography.css';
 
 /* Toast notifications - ensure solid background and high z-index */
 [data-sonner-toaster] {

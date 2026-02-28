@@ -123,26 +123,26 @@ function AppContent() {
       <Toaster position="top-right" />
       
       {/* Header */}
-      <header className="border-b bg-white sticky top-0 z-50">
+      <header className="border-b bg-primary sticky top-0 z-50 shadow-md">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary rounded-xl">
-                <UtensilsCrossed className="h-6 w-6 text-primary-foreground" />
+              <div className="p-2 bg-primary-foreground rounded-xl">
+                <UtensilsCrossed className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h1 className="text-xl font-bold tracking-tight" style={{ color: '#000000' }}>{config.restaurantName}</h1>
-                <p className="text-xs text-muted-foreground">Powered by Movicloud Labs</p>
+                <h1 className="text-2xl font-bold tracking-tight text-primary-foreground">{config.restaurantName}</h1>
+                <p className="text-xs text-primary-foreground/80">Powered by Movicloud Labs</p>
               </div>
             </div>
             
             {/* Right side: Notifications, Settings, Profile */}
             <div className="flex items-center gap-3">
               {/* Notifications */}
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" style={{ color: '#000000' }} />
+              <Button variant="ghost" size="icon" className="relative hover:bg-primary-foreground/10">
+                <Bell className="h-5 w-5 text-primary-foreground" />
                 {notificationCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-primary text-white">
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-500 text-white">
                     {notificationCount}
                   </Badge>
                 )}
@@ -152,8 +152,8 @@ function AppContent() {
               {hasPermission('settings') && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <Settings className="h-5 w-5" style={{ color: '#000000' }} />
+                    <Button variant="ghost" size="icon" className="hover:bg-primary-foreground/10">
+                      <Settings className="h-5 w-5 text-primary-foreground" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
@@ -191,10 +191,10 @@ function AppContent() {
               {/* Profile Avatar */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-primary-foreground/10">
                     <Avatar>
                       <AvatarImage src="" alt={user?.name} />
-                      <AvatarFallback className="bg-primary text-primary-foreground">
+                      <AvatarFallback className="bg-primary-foreground text-primary">
                         {user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
                       </AvatarFallback>
                     </Avatar>
@@ -233,7 +233,7 @@ function AppContent() {
 
       {/* Main Navigation Tabs */}
       <Tabs value={activeTab} onValueChange={(value) => hasPermission(value) && setActiveTab(value)} className="container mx-auto">
-        <div className="bg-white/90 sticky top-[73px] z-40 border-b shadow-md backdrop-blur-sm">
+        <div className="bg-primary/5 sticky top-[73px] z-40 border-b shadow-sm backdrop-blur-sm">
           <div className="relative">
             {/* Collapsible Navigation Container */}
             <div 
@@ -270,79 +270,79 @@ function AppContent() {
                 }}
               >
                 {hasPermission('dashboard') && (
-                  <TabsTrigger value="dashboard" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                  <TabsTrigger value="dashboard" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground hover:text-primary rounded-lg px-4 transition-all">
                     <LayoutDashboard className="h-4 w-4" />
                     Dashboard
                   </TabsTrigger>
                 )}
                 {hasPermission('orders') && (
-                  <TabsTrigger value="orders" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                  <TabsTrigger value="orders" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground hover:text-primary rounded-lg px-4 transition-all">
                     <ShoppingCart className="h-4 w-4" />
                     Orders
                   </TabsTrigger>
                 )}
                 {hasPermission('kitchen') && (
-                  <TabsTrigger value="kitchen" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                  <TabsTrigger value="kitchen" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground hover:text-primary rounded-lg px-4 transition-all">
                     <ChefHat className="h-4 w-4" />
                     Kitchen
                   </TabsTrigger>
                 )}
                 {hasPermission('tables') && (
-                  <TabsTrigger value="tables" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                  <TabsTrigger value="tables" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground hover:text-primary rounded-lg px-4 transition-all">
                     <Users className="h-4 w-4" />
                     Tables
                   </TabsTrigger>
                 )}
                 {hasPermission('menu') && (
-                  <TabsTrigger value="menu" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                  <TabsTrigger value="menu" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground hover:text-primary rounded-lg px-4 transition-all">
                     <UtensilsCrossed className="h-4 w-4" />
                     Menu Management
                   </TabsTrigger>
                 )}
                 {hasPermission('delivery') && (
-                  <TabsTrigger value="delivery" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                  <TabsTrigger value="delivery" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground hover:text-primary rounded-lg px-4 transition-all">
                     <Truck className="h-4 w-4" />
                     Delivery
                   </TabsTrigger>
                 )}
                 {hasPermission('inventory') && (
-                  <TabsTrigger value="inventory" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                  <TabsTrigger value="inventory" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground hover:text-primary rounded-lg px-4 transition-all">
                     <Package className="h-4 w-4" />
                     Inventory
                   </TabsTrigger>
                 )}
                 {hasPermission('billing') && (
-                  <TabsTrigger value="billing" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                  <TabsTrigger value="billing" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground hover:text-primary rounded-lg px-4 transition-all">
                     <CreditCard className="h-4 w-4" />
                     Billing
                   </TabsTrigger>
                 )}
                 {hasPermission('staff') && (
-                  <TabsTrigger value="staff" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                  <TabsTrigger value="staff" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground hover:text-primary rounded-lg px-4 transition-all">
                     <UserCog className="h-4 w-4" />
                     Staff
                   </TabsTrigger>
                 )}
                 {hasPermission('reports') && (
-                  <TabsTrigger value="reports" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                  <TabsTrigger value="reports" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground hover:text-primary rounded-lg px-4 transition-all">
                     <BarChart3 className="h-4 w-4" />
                     Reports
                   </TabsTrigger>
                 )}
                 {hasPermission('offers') && (
-                  <TabsTrigger value="offers" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                  <TabsTrigger value="offers" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground hover:text-primary rounded-lg px-4 transition-all">
                     <Tag className="h-4 w-4" />
                     Offers & Loyalty
                   </TabsTrigger>
                 )}
                 {hasPermission('notifications') && (
-                  <TabsTrigger value="notifications" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                  <TabsTrigger value="notifications" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground hover:text-primary rounded-lg px-4 transition-all">
                     <BellRing className="h-4 w-4" />
                     Notifications
                   </TabsTrigger>
                 )}
                 {hasPermission('settings') && (
-                  <TabsTrigger value="settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-4">
+                  <TabsTrigger value="settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground hover:text-primary rounded-lg px-4 transition-all">
                     <Settings className="h-4 w-4" />
                     Settings
                   </TabsTrigger>
@@ -410,7 +410,7 @@ function AppContent() {
       </Tabs>
 
       {/* Footer */}
-      <footer className="border-t mt-12 py-8 bg-white">
+      <footer className="border-t mt-12 py-8 bg-primary/5">
         <div className="container mx-auto px-6 text-center">
           <p className="text-sm text-muted-foreground">{config.restaurantName} • Movicloud Labs</p>
           <p className="text-xs text-muted-foreground mt-2"></p>
