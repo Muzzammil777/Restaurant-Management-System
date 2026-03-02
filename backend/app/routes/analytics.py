@@ -108,71 +108,7 @@ async def get_analytics():
         if normalize_status(order.get("status")) == "completed"
     )
 
-<<<<<<< HEAD
     avg_order_value = round(total_revenue / completed_orders, 2) if completed_orders else 0
-=======
-    # Completed orders
-    completed_orders = sum(1 for order in all_orders if normalize_status(order.get("status")) in completed_statuses)
-
-    # Active orders (in progress)
-    active_orders = sum(1 for order in all_orders if normalize_status(order.get("status")) in active_statuses)
-
-    # Total revenue from completed orders
-    total_revenue = sum(get_order_total(order) for order in all_orders if normalize_status(order.get("status")) in completed_statuses)
-
-    # Average order value
-    avg_order_value = round(total_revenue / completed_orders, 2) if completed_orders > 0 else 0.0
-
-    # Popular items with revenue
-    popular_map = {}
-    for order in all_orders:
-        for item in extract_items(order):
-            key = item["name"]
-            if key not in popular_map:
-                popular_map[key] = {"name": key, "count": 0, "revenue": 0.0}
-            popular_map[key]["count"] += item["quantity"]
-            popular_map[key]["revenue"] += item["price"] * item["quantity"]
-
-    popular_items = sorted(popular_map.values(), key=lambda item: item["count"], reverse=True)[:10]
-
-    # Table occupancy
-    total_tables = _safe_int(await db.tables.count_documents({}))
-    occupied_tables = _safe_int(await db.tables.count_documents({"status": "occupied"}))
-    table_occupancy = round((occupied_tables / total_tables * 100), 1) if total_tables > 0 else 0.0
-
-    # Order type breakdown — field is "type" on orders
-    order_types = {}
-    for order in all_orders:
-        order_type = normalize_order_type(order)
-        order_types[order_type] = order_types.get(order_type, 0) + 1
-
-    # Category distribution — category is stored directly on order items
-    category_map = {}
-    for order in all_orders:
-        for item in extract_items(order):
-            category = item["category"] or "Other"
-            category_map[category] = category_map.get(category, 0) + item["quantity"]
-    categories = [{"name": name, "value": count} for name, count in sorted(category_map.items(), key=lambda row: row[1], reverse=True)]
-
-    # Total customers
-    total_customers = await db.customers.count_documents({})
-    if total_customers == 0:
-        customer_keys = set()
-        for order in all_orders:
-            key = (
-                str(order.get("customerId") or "").strip()
-                or str(order.get("customerPhone") or "").strip()
-                or str(order.get("customerName") or "").strip().lower()
-            )
-            if key:
-                customer_keys.add(key)
-        total_customers = len(customer_keys)
-
-    # Staff counts
-    total_staff = await db.staff.count_documents({"active": True})
-    on_duty_staff = await db.staff.count_documents({"active": True, "status": "on-duty"})
-    on_leave_staff = await db.staff.count_documents({"active": True, "status": "on-leave"})
->>>>>>> 3789df7ba77936489afea51b97006d855458fabd
 
     return {
         "success": True,
@@ -183,45 +119,7 @@ async def get_analytics():
             "totalRevenue": round(total_revenue, 2),
             "avgOrderValue": avg_order_value,
         }
-<<<<<<< HEAD
     }
-=======
-    }
-
-
-@router.get("/daily")
-async def get_daily_analytics(date: str = None):
-    """Get analytics for a specific date"""
-    db = get_db()
-    
-    if date:
-        target_date = datetime.fromisoformat(date)
-    else:
-        target_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    
-    next_day = target_date + timedelta(days=1)
-    
-    all_orders = await db.orders.find({}).to_list(50000)
-    day_orders = []
-    for order in all_orders:
-        order_dt = get_order_datetime(order)
-        if order_dt and target_date <= order_dt < next_day:
-            day_orders.append(order)
-
-    total_orders = len(day_orders)
-    total_revenue = sum(get_order_total(order) for order in day_orders)
-    completed_count = sum(1 for order in day_orders if normalize_status(order.get("status")) == "completed")
-
-    hourly_buckets = {}
-    for order in day_orders:
-        order_dt = get_order_datetime(order)
-        if not order_dt:
-            continue
-        hour_key = order_dt.hour
-        if hour_key not in hourly_buckets:
-            hourly_buckets[hour_key] = {"hour": hour_key, "orders": 0, "revenue": 0.0}
-        hourly_buckets[hour_key]["orders"] += 1
-        hourly_buckets[hour_key]["revenue"] += get_order_total(order)
 
     hourly_result = [hourly_buckets[hour] for hour in sorted(hourly_buckets.keys())]
     
@@ -394,4 +292,3 @@ async def get_staff_performance():
 
     results.sort(key=lambda x: x["orders_handled"], reverse=True)
     return results
->>>>>>> 3789df7ba77936489afea51b97006d855458fabd
